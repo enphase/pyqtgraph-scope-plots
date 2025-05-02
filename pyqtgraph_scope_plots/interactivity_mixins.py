@@ -245,7 +245,7 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
             if delta and isinstance(axis, DeltaAxisItem):
                 return axis.deltaString(value, axis.scale, tick_spacing * precision_factor)[0]
             else:
-                return axis.tickStrings([value], axis.scale, tick_spacing * precision_factor)[0]
+                return cast(str, axis.tickStrings([value], axis.scale, tick_spacing * precision_factor)[0])
 
 
 class RegionPlot(SnappableHoverPlot):

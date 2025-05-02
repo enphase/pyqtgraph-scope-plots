@@ -64,7 +64,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         self._table: CsvLoaderPlotsTableWidget.CsvSignalsTable
         self._table.sigColorChanged.connect(self._on_color_changed)
         self._drag_handle_data: List[str] = []
-        self._drag_handle_offset = 0
+        self._drag_handle_offset = 0.0
         self._table.sigTimeshiftHandle.connect(self._on_timeshift_handle)
         self._table.sigTimeshiftChanged.connect(self._on_timeshift_change)
         self._plots.sigDragCursorChanged.connect(self._on_drag_cursor_drag)
@@ -100,7 +100,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         elif index < 0:
             index = 0
         if len(data_x) and data_x[index] >= view_left and data_x[index] <= view_right:  # point in view
-            handle_pos = data_x[index]
+            handle_pos: float = data_x[index]
         else:  # no points in view
             handle_pos = view_center
 

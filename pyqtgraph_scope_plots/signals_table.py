@@ -175,7 +175,7 @@ class StatsSignalsTable(SignalsTable):
             xs, ys = self._data[name]
 
             if self._range == (-float('inf'), float('inf')):  # fetch from cache if available
-                stats_dict = self._full_range_stats.get(ys, None, [], {})
+                stats_dict: Dict[int, float] = self._full_range_stats.get(ys, None, [], {})
             else:  # slice
                 low_index = bisect.bisect_left(xs, self._range[0])  # inclusive
                 high_index = bisect.bisect_right(xs, self._range[1])  # inclusive

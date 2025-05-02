@@ -33,7 +33,7 @@ class IdentityCacheDict(Generic[PrimaryKeyType, ValueType]):
 
     class CacheEntry(NamedTuple):  # note, primary key is stored separately
         args: Any
-        ref_args: Tuple[ref, ...]
+        ref_args: Tuple[ref[Any], ...]
         value: Any  # should be ValueType
 
     def __init__(self) -> None:

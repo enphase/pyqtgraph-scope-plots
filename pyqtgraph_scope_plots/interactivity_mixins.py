@@ -22,7 +22,7 @@ class DeltaAxisItem(pg.AxisItem):
     Useful, eg, for timestamps where the axis is in wall clock format but deltas are in seconds."""
     @abstractmethod
     def deltaString(self, value: float, scale: float, spacing: float) -> str:
-        return self.tickStrings([value], scale, spacing)
+        return cast(str, self.tickStrings([value], scale, spacing))
 
 
 class HoverSnapData(NamedTuple):

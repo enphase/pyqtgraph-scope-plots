@@ -1,4 +1,4 @@
-from typing import Any, TypeVar, Optional, overload
+from typing import Any, TypeVar, Optional, overload, cast
 
 import pyqtgraph as pg
 from PySide6.QtGui import QColor
@@ -16,4 +16,4 @@ def not_none(x: Optional[NotNoneType]) -> NotNoneType:
 
 def int_color(index: int) -> QColor:
     """Custom intColor that drops blue (every 7 out of 9 indices) since it's not legible at all"""
-    return pg.intColor(index + (index - 6 + 8)//8)
+    return cast(QColor, pg.intColor(index + (index - 6 + 8)//8))

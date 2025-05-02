@@ -68,7 +68,7 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
         xs, ys = all_data[data_name]
         transform = self._transforms.get(data_name)
         if not transform:
-            return ys  # type: ignore
+            return ys
         expr, parsed = transform
 
         input_all_data_refs = [elt for arrs in all_data.values() for elt in arrs]

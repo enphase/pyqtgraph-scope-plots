@@ -42,7 +42,7 @@ disallow_untyped_defs = true
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["pyqtgraph.*"]
+module = ["pyqtgraph.*", "simpleeval.*"]
 ignore_missing_imports = true
 
 [tool.pytest]

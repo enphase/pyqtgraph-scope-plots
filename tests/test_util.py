@@ -5,7 +5,9 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import *
 from pytestqt.qtbot import QtBot
 
-CastTarget = TypeVar('CastTarget')
+CastTarget = TypeVar("CastTarget")
+
+
 def assert_cast(tpe: Type[CastTarget], obj: Any) -> CastTarget:
     """A static cast that also does a runtime type check"""
     assert isinstance(obj, tpe), f"{obj} not of type {tpe}"
@@ -13,9 +15,8 @@ def assert_cast(tpe: Type[CastTarget], obj: Any) -> CastTarget:
 
 
 def context_menu(qtbot: QtBot, container: QWidget, target: QPoint = QPoint(0, 0)) -> QMenu:
-    """Opens up a context menu at the container and optional point, assert it opened, and returns the menu.
-    """
-    if hasattr(container, 'viewport'):  # some widgets don't support viewport and don't seen to need this
+    """Opens up a context menu at the container and optional point, assert it opened, and returns the menu."""
+    if hasattr(container, "viewport"):  # some widgets don't support viewport and don't seen to need this
         qtbot.mouseClick(container.viewport(), Qt.MouseButton.RightButton, pos=target)  # set cursor target
     prev_menu = container.findChild(QMenu)
     if prev_menu is not None:

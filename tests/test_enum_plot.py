@@ -14,9 +14,7 @@ from pyqtgraph_scope_plots.util import not_none
 def plot(qtbot: QtBot) -> PlotWidget:
     """Creates a signals plot with multiple data items"""
     plot = EnumWaveformInteractivePlot()
-    plot.update_plot('0', QColor('yellow'),
-                     [0, 1, 1.5, 2, 6, 7, 7.4],
-                     ["A", "B", "B", "B", "C", "A", "A"])
+    plot.update_plot("0", QColor("yellow"), [0, 1, 1.5, 2, 6, 7, 7.4], ["A", "B", "B", "B", "C", "A", "A"])
     widget = PlotWidget(plotItem=plot)
     qtbot.addWidget(widget)
     widget.show()
@@ -26,21 +24,21 @@ def plot(qtbot: QtBot) -> PlotWidget:
 
 def test_empty_one(qtbot: QtBot, plot: PlotWidget) -> None:
     plot_item = cast(EnumWaveformInteractivePlot, plot.plotItem)
-    plot_item.update_plot('0', QColor('grey'), [], [])
+    plot_item.update_plot("0", QColor("grey"), [], [])
 
-    plot_item.update_plot('0', QColor('grey'), [0], ['test'])
-    plot_item.update_plot('0', QColor('grey'), [1], ['test'])
+    plot_item.update_plot("0", QColor("grey"), [0], ["test"])
+    plot_item.update_plot("0", QColor("grey"), [1], ["test"])
 
 
 def test_labels(qtbot: QtBot, plot: PlotWidget) -> None:
     plot_item = cast(EnumWaveformInteractivePlot, plot.plotItem)
     qtbot.waitUntil(lambda: len(plot_item._curves_labels) == 2)
-    assert plot_item._curves_labels[0].toPlainText() == 'B'  # longest segment
-    assert plot_item._curves_labels[1].toPlainText() == 'A'  # short segment but past end
+    assert plot_item._curves_labels[0].toPlainText() == "B"  # longest segment
+    assert plot_item._curves_labels[1].toPlainText() == "A"  # short segment but past end
 
-    plot_item.update_plot('0', QColor('grey'), [0, 1], ['test', 'test'])  # test unchanging waveform
+    plot_item.update_plot("0", QColor("grey"), [0, 1], ["test", "test"])  # test unchanging waveform
     assert len(plot_item._curves_labels) == 1
-    assert plot_item._curves_labels[0].toPlainText() == 'test'
+    assert plot_item._curves_labels[0].toPlainText() == "test"
 
 
 def test_snap(qtbot: QtBot, plot: PlotWidget) -> None:
@@ -58,7 +56,7 @@ def test_snap(qtbot: QtBot, plot: PlotWidget) -> None:
 
 def test_data_values(qtbot: QtBot, plot: PlotWidget) -> None:
     plot_item = cast(EnumWaveformInteractivePlot, plot.plotItem)
-    assert plot_item._data_value_label_at(0) == [(0, 'A', QColor('yellow'))]
-    assert plot_item._data_value_label_at(1.5) == [(0, 'B', QColor('yellow'))]
+    assert plot_item._data_value_label_at(0) == [(0, "A", QColor("yellow"))]
+    assert plot_item._data_value_label_at(1.5) == [(0, "B", QColor("yellow"))]
     assert plot_item._data_value_label_at(1.6) == []
-    assert plot_item._data_value_label_at(7.4) == [(0, 'A', QColor('yellow'))]
+    assert plot_item._data_value_label_at(7.4) == [(0, "A", QColor("yellow"))]

@@ -17,10 +17,10 @@ def plot(qtbot: QtBot) -> CsvLoaderPlotsTableWidget:
 
 
 def test_load_mixed_csv(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
-    plot._load_csv(os.path.join(os.path.dirname(__file__), 'data', 'test_csv_viewer_data.csv'))
+    plot._load_csv(os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv"))
     qtbot.waitUntil(lambda: plot._plots.count() == 3)  # just make sure it loads
 
 
 def test_load_sparse_csv(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
-    plot._load_csv(os.path.join(os.path.dirname(__file__), 'data', 'test_csv_viewer_data_sparse.csv'))
+    plot._load_csv(os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data_sparse.csv"))
     qtbot.waitUntil(lambda: plot._plots.count() == 3)  # just make sure it loads

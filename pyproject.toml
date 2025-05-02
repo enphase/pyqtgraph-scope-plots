@@ -41,6 +41,10 @@ disallow_incomplete_defs = true
 disallow_untyped_defs = true
 strict = true
 
+[[tool.mypy.overrides]]
+module = ["pyqtgraph.*"]
+ignore_missing_imports = true
+
 [tool.pytest]
 qt_api = "pyside6"
 pythonpath = "pyqtgraph_scope_plots"

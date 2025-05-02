@@ -17,7 +17,7 @@ from pyqtgraph import mkPen
 from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent
 
 
-class DeltaAxisItem(pg.AxisItem):
+class DeltaAxisItem(pg.AxisItem):  # type: ignore[misc]
     """An AxisItem that allows a different function for rendering delta time.
     Useful, eg, for timestamps where the axis is in wall clock format but deltas are in seconds."""
     @abstractmethod
@@ -30,7 +30,7 @@ class HoverSnapData(NamedTuple):
     snap_pos: Optional[QPointF]  # None if no nearby point
 
 
-class HasDataValueAt(pg.PlotItem):
+class HasDataValueAt(pg.PlotItem):  # type: ignore[misc]
     """Base class that provides a shared (and overrideable) function that returns multiple y-position and labels
     given some x position"""
     def _data_value_label_at(self, pos: float, precision_factor: float = 1.0) -> List[Tuple[float, str, QColor]]:
@@ -48,7 +48,7 @@ class HasDataValueAt(pg.PlotItem):
         return outs
 
 
-class SnappableHoverPlot(pg.PlotItem):
+class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
     """Mixin for PlotItem that provides an optional snapped nearest data point on user hover.
     Shows a visual target on the snapped point."""
     sigHoverSnapChanged = Signal(HoverSnapData)  # emitted during mouseover when the mouse pos changes

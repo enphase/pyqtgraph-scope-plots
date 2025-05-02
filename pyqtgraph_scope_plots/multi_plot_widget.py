@@ -3,6 +3,7 @@ from functools import partial
 from typing import Dict, Tuple, List, Optional, Any, Callable, Union, Mapping, cast
 
 import numpy as np
+import numpy.typing as npt
 import pyqtgraph as pg
 from PySide6.QtCore import QSignalBlocker, QPoint, QSize, Signal
 from PySide6.QtGui import QColor, Qt, QDropEvent, QDragLeaveEvent, QPainter, QBrush, QDragMoveEvent, QPaintEvent
@@ -43,7 +44,7 @@ class MultiPlotWidget(QSplitter):
         self._x_axis = x_axis
 
         self._data_items: Mapping[str, Tuple[QColor, MultiPlotWidget.PlotType]] = {}  # ordered
-        self._data: Mapping[str, Tuple[np.ndarray, np.ndarray]] = {}
+        self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
 
         self.setOrientation(Qt.Orientation.Vertical)
         default_plot_item = self._init_plot_item(self._create_plot_item(self.PlotType.DEFAULT))

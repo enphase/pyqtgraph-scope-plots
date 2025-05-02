@@ -2,6 +2,7 @@ import numbers
 from typing import Dict, Tuple, List, Any, Mapping, Union
 
 import numpy as np
+import numpy.typing as npt
 import simpleeval
 from PySide6.QtGui import QColor, QAction
 from PySide6.QtWidgets import QTableWidgetItem, QMenu, QInputDialog, QLineEdit
@@ -22,7 +23,7 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
         do the indexing calculation until a value is requested.
         Requires x to be monotonically increasing. Optimized for the case where gets are done on almost every element,
         but robust to sequences that have wildly different xs."""
-        def __init__(self, data: Mapping[str, Tuple[np.ndarray, np.ndarray]]):
+        def __init__(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]):
             self._x = float('NaN')
             self._data = data
             self._data_indices: Dict[str, int] = {}  # last index at the data name
@@ -59,9 +60,9 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
 
         self._transforms: Dict[str, Tuple[str, Any]] = {}  # (expr str, parsed)
         self._simpleeval = simpleeval.SimpleEval()
-        self._cached_results = IdentityCacheDict[np.ndarray, np.ndarray]()  # src data -> output data
+        self._cached_results = IdentityCacheDict[npt.NDArray[np.float64], npt.NDArray[np.float64]]()  # src data -> output data
 
-    def apply_transform(self, data_name: str, all_data: Mapping[str, Tuple[np.ndarray, np.ndarray]]) -> Union[np.ndarray, Exception]:
+    def apply_transform(self, data_name: str, all_data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]) -> Union[npt.NDArray[np.float64], Exception]:
         """Applies a transform to the specified data_name and data, using self._table.transform.
         Returns the transformed data, which may be the input data if no transform is specified.
         """

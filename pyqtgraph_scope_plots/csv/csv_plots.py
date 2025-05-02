@@ -3,6 +3,7 @@ import os.path
 from typing import Dict, Tuple, Any, List, Mapping
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import pyqtgraph as pg
 from PySide6.QtGui import QAction, QColor
@@ -69,8 +70,8 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         self._table.sigTimeshiftChanged.connect(self._on_timeshift_change)
         self._plots.sigDragCursorChanged.connect(self._on_drag_cursor_drag)
 
-    def _transform_data(self, data: Mapping[str, Tuple[np.ndarray, np.ndarray]]) -> \
-            Mapping[str, Tuple[np.ndarray, np.ndarray]]:
+    def _transform_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]) -> \
+            Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
         # apply time-shift before function transform
         transformed_data = {}
         for data_name in data.keys():

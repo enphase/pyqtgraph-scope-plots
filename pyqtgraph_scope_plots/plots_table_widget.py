@@ -3,6 +3,7 @@ from io import StringIO
 from typing import Dict, Tuple, List, Any, Mapping, Union, Optional, TextIO
 
 import numpy as np
+import numpy.typing as npt
 from PySide6.QtGui import QColor, Qt
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QSplitter, QFileDialog
 
@@ -56,8 +57,8 @@ class PlotsTableWidget(QSplitter):
         self.addWidget(bottom_widget)
 
         self._data_items: Dict[str, Tuple[QColor, 'MultiPlotWidget.PlotType']] = {}
-        self._data: Mapping[str, Tuple[np.ndarray, np.ndarray]] = {}
-        self._transformed_data: Mapping[str, Tuple[np.ndarray, np.ndarray]] = {}
+        self._transformed_data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
+        self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
 
         self._plots.sigCursorRangeChanged.connect(self._on_region_change)
         self._table.sigTransformChanged.connect(self._on_transform_change)
@@ -67,7 +68,7 @@ class PlotsTableWidget(QSplitter):
         self._plots.show_data_items(new_data_items, no_create = len(new_data_items) > 8)
         self._table.set_data_items([(data_name, color) for data_name, color, _ in new_data_items])
 
-    def _to_array(self, x: np.typing.ArrayLike) -> np.ndarray:
+    def _to_array(self, x: npt.ArrayLike) -> npt.NDArray[np.float64]:
         if isinstance(x, np.ndarray) and x.flags.writeable == False:
             return x
         else:
@@ -75,8 +76,8 @@ class PlotsTableWidget(QSplitter):
             arr.flags.writeable = False
             return arr
 
-    def _transform_data(self, data: Mapping[str, Tuple[np.ndarray, np.ndarray]]) ->\
-            Mapping[str, Tuple[np.ndarray, np.ndarray]]:
+    def _transform_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]) ->\
+            Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
         transformed_data = {}
         for data_name in data.keys():
             transformed = self._table.apply_transform(data_name, data)

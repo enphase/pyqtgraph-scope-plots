@@ -2,6 +2,7 @@ import bisect
 from typing import List, Tuple, Optional, Any, cast
 
 import numpy as np
+import numpy.typing as npt
 import pyqtgraph as pg
 from PySide6.QtCore import QPointF, QRect
 from PySide6.QtGui import QColor
@@ -17,7 +18,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt):
         self._curves: List[pg.PlotCurveItem] = []
         self._curves_labels: List[pg.TextItem] = []
         self._color = QColor('grey')  # default placeholder value that shouldn't get used
-        self._data: Optional[Tuple[np.ndarray, np.ndarray]] = None  # array[float], array[Any]
+        self._data: Optional[Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = None  # array[float], array[Any]
         self._edges = np.array([])  # list of x positions of edges, sorted but not necessarily unique
 
         self.sigXRangeChanged.connect(self._update_plot_labels)
@@ -87,12 +88,12 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt):
             ([1, -1, -1, 1] * ((len(changes_prechanges_indices)+3) // 4))[:len(changes_prechanges_indices)])
         # append first and last elements to pad out the trace
         if len(changes_prechanges_indices):
-            changes_prechanges_indices = np.insert(changes_prechanges_indices, 0, 0)  # type: ignore
-            changes_prechanges_indices = np.append(changes_prechanges_indices, len(xs)-1)  # type: ignore
+            changes_prechanges_indices = np.insert(changes_prechanges_indices, 0, 0)
+            changes_prechanges_indices = np.append(changes_prechanges_indices, len(xs)-1)
             heights = np.insert(heights, 0, heights[0])
             heights = np.append(heights, heights[-1])
         elif not len(changes_prechanges_indices) and len(ys_np):  # special case for waveform that doesn't change
-            changes_prechanges_indices = np.array([0, len(xs)-1])  # type: ignore
+            changes_prechanges_indices = np.array([0, len(xs)-1])
             heights = np.array([1, 1])
 
         self._edges = np.take(xs, changes_prechanges_indices)

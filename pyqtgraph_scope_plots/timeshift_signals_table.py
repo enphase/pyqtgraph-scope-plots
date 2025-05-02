@@ -1,6 +1,7 @@
 from typing import Dict, List, Any, Mapping, Tuple
 
 import numpy as np
+import numpy.typing as npt
 from PySide6.QtGui import QAction, QColor
 from PySide6.QtWidgets import QTableWidgetItem, QMenu
 
@@ -23,7 +24,7 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable):
         self.cellDoubleClicked.connect(self._on_timeshift_double_click)
 
         self._timeshifts: Dict[str, float] = {}  # data name -> time delay
-        self._cached_results = IdentityCacheDict[np.ndarray, np.ndarray]()  # src x-values -> output x-values
+        self._cached_results = IdentityCacheDict[npt.NDArray[np.float64], npt.NDArray[np.float64]]()  # src x-values -> output x-values
 
     def _post_cols(self) -> int:
         self.COL_TIMESHIFT = super()._post_cols()
@@ -69,7 +70,7 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable):
             not_none(self.item(index_by_data_name[data_name], self.COL_TIMESHIFT)).setText(str(timeshift))
         self.sigTimeshiftChanged.emit(data_names)
 
-    def apply_timeshifts(self, data_name: str, all_data: Mapping[str, Tuple[np.ndarray, np.ndarray]]) -> np.ndarray:
+    def apply_timeshifts(self, data_name: str, all_data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]) -> npt.NDArray[np.float64]:
         """Applies timeshifts to the specified data_name and data. Returns the transformed X values (time values, data is not used),
         which may be the input data if no timeshift is specified.
         Returns identical objects for identical inputs and consecutive identical timeshifts (results are cached).

@@ -3,6 +3,7 @@ import math
 from typing import Dict, Tuple, List, Any, Mapping
 
 import numpy as np
+import numpy.typing as npt
 from PySide6.QtCore import QMimeData, QPoint, Signal, QObject, QThread
 from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
 from PySide6.QtWidgets import QTableWidgetItem, QTableWidget, QHeaderView, QMenu, QLabel, QColorDialog
@@ -95,7 +96,7 @@ class StatsSignalsTable(SignalsTable):
 
     class StatsCalculatorThread(QThread):
         """Core of the stats calculation"""
-        def __init__(self, parent: Any, data: List[np.ndarray]):
+        def __init__(self, parent: Any, data: List[npt.NDArray[np.float64]]):
             super().__init__(parent)
             self.signals = StatsSignalsTable.StatsCalculatorSignals()
             self._data = data
@@ -106,7 +107,7 @@ class StatsSignalsTable(SignalsTable):
                 self.signals.update.emit(ys, stats_dict)
 
     @classmethod
-    def _calculate_stats(cls, ys: np.ndarray) -> Dict[int, float]:
+    def _calculate_stats(cls, ys: npt.NDArray[np.float64]) -> Dict[int, float]:
         """Calculates stats (as dict of col offset -> value) for the specified xs, ys.
         Does not spawn a separate thread, does not affect global state."""
         if len(ys) == 0:
@@ -134,17 +135,17 @@ class StatsSignalsTable(SignalsTable):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._data: Mapping[str, Tuple[np.ndarray, np.ndarray]] = {}
+        self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
         # since calculating stats across the full range is VERY EXPENSIVE, cache the results
-        self._full_range_stats = IdentityCacheDict[np.ndarray, Dict[int, float]]()  # input array -> stats dict
+        self._full_range_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # input array -> stats dict
         self._range: Tuple[float, float] = (-float('inf'), float('inf'))
 
-    def _on_full_range_stats_updated(self, input_arr: np.ndarray, stats_dict: Dict[int, float]) -> None:
+    def _on_full_range_stats_updated(self, input_arr: npt.NDArray[np.float64], stats_dict: Dict[int, float]) -> None:
         self._full_range_stats.set(input_arr, None, [], stats_dict)
         if self._range == (-float('inf'), float('inf')):
             self._update_stats()  # update display if needed
 
-    def set_data(self, data: Mapping[str, Tuple[np.ndarray, np.ndarray]]) -> None:
+    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]) -> None:
         """Sets the data and updates statistics"""
         self._data = data
         needed_stats = []

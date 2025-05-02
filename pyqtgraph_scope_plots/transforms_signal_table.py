@@ -15,6 +15,7 @@ from .util import not_none
 class TransformsSignalsTable(ContextMenuSignalsTable):
     """Mixin into SignalsTable that adds a UI for the user to specify a transform using a subset of Python code.
     This parses the user input and provides a get_transform."""
+
     COL_TRANSFORM = -1
 
     class AllDataDict:
@@ -23,8 +24,12 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
         do the indexing calculation until a value is requested.
         Requires x to be monotonically increasing. Optimized for the case where gets are done on almost every element,
         but robust to sequences that have wildly different xs."""
-        def __init__(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]):
-            self._x = float('NaN')
+
+        def __init__(
+            self,
+            data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
+        ):
+            self._x = float("NaN")
             self._data = data
             self._data_indices: Dict[str, int] = {}  # last index at the data name
 
@@ -60,9 +65,15 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
 
         self._transforms: Dict[str, Tuple[str, Any]] = {}  # (expr str, parsed)
         self._simpleeval = simpleeval.SimpleEval()
-        self._cached_results = IdentityCacheDict[npt.NDArray[np.float64], npt.NDArray[np.float64]]()  # src data -> output data
+        self._cached_results = IdentityCacheDict[
+            npt.NDArray[np.float64], npt.NDArray[np.float64]
+        ]()  # src data -> output data
 
-    def apply_transform(self, data_name: str, all_data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]) -> Union[npt.NDArray[np.float64], Exception]:
+    def apply_transform(
+        self,
+        data_name: str,
+        all_data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
+    ) -> Union[npt.NDArray[np.float64], Exception]:
         """Applies a transform to the specified data_name and data, using self._table.transform.
         Returns the transformed data, which may be the input data if no transform is specified.
         """
@@ -82,7 +93,11 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
         for x, y in zip(xs, ys):
             try:
                 other_data_dict._set_x(x)
-                self._simpleeval.names = {'x': y, 't': x, 'data': other_data_dict}
+                self._simpleeval.names = {
+                    "x": y,
+                    "t": x,
+                    "data": other_data_dict,
+                }
                 new_y = self._simpleeval.eval(expr, parsed)
                 # note, float and int are technically different, but are same enough here
                 if not (isinstance(new_y, numbers.Number) and isinstance(y, numbers.Number)) and type(new_y) != type(y):
@@ -126,12 +141,14 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
 
         err_msg = ""
         while True:
-            text, ok = QInputDialog().getText(self, f"Function for {', '.join(selected_data_names)}",
-                                              "Function code, use 'x' for current value, 't' for the timestamp, and\n"
-                                              "'data['...']' or 'data.get('...')' to access other data at the same timestamp"
-                                              + err_msg,
-                                              QLineEdit.EchoMode.Normal,
-                                              text)
+            text, ok = QInputDialog().getText(
+                self,
+                f"Function for {', '.join(selected_data_names)}",
+                "Function code, use 'x' for current value, 't' for the timestamp, and\n"
+                "'data['...']' or 'data.get('...')' to access other data at the same timestamp" + err_msg,
+                QLineEdit.EchoMode.Normal,
+                text,
+            )
             if not ok:
                 return
             if not text:

@@ -13,11 +13,12 @@ from .interactivity_mixins import SnappableHoverPlot, HasDataValueAt
 class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt):
     """Plot that takes data as string vs. time and renders as a digital waveform, with transitions when string
     equality changes."""
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._curves: List[pg.PlotCurveItem] = []
         self._curves_labels: List[pg.TextItem] = []
-        self._color = QColor('grey')  # default placeholder value that shouldn't get used
+        self._color = QColor("grey")  # default placeholder value that shouldn't get used
         self._data: Optional[Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = None  # array[float], array[Any]
         self._edges = np.array([])  # list of x positions of edges, sorted but not necessarily unique
 
@@ -43,7 +44,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt):
             index_hi = bisect.bisect_right(xs, x_hi)
             candidate_poss = xs[index_lo:index_hi]
         if len(candidate_poss):
-            candidate_dists = [abs(x-target_pos.x()) for x in candidate_poss]
+            candidate_dists = [abs(x - target_pos.x()) for x in candidate_poss]
             min_dist_index = np.argmin(candidate_dists)
             return QPointF(candidate_poss[min_dist_index], 0)
         else:
@@ -59,7 +60,13 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt):
         else:
             return []
 
-    def update_plot(self, name: str, color: QColor, xs: np.typing.ArrayLike, ys: np.typing.ArrayLike) -> None:
+    def update_plot(
+        self,
+        name: str,
+        color: QColor,
+        xs: np.typing.ArrayLike,
+        ys: np.typing.ArrayLike,
+    ) -> None:
         """Updates the plot data, as name -> (color, Xs, state values)"""
         for curve in self._curves:
             self.removeItem(curve)
@@ -81,19 +88,25 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt):
         changes_indices = np.where(changes)[0]
         # interleave the indices and itself plus one to get all the points where the curve changes
         # note, this may result in duplicate points, which is fine for plotting
-        changes_prechanges_indices = (np.column_stack((changes_indices,
-                                                       changes_indices+np.ones(len(changes_indices), dtype=int)))
-                                      .reshape(-1)).astype(int)
+        changes_prechanges_indices = (
+            np.column_stack(
+                (
+                    changes_indices,
+                    changes_indices + np.ones(len(changes_indices), dtype=int),
+                )
+            ).reshape(-1)
+        ).astype(int)
         heights = np.array(
-            ([1, -1, -1, 1] * ((len(changes_prechanges_indices)+3) // 4))[:len(changes_prechanges_indices)])
+            ([1, -1, -1, 1] * ((len(changes_prechanges_indices) + 3) // 4))[: len(changes_prechanges_indices)]
+        )
         # append first and last elements to pad out the trace
         if len(changes_prechanges_indices):
             changes_prechanges_indices = np.insert(changes_prechanges_indices, 0, 0)
-            changes_prechanges_indices = np.append(changes_prechanges_indices, len(xs)-1)
+            changes_prechanges_indices = np.append(changes_prechanges_indices, len(xs) - 1)
             heights = np.insert(heights, 0, heights[0])
             heights = np.append(heights, heights[-1])
         elif not len(changes_prechanges_indices) and len(ys_np):  # special case for waveform that doesn't change
-            changes_prechanges_indices = np.array([0, len(xs)-1])
+            changes_prechanges_indices = np.array([0, len(xs) - 1])
             heights = np.array([1, 1])
 
         self._edges = np.take(xs, changes_prechanges_indices)
@@ -123,7 +136,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt):
         if len(self._edges) == 0 or self._data is None:  # nothing to be done
             return
 
-        sample_label = pg.TextItem('00')  # get character width, assumed boundingRect in screen coordinates
+        sample_label = pg.TextItem("00")  # get character width, assumed boundingRect in screen coordinates
         label_bounds_data = cast(QRect, self.mapRectToView(sample_label.boundingRect()))  # convert to data coordinates
         min_data_width = label_bounds_data.width()
 
@@ -150,7 +163,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt):
             if left_edge < self.viewRect().left() <= right_edge:  # clip left side to viewport
                 left_edge = self.viewRect().left()
             if right_edge == self._edges[-1]:  # right side is unbounded
-                right_edge = float('inf')
+                right_edge = float("inf")
             held_data_width = right_edge - left_edge
             if held_data_width < min_data_width:  # quick test against minimum width
                 continue

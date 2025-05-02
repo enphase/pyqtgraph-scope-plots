@@ -49,3 +49,6 @@ ignore_missing_imports = true
 qt_api = "pyside6"
 pythonpath = "pyqtgraph_scope_plots"
 norecursedirs = ".git"
+
+[tool.black]
+line-length = 120

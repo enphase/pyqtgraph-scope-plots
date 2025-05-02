@@ -6,7 +6,14 @@ import numpy as np
 import numpy.typing as npt
 from PySide6.QtCore import QMimeData, QPoint, Signal, QObject, QThread
 from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
-from PySide6.QtWidgets import QTableWidgetItem, QTableWidget, QHeaderView, QMenu, QLabel, QColorDialog
+from PySide6.QtWidgets import (
+    QTableWidgetItem,
+    QTableWidget,
+    QHeaderView,
+    QMenu,
+    QLabel,
+    QColorDialog,
+)
 
 from .cache_dict import IdentityCacheDict
 from .util import not_none
@@ -14,10 +21,13 @@ from .util import not_none
 
 class SignalsTable(QTableWidget):
     """Table of signals. Includes infrastructure to allow additional mixed-in classes to extend the table columns."""
+
     COL_NAME: int = -1  # dynamically init'd
     COL_COUNT: int = 0
 
-    sigDataDeleted = Signal(list, list)  # list[int] rows, list[str] strings TODO: signals don't play well with multiple inheritance
+    sigDataDeleted = Signal(
+        list, list
+    )  # list[int] rows, list[str] strings TODO: signals don't play well with multiple inheritance
     sigColorChanged = Signal(object)  # List[(str, QColor)] of color changed
     sigTransformChanged = Signal(object)  # List[str] of data names of changed transforms
     sigTimeshiftHandle = Signal(object, float)  # List[str] of data names, initial (prior) timeshift
@@ -32,12 +42,14 @@ class SignalsTable(QTableWidget):
 
     def _pre_cols(self) -> int:  # number of cols before nane
         """Called during beginning of __init__ to calculate column counts.
-        Subclasses should override this (with an accumulating super() call) and initialize their offsets."""
+        Subclasses should override this (with an accumulating super() call) and initialize their offsets.
+        """
         return 0
 
     def _post_cols(self) -> int:  # total number of columns, including _pre_cols
         """Called during beginning of __init__ to calculate column counts.
-        Subclasses should override this (with an accumulating super() call) and initialize their offsets."""
+        Subclasses should override this (with an accumulating super() call) and initialize their offsets.
+        """
         return self.COL_NAME + 1  # 1 for the name column
 
     def _init_col_counts(self) -> None:
@@ -83,19 +95,27 @@ class SignalsTable(QTableWidget):
 class StatsSignalsTable(SignalsTable):
     """Mixin into SignalsTable with statistics rows. Optional range to specify computation of statistics.
     Values passed into set_data must all be numeric."""
+
     COL_STAT = -1
     COL_STAT_MIN = 0  # offset from COL_STAT
     COL_STAT_MAX = 1
     COL_STAT_AVG = 2
     COL_STAT_RMS = 3
     COL_STAT_STDEV = 4
-    STATS_COLS = [COL_STAT_MIN, COL_STAT_MAX, COL_STAT_AVG, COL_STAT_RMS, COL_STAT_STDEV]
+    STATS_COLS = [
+        COL_STAT_MIN,
+        COL_STAT_MAX,
+        COL_STAT_AVG,
+        COL_STAT_RMS,
+        COL_STAT_STDEV,
+    ]
 
     class StatsCalculatorSignals(QObject):
         update = Signal(object, object)  # input array, {stat (by offset col) -> value}
 
     class StatsCalculatorThread(QThread):
         """Core of the stats calculation"""
+
         def __init__(self, parent: Any, data: List[npt.NDArray[np.float64]]):
             super().__init__(parent)
             self.signals = StatsSignalsTable.StatsCalculatorSignals()
@@ -117,7 +137,7 @@ class StatsSignalsTable(SignalsTable):
         stats_dict[cls.COL_STAT_MIN] = min(ys)
         stats_dict[cls.COL_STAT_MAX] = max(ys)
         stats_dict[cls.COL_STAT_AVG] = mean
-        stats_dict[cls.COL_STAT_RMS] = math.sqrt(sum([x ** 2 for x in ys]) / len(ys))
+        stats_dict[cls.COL_STAT_RMS] = math.sqrt(sum([x**2 for x in ys]) / len(ys))
         stats_dict[cls.COL_STAT_STDEV] = math.sqrt(sum([(x - mean) ** 2 for x in ys]) / len(ys))
         return stats_dict
 
@@ -137,15 +157,20 @@ class StatsSignalsTable(SignalsTable):
         super().__init__(*args, **kwargs)
         self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
         # since calculating stats across the full range is VERY EXPENSIVE, cache the results
-        self._full_range_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # input array -> stats dict
-        self._range: Tuple[float, float] = (-float('inf'), float('inf'))
+        self._full_range_stats = IdentityCacheDict[
+            npt.NDArray[np.float64], Dict[int, float]
+        ]()  # input array -> stats dict
+        self._range: Tuple[float, float] = (-float("inf"), float("inf"))
 
     def _on_full_range_stats_updated(self, input_arr: npt.NDArray[np.float64], stats_dict: Dict[int, float]) -> None:
         self._full_range_stats.set(input_arr, None, [], stats_dict)
-        if self._range == (-float('inf'), float('inf')):
+        if self._range == (-float("inf"), float("inf")):
             self._update_stats()  # update display if needed
 
-    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]) -> None:
+    def set_data(
+        self,
+        data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
+    ) -> None:
         """Sets the data and updates statistics"""
         self._data = data
         needed_stats = []
@@ -170,19 +195,22 @@ class StatsSignalsTable(SignalsTable):
         for row, name in enumerate(self._data_items.keys()):
             if name not in self._data:
                 for col in self.STATS_COLS:
-                    not_none(self.item(row, self.COL_STAT + col)).setText('')
+                    not_none(self.item(row, self.COL_STAT + col)).setText("")
                 continue
 
             xs, ys = self._data[name]
 
-            if self._range == (-float('inf'), float('inf')):  # fetch from cache if available
+            if self._range == (
+                -float("inf"),
+                float("inf"),
+            ):  # fetch from cache if available
                 stats_dict: Dict[int, float] = self._full_range_stats.get(ys, None, [], {})
             else:  # slice
                 low_index = bisect.bisect_left(xs, self._range[0])  # inclusive
                 high_index = bisect.bisect_right(xs, self._range[1])  # inclusive
                 if low_index >= high_index:  # empty set
                     for col in self.STATS_COLS:
-                        not_none(self.item(row, self.COL_STAT + col)).setText('∅')
+                        not_none(self.item(row, self.COL_STAT + col)).setText("∅")
                     continue
                 stats_dict = self._calculate_stats(ys[low_index:high_index])
 
@@ -196,6 +224,7 @@ class StatsSignalsTable(SignalsTable):
 
 class ContextMenuSignalsTable(SignalsTable):
     """Mixin into SignalsTable that adds a context menu on rows."""
+
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -213,6 +242,7 @@ class ContextMenuSignalsTable(SignalsTable):
 
 class DeleteableSignalsTable(ContextMenuSignalsTable):
     """Mixin into SignalsTable that adds a hook for item deletion, both as hotkey and from a context menu."""
+
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._delete_row_action = QAction("Remove", self)
@@ -234,7 +264,9 @@ class DeleteableSignalsTable(ContextMenuSignalsTable):
 
 class ColorPickerSignalsTable(ContextMenuSignalsTable):
     """Mixin into SignalsTable that adds a context menu item for the user to change the color.
-    This gets sent as a signal, and an upper must handle plumbing the colors through."""
+    This gets sent as a signal, and an upper must handle plumbing the colors through.
+    """
+
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._set_color_action = QAction("Set Color", self)
@@ -253,6 +285,7 @@ class ColorPickerSignalsTable(ContextMenuSignalsTable):
 
 class DraggableSignalsTable(SignalsTable):
     """Mixin into SignalsTable that allows rows to be dragged and dropped into a DroppableMultiPlotWidget."""
+
     DRAG_MIME_TYPE = "application/x.plots.dataname"
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -268,7 +301,7 @@ class DraggableSignalsTable(SignalsTable):
             item_name = list(self._data_items.keys())[drag_source_item.row()]
             drag = QDrag(self)
             mime = QMimeData()
-            mime.setData(self.DRAG_MIME_TYPE, item_name.encode('utf-8'))
+            mime.setData(self.DRAG_MIME_TYPE, item_name.encode("utf-8"))
             drag.setMimeData(mime)
 
             drag_label = QLabel(item_name)

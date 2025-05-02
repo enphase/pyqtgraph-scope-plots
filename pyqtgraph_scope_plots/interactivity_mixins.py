@@ -19,7 +19,9 @@ from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent
 
 class DeltaAxisItem(pg.AxisItem):  # type: ignore[misc]
     """An AxisItem that allows a different function for rendering delta time.
-    Useful, eg, for timestamps where the axis is in wall clock format but deltas are in seconds."""
+    Useful, eg, for timestamps where the axis is in wall clock format but deltas are in seconds.
+    """
+
     @abstractmethod
     def deltaString(self, value: float, scale: float, spacing: float) -> str:
         return cast(str, self.tickStrings([value], scale, spacing))
@@ -33,6 +35,7 @@ class HoverSnapData(NamedTuple):
 class HasDataValueAt(pg.PlotItem):  # type: ignore[misc]
     """Base class that provides a shared (and overrideable) function that returns multiple y-position and labels
     given some x position"""
+
     def _data_value_label_at(self, pos: float, precision_factor: float = 1.0) -> List[Tuple[float, str, QColor]]:
         outs = []
         for data_item in self.listDataItems():  # type: pg.PlotDataItem
@@ -41,16 +44,25 @@ class HasDataValueAt(pg.PlotItem):  # type: ignore[misc]
                 continue
             index = bisect.bisect_left(xpts, pos)
             if index < len(xpts) and xpts[index] == pos:  # found exact match
-                outs.append((ypts[index],
-                             LiveCursorPlot._value_axis_label(ypts[index], self, 'left',
-                                                              precision_factor=precision_factor),
-                             mkPen(data_item.opts['pen']).color()))  # opts['pen'] has multiple formats
+                outs.append(
+                    (
+                        ypts[index],
+                        LiveCursorPlot._value_axis_label(
+                            ypts[index],
+                            self,
+                            "left",
+                            precision_factor=precision_factor,
+                        ),
+                        mkPen(data_item.opts["pen"]).color(),  # opts['pen'] has multiple formats
+                    )
+                )
         return outs
 
 
 class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
     """Mixin for PlotItem that provides an optional snapped nearest data point on user hover.
     Shows a visual target on the snapped point."""
+
     sigHoverSnapChanged = Signal(HoverSnapData)  # emitted during mouseover when the mouse pos changes
 
     # TODO these belongs in RegionPlot / LiveCursorPlot, but it breaks with a signal / slots not ordered error
@@ -70,8 +82,10 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
 
     def _snap_pos(self, target_pos: QPointF, x_lo: float, x_hi: float) -> Optional[QPointF]:
         """Returns the closest point in the snappable data set to the target_pos, with x-value between x_lo and x_hi.
-        Pulls from self.listDataItems() by default, override this to provide different snapping points."""
-        curve_index_dist: List[Tuple[pg.PlotDataItem, int, float]] = []  # closest point for each curve: (curve, index, distance)
+        Pulls from self.listDataItems() by default, override this to provide different snapping points.
+        """
+        # closest point for each curve: (curve, index, distance)
+        curve_index_dist: List[Tuple[pg.PlotDataItem, int, float]] = []
         for data_item in self.listDataItems():  # type: pg.PlotDataItem
             xpts, ypts = data_item.getData()
             if xpts is None or not len(xpts):
@@ -82,9 +96,13 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
                 continue
 
             # compare in screen coordination since X/Y scaling may not be uniform
-            index_dist = self._closest_index([self.mapFromView(QPointF(xpt, ypt))
-                                              for xpt, ypt in zip(xpts[index_lo:index_hi], ypts[index_lo:index_hi])],
-                                             self.mapFromView(target_pos))
+            index_dist = self._closest_index(
+                [
+                    self.mapFromView(QPointF(xpt, ypt))
+                    for xpt, ypt in zip(xpts[index_lo:index_hi], ypts[index_lo:index_hi])
+                ],
+                self.mapFromView(target_pos),
+            )
             if index_dist is None:
                 continue
             curve_index_dist.append((data_item, index_dist[0] + index_lo, index_dist[1]))
@@ -101,9 +119,7 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
         super().hoverEvent(ev)
 
         if ev.exit:  # use last data point, since position may not be available here
-            snap_data = HoverSnapData(
-                hover_pos=self.hover_snap_point.hover_pos,
-                snap_pos=None)
+            snap_data = HoverSnapData(hover_pos=self.hover_snap_point.hover_pos, snap_pos=None)
             if self._hover_target is not None:
                 self.removeItem(self._hover_target)
                 self._hover_target = None
@@ -114,11 +130,18 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
         pos = ev.pos()
         # based on pyqtgraph/examples/crosshair.py
         data_pos = cast(QPointF, self.mapToView(pos))
-        data_lo = cast(QPointF, self.mapToView(QPointF(pos.x() - self.SNAP_DISTANCE_PX, pos.y())))
-        data_hi = cast(QPointF, self.mapToView(QPointF(pos.x() + self.SNAP_DISTANCE_PX, pos.y())))
+        data_lo = cast(
+            QPointF,
+            self.mapToView(QPointF(pos.x() - self.SNAP_DISTANCE_PX, pos.y())),
+        )
+        data_hi = cast(
+            QPointF,
+            self.mapToView(QPointF(pos.x() + self.SNAP_DISTANCE_PX, pos.y())),
+        )
         snap_data = HoverSnapData(
             hover_pos=data_pos,
-            snap_pos=self._snap_pos(data_pos, data_lo.x(), data_hi.x()))
+            snap_pos=self._snap_pos(data_pos, data_lo.x(), data_hi.x()),
+        )
 
         if snap_data.snap_pos is not None:
             if self._hover_target is None:
@@ -138,7 +161,7 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
         """Returns the (index, dist) of the closest point (by xy distance) to (xpos, ypos) in the series xpts, ypts.
         Returns None if no point is found."""
         # TODO use collective operations for performance
-        dists = [math.sqrt((pos.x() - pt.x())**2 + (pos.y() - pt.y())**2) for pt in pts]
+        dists = [math.sqrt((pos.x() - pt.x()) ** 2 + (pos.y() - pt.y()) ** 2) for pt in pts]
         if not dists:
             return None
         min_dist_index = np.argmin(dists)
@@ -148,8 +171,11 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
 
 class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
     """Mixin for PlotItem that displays a live snappable x-axis (vertical line) cursor that follows the user's mouse."""
-    LIVE_CURSOR_X_ANCHOR: Tuple[float, float] = (1, 1)  # TextItem anchor for the x position label
-    LIVE_CURSOR_Y_ANCHOR: Tuple[float, float] = (0, 1)  # TextItem anchor for the y value label
+
+    # TextItem anchor for the x position label
+    LIVE_CURSOR_X_ANCHOR: Tuple[float, float] = (1, 1)
+    # TextItem anchor for the y value label
+    LIVE_CURSOR_Y_ANCHOR: Tuple[float, float] = (0, 1)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -162,10 +188,15 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
 
     def set_live_cursor(self, pos: Optional[float], pos_y: Optional[float] = None) -> None:
         """Sets the live cursor to some specified location, or deletes it (if None).
-        If a y position is specified, draws the time label there, otherwise no time label."""
+        If a y position is specified, draws the time label there, otherwise no time label.
+        """
         if pos is not None:  # create or update live cursor
             if self.hover_cursor is None:  # create new widgets as needed
-                self.hover_cursor = pg.InfiniteLine(angle=90, movable=False, pen=mkPen(style=Qt.PenStyle.DotLine))  # moves with hover not drag
+                self.hover_cursor = pg.InfiniteLine(
+                    angle=90,
+                    movable=False,
+                    pen=mkPen(style=Qt.PenStyle.DotLine),
+                )  # moves with hover not drag
                 self.addItem(self.hover_cursor, ignoreBounds=True)
             self.hover_cursor.setPos(pos)
 
@@ -174,7 +205,7 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
                     self._hover_x_label = pg.TextItem(anchor=self.LIVE_CURSOR_X_ANCHOR)
                     self.addItem(self._hover_x_label, ignoreBounds=True)
                 self._hover_x_label.setPos(QPointF(pos, pos_y))  # y follows mouse, x is at cursor
-                self._hover_x_label.setText(self._value_axis_label(pos, self, 'bottom'))
+                self._hover_x_label.setText(self._value_axis_label(pos, self, "bottom"))
             else:
                 if self._hover_x_label is not None:
                     self.removeItem(self._hover_x_label)
@@ -214,14 +245,21 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
             self.set_live_cursor(None)
 
     @staticmethod
-    def _value_axis_label(value: float, plot: pg.PlotItem, axis_name: str, *, delta: bool = False, precision_factor: float = 1) -> str:
+    def _value_axis_label(
+        value: float,
+        plot: pg.PlotItem,
+        axis_name: str,
+        *,
+        delta: bool = False,
+        precision_factor: float = 1,
+    ) -> str:
         """Returns a human-readable label for a value, as defined by the axis."""
         axis = cast(pg.AxisItem, plot.getAxis(axis_name))
-        if axis_name in ('top', 'bottom'):
+        if axis_name in ("top", "bottom"):
             min_val = plot.viewRect().x()
             max_val = plot.viewRect().x() + plot.viewRect().width()
             size = plot.size().width()
-        elif axis_name in ('left', 'right'):
+        elif axis_name in ("left", "right"):
             min_val = plot.viewRect().y()
             max_val = plot.viewRect().y() + plot.viewRect().height()
             size = plot.size().height()
@@ -237,20 +275,32 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
 
         if axis.labelUnits:  # do SI prefixing if it has units
             if delta and isinstance(axis, DeltaAxisItem):
-                value_str = axis.deltaString(value, axis.scale * axis.autoSIPrefixScale, tick_spacing * precision_factor)[0]
+                value_str = axis.deltaString(
+                    value,
+                    axis.scale * axis.autoSIPrefixScale,
+                    tick_spacing * precision_factor,
+                )[0]
             else:
-                value_str = axis.tickStrings([value], axis.scale * axis.autoSIPrefixScale, tick_spacing * precision_factor)[0]
+                value_str = axis.tickStrings(
+                    [value],
+                    axis.scale * axis.autoSIPrefixScale,
+                    tick_spacing * precision_factor,
+                )[0]
             return f"{value_str} {axis.labelUnitPrefix}{axis.labelUnits}"
         else:
             if delta and isinstance(axis, DeltaAxisItem):
                 return axis.deltaString(value, axis.scale, tick_spacing * precision_factor)[0]
             else:
-                return cast(str, axis.tickStrings([value], axis.scale, tick_spacing * precision_factor)[0])
+                return cast(
+                    str,
+                    axis.tickStrings([value], axis.scale, tick_spacing * precision_factor)[0],
+                )
 
 
 class RegionPlot(SnappableHoverPlot):
     """Mixin for PlotItem that allows the user to create a region on the x-axis.
-    The region only displays the span length, but can be infrastructure for other functions."""
+    The region only displays the span length, but can be infrastructure for other functions.
+    """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -334,8 +384,9 @@ class RegionPlot(SnappableHoverPlot):
         if ev.key() == Qt.Key.Key_Delete:
             if self.cursor is not None and self.cursor.mouseHovering:  # remove current item if hovered
                 self.set_region(None)
-            elif self.cursor_range is not None and (self.cursor_range.lines[0].mouseHovering or  # remove bound
-                                                    self.cursor_range.lines[1].mouseHovering):
+            elif self.cursor_range is not None and (
+                self.cursor_range.lines[0].mouseHovering or self.cursor_range.lines[1].mouseHovering  # remove bound
+            ):
                 if self.cursor_range.lines[0].mouseHovering:  # if hovering over a line, 'delete' the line
                     self.set_region(self.cursor_range.lines[1].pos().x())
                 else:
@@ -347,38 +398,57 @@ class RegionPlot(SnappableHoverPlot):
     def _update_cursor_labels(self) -> None:
         if self.cursor_range is not None:
             if self._cursor_left_label is None and self.show_cursor_range_labels:
-                self._cursor_left_label = pg.TextItem('', anchor=(1, 1))
+                self._cursor_left_label = pg.TextItem("", anchor=(1, 1))
                 self.addItem(self._cursor_left_label, ignoreBounds=True)
             elif self._cursor_left_label is not None and not self.show_cursor_range_labels:
                 self.removeItem(self._cursor_left_label)
                 self._cursor_left_label = None
             if self._cursor_right_label is None and self.show_cursor_range_labels:
-                self._cursor_right_label = pg.TextItem('', anchor=(0, 1))
+                self._cursor_right_label = pg.TextItem("", anchor=(0, 1))
                 self.addItem(self._cursor_right_label, ignoreBounds=True)
             elif self._cursor_right_label is not None and not self.show_cursor_range_labels:
                 self.removeItem(self._cursor_right_label)
                 self._cursor_right_label = None
             if self._cursor_range_label is None and self.show_cursor_range_labels:
-                self._cursor_range_label = pg.TextItem('', anchor=(0.5, 1))
+                self._cursor_range_label = pg.TextItem("", anchor=(0.5, 1))
                 self.addItem(self._cursor_range_label, ignoreBounds=True)
             elif self._cursor_range_label is not None and not self.show_cursor_range_labels:
                 self.removeItem(self._cursor_range_label)
                 self._cursor_range_label = None
 
             if self._cursor_left_label is not None:
-                self._cursor_left_label.setText(LiveCursorPlot._value_axis_label(self.cursor_range.getRegion()[0], self, 'bottom'))
+                self._cursor_left_label.setText(
+                    LiveCursorPlot._value_axis_label(self.cursor_range.getRegion()[0], self, "bottom")
+                )
                 self._cursor_left_label.setPos(QPointF(self.cursor_range.getRegion()[0], self.viewRect().y()))
             if self._cursor_right_label is not None:
-                self._cursor_right_label.setText(LiveCursorPlot._value_axis_label(self.cursor_range.getRegion()[1], self, 'bottom'))
+                self._cursor_right_label.setText(
+                    LiveCursorPlot._value_axis_label(self.cursor_range.getRegion()[1], self, "bottom")
+                )
                 self._cursor_right_label.setPos(QPointF(self.cursor_range.getRegion()[1], self.viewRect().y()))
             if self._cursor_range_label is not None:
-                self._cursor_range_label.setText(LiveCursorPlot._value_axis_label(self.cursor_range.getRegion()[1] - self.cursor_range.getRegion()[0], self, 'bottom', delta=True))
+                self._cursor_range_label.setText(
+                    LiveCursorPlot._value_axis_label(
+                        self.cursor_range.getRegion()[1] - self.cursor_range.getRegion()[0],
+                        self,
+                        "bottom",
+                        delta=True,
+                    )
+                )
                 range_left_bound = max(self.cursor_range.getRegion()[0], self.viewRect().x())
-                range_right_bound = min(self.cursor_range.getRegion()[1], self.viewRect().x() + self.viewRect().width())
-                self._cursor_range_label.setPos(QPointF((range_left_bound + range_right_bound) / 2, self.viewRect().y()))
+                range_right_bound = min(
+                    self.cursor_range.getRegion()[1],
+                    self.viewRect().x() + self.viewRect().width(),
+                )
+                self._cursor_range_label.setPos(
+                    QPointF(
+                        (range_left_bound + range_right_bound) / 2,
+                        self.viewRect().y(),
+                    )
+                )
         elif self.cursor is not None:
             if self._cursor_left_label is None and self.show_cursor_range_labels:
-                self._cursor_left_label = pg.TextItem('', anchor=(1, 1))
+                self._cursor_left_label = pg.TextItem("", anchor=(1, 1))
                 self.addItem(self._cursor_left_label, ignoreBounds=True)
             elif self._cursor_left_label is not None and not self.show_cursor_range_labels:
                 self.removeItem(self._cursor_left_label)
@@ -391,7 +461,7 @@ class RegionPlot(SnappableHoverPlot):
                 self._cursor_range_label = None
 
             if self._cursor_left_label:
-                self._cursor_left_label.setText(LiveCursorPlot._value_axis_label(self.cursor.pos().x(), self, 'bottom'))
+                self._cursor_left_label.setText(LiveCursorPlot._value_axis_label(self.cursor.pos().x(), self, "bottom"))
                 self._cursor_left_label.setPos(QPointF(self.cursor.pos().x(), self.viewRect().y()))
         else:
             if self._cursor_left_label is not None:
@@ -432,6 +502,7 @@ class RegionPlot(SnappableHoverPlot):
 class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
     """Mixin for PlotItem that allows the user to create points of interest on the x-axis,
     each of which shows y-axis values."""
+
     POI_ANCHOR: Tuple[float, float] = (0, 1)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -535,6 +606,7 @@ class DraggableCursorPlot(SnappableHoverPlot, HasDataValueAt):
     """Mixin for PlotItem that allows a programmatically created draggable time-cursor,
     which generates a signal when it is moved.
     Only one cursor may be active at a time."""
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.drag_cursor: Optional[pg.InfiniteLine] = None

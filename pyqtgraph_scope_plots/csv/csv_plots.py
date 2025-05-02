@@ -7,7 +7,14 @@ import numpy.typing as npt
 import pandas as pd
 import pyqtgraph as pg
 from PySide6.QtGui import QAction, QColor
-from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QCheckBox, QVBoxLayout
+from PySide6.QtWidgets import (
+    QWidget,
+    QPushButton,
+    QFileDialog,
+    QMenu,
+    QCheckBox,
+    QVBoxLayout,
+)
 
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
@@ -22,7 +29,8 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
 
     class Plots(PlotsTableWidget.PlotsTableMultiPlots):
         """Adds legend add functionality"""
-        def __init__(self, outer: 'CsvLoaderPlotsTableWidget') -> None:
+
+        def __init__(self, outer: "CsvLoaderPlotsTableWidget") -> None:
             self._outer = outer
             super().__init__()
 
@@ -34,10 +42,15 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
                 plot_item.addLegend()
             return plot_item
 
-
-    class CsvSignalsTable(ColorPickerSignalsTable, PlotsTableWidget.PlotsTableSignalsTable, TransformsSignalsTable,
-                          TimeshiftSignalsTable, StatsSignalsTable):
+    class CsvSignalsTable(
+        ColorPickerSignalsTable,
+        PlotsTableWidget.PlotsTableSignalsTable,
+        TransformsSignalsTable,
+        TimeshiftSignalsTable,
+        StatsSignalsTable,
+    ):
         """Adds a hook for item hide"""
+
         def __init__(self, *args: Any, **kwargs: Any):
             super().__init__(*args, **kwargs)
             self._remove_row_action = QAction("Remove from Plot", self)
@@ -53,11 +66,10 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             super()._populate_context_menu(menu)
             menu.addAction(self._remove_row_action)
 
-
-    def _make_plots(self) -> 'CsvLoaderPlotsTableWidget.Plots':
+    def _make_plots(self) -> "CsvLoaderPlotsTableWidget.Plots":
         return self.Plots(self)
 
-    def _make_table(self) -> 'CsvLoaderPlotsTableWidget.CsvSignalsTable':
+    def _make_table(self) -> "CsvLoaderPlotsTableWidget.CsvSignalsTable":
         return self.CsvSignalsTable(self._plots)
 
     def __init__(self) -> None:
@@ -70,8 +82,10 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         self._table.sigTimeshiftChanged.connect(self._on_timeshift_change)
         self._plots.sigDragCursorChanged.connect(self._on_drag_cursor_drag)
 
-    def _transform_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]) -> \
-            Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
+    def _transform_data(
+        self,
+        data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
+    ) -> Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
         # apply time-shift before function transform
         transformed_data = {}
         for data_name in data.keys():
@@ -83,7 +97,10 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         updated_data_items = self._data_items.copy()
         for name, new_color in items:
             if name in updated_data_items:
-                updated_data_items[name] = (new_color, self._data_items[name][1])
+                updated_data_items[name] = (
+                    new_color,
+                    self._data_items[name][1],
+                )
         self._set_data_items([(name, color, plot_type) for name, (color, plot_type) in updated_data_items.items()])
         self._set_data(self._data)
 
@@ -182,7 +199,6 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
                 data_type = MultiPlotWidget.PlotType.ENUM_WAVEFORM
             data_type_dict[col_name] = data_type
 
-        data_items = [(name, int_color(i), data_type)
-                      for i, (name, data_type) in enumerate(data_type_dict.items())]
+        data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(data_type_dict.items())]
         self._set_data_items(data_items)
         self._set_data(data_dict)

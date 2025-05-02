@@ -1,16 +1,40 @@
 from enum import Enum
 from functools import partial
-from typing import Dict, Tuple, List, Optional, Any, Callable, Union, Mapping, cast
+from typing import (
+    Dict,
+    Tuple,
+    List,
+    Optional,
+    Any,
+    Callable,
+    Union,
+    Mapping,
+    cast,
+)
 
 import numpy as np
 import numpy.typing as npt
 import pyqtgraph as pg
 from PySide6.QtCore import QSignalBlocker, QPoint, QSize, Signal
-from PySide6.QtGui import QColor, Qt, QDropEvent, QDragLeaveEvent, QPainter, QBrush, QDragMoveEvent, QPaintEvent
+from PySide6.QtGui import (
+    QColor,
+    Qt,
+    QDropEvent,
+    QDragLeaveEvent,
+    QPainter,
+    QBrush,
+    QDragMoveEvent,
+    QPaintEvent,
+)
 from PySide6.QtWidgets import QWidget, QSplitter
 
 from .enum_waveform_plotitem import EnumWaveformPlot
-from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot
+from .interactivity_mixins import (
+    PointsOfInterestPlot,
+    RegionPlot,
+    LiveCursorPlot,
+    DraggableCursorPlot,
+)
 from .signals_table import DraggableSignalsTable
 
 
@@ -18,9 +42,15 @@ class InteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, Liv
     """PlotItem with interactivity mixins"""
 
 
-class EnumWaveformInteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot,
-                                  EnumWaveformPlot):
+class EnumWaveformInteractivePlot(
+    DraggableCursorPlot,
+    PointsOfInterestPlot,
+    RegionPlot,
+    LiveCursorPlot,
+    EnumWaveformPlot,
+):
     """Enum plot with all the interactivity mixins"""
+
     LIVE_CURSOR_X_ANCHOR = (1, 0.5)
     LIVE_CURSOR_Y_ANCHOR = (0, 0.5)
     POI_ANCHOR = (0, 0.5)
@@ -28,6 +58,7 @@ class EnumWaveformInteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, Reg
 
 class MultiPlotWidget(QSplitter):
     """A splitter that can contain multiple (vertically stacked) plots with linked x-axis"""
+
     class PlotType(Enum):
         DEFAULT = 0  # x-y plot
         ENUM_WAVEFORM = 1  # renders string-valued enums as a waveform
@@ -39,7 +70,12 @@ class MultiPlotWidget(QSplitter):
     sigDragCursorChanged = Signal(float)  # x-position
     sigDragCursorCleared = Signal()
 
-    def __init__(self, *args: Any, x_axis: Optional[Callable[[], pg.AxisItem]] = None, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *args: Any,
+        x_axis: Optional[Callable[[], pg.AxisItem]] = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self._x_axis = x_axis
 
@@ -50,12 +86,10 @@ class MultiPlotWidget(QSplitter):
         default_plot_item = self._init_plot_item(self._create_plot_item(self.PlotType.DEFAULT))
         default_plot_widget = pg.PlotWidget(plotItem=default_plot_item)
         self.addWidget(default_plot_widget)
-        self._plot_item_data: Dict[pg.PlotItem, List[Optional[str]]] = {  # contained data items per plot
-            default_plot_item: []
-        }
-        self._data_name_to_plot_item: Dict[Optional[str], pg.PlotItem] = {  # re-derived when _plot_item_data updated
-            None: default_plot_item
-        }
+        # contained data items per plot
+        self._plot_item_data: Dict[pg.PlotItem, List[Optional[str]]] = {default_plot_item: []}
+        # re-derived when _plot_item_data updated
+        self._data_name_to_plot_item: Dict[Optional[str], pg.PlotItem] = {None: default_plot_item}
         self._anchor_x_plot_item: pg.PlotItem = default_plot_item  # PlotItem that everyone's x-axis is linked to
 
     def render_value(self, data_name: str, value: float) -> str:
@@ -63,24 +97,27 @@ class MultiPlotWidget(QSplitter):
         plot_item = self._data_name_to_plot_item.get(data_name, None)
         if plot_item is None:
             return f"{value:.3f}"
-        return LiveCursorPlot._value_axis_label(value, plot_item, 'left', precision_factor=0.1)
+        return LiveCursorPlot._value_axis_label(value, plot_item, "left", precision_factor=0.1)
 
     def view_x_range(self) -> Tuple[float, float]:
         """Returns the current x view range"""
-        return self._anchor_x_plot_item.viewRect().left(), self._anchor_x_plot_item.viewRect().right()
+        return (
+            self._anchor_x_plot_item.viewRect().left(),
+            self._anchor_x_plot_item.viewRect().right(),
+        )
 
     def _update_data_name_to_plot_item(self) -> None:
         """Creates the data name to plot item dict."""
-        self._data_name_to_plot_item = { }
+        self._data_name_to_plot_item = {}
         for plot_item, data_names in self._plot_item_data.items():
             for name in data_names:
                 self._data_name_to_plot_item[name] = plot_item
 
-    def _create_plot_item(self, plot_type: 'MultiPlotWidget.PlotType') -> pg.PlotItem:
+    def _create_plot_item(self, plot_type: "MultiPlotWidget.PlotType") -> pg.PlotItem:
         """Given a PlotType, creates the PlotItem and returns it. Override to change the instantiated PlotItem type."""
         plot_args = {}
         if self._x_axis is not None:
-            plot_args['axisItems'] = {'bottom': self._x_axis()}
+            plot_args["axisItems"] = {"bottom": self._x_axis()}
         if plot_type == self.PlotType.DEFAULT:
             return InteractivePlot(**plot_args)
         elif plot_type == self.PlotType.ENUM_WAVEFORM:
@@ -123,7 +160,7 @@ class MultiPlotWidget(QSplitter):
             plot_item = widget.getPlotItem()
             if plot_item not in self._plot_item_data:  # ignores removed (deleteLater'd) plots
                 continue
-            bottom_axis = cast(pg.AxisItem, plot_item.getAxis('bottom'))
+            bottom_axis = cast(pg.AxisItem, plot_item.getAxis("bottom"))
             bottom_axis.setStyle(showValues=is_first)
             bottom_axis.showLabel(is_first)
             if isinstance(plot_item, RegionPlot):  # TODO should this be part of a different mixin?
@@ -153,8 +190,12 @@ class MultiPlotWidget(QSplitter):
         self._update_data_name_to_plot_item()
         self._update_plots()
 
-    def show_data_items(self, new_data_items: List[Tuple[str, QColor, 'MultiPlotWidget.PlotType']],
-                        *, no_create: bool = False) -> None:
+    def show_data_items(
+        self,
+        new_data_items: List[Tuple[str, QColor, "MultiPlotWidget.PlotType"]],
+        *,
+        no_create: bool = False,
+    ) -> None:
         """Updates the data items shown, as ordered pairs of data name, color.
         This adds / deletes plots instead of re-creating, to preserve any user combining of plots.
         If no_create is true, no new plots will be created - useful when loading large data traces.
@@ -168,7 +209,7 @@ class MultiPlotWidget(QSplitter):
 
         # add new plots as new widgets
         if not no_create:
-            for (data_name, color, plot_type) in new_data_items:
+            for data_name, color, plot_type in new_data_items:
                 if data_name in self._data_items.keys():
                     continue
                 plot_item = self._init_plot_item(self._create_plot_item(plot_type))
@@ -186,7 +227,10 @@ class MultiPlotWidget(QSplitter):
         self._update_data_name_to_plot_item()
         self._update_plots_x_axis()
 
-    def set_data(self, data: Mapping[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]]) -> None:
+    def set_data(
+        self,
+        data: Mapping[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]],
+    ) -> None:
         """Sets the data to be plotted as data name -> (xs, ys). Data names must have been previously set with
         set_data_items, missing items will log an error."""
         self._data = {name: (np.array(xs), np.array(ys)) for name, (xs, ys) in data.items()}
@@ -196,14 +240,16 @@ class MultiPlotWidget(QSplitter):
         for plot_item, data_names in self._plot_item_data.items():
             if isinstance(plot_item, EnumWaveformPlot):  # TODO: enum plots have a different API, this should be unified
                 data_name = data_names[0]
-                color = self._data_items.get(cast(str, data_name), (QColor('black'), None))[0]
-                xs, ys = self._data.get(cast(str, data_name), ([], []))  # None is valid for dict.get, cast to satisfy typer
+                color = self._data_items.get(cast(str, data_name), (QColor("black"), None))[0]
+                xs, ys = self._data.get(
+                    cast(str, data_name), ([], [])
+                )  # None is valid for dict.get, cast to satisfy typer
                 plot_item.update_plot(data_name or "", color, xs, ys)
             else:
                 for data_item in plot_item.listDataItems():  # clear existing
                     plot_item.removeItem(data_item)
                 for data_name in data_names:
-                    color = self._data_items.get(cast(str, data_name), (QColor('black'), None))[0]
+                    color = self._data_items.get(cast(str, data_name), (QColor("black"), None))[0]
                     xs, ys = self._data.get(cast(str, data_name), ([], []))
                     curve = pg.PlotCurveItem(x=xs, y=ys, name=data_name)
                     curve.setPen(color=color, width=1)
@@ -216,11 +262,12 @@ class MultiPlotWidget(QSplitter):
                 plot_item.enableAutoRange(enable=enable)  # only range X axis on one to avoid fighting
                 is_first = False
             else:
-                plot_item.enableAutoRange(axis='y', enable=enable)
+                plot_item.enableAutoRange(axis="y", enable=enable)
 
 
 class LinkedMultiPlotWidget(MultiPlotWidget):
     """Mixin into the MultiPlotWidget that links PointsOfInterestPlot, RegionPlot, and LiveCursorPlot"""
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._last_hover: Optional[float] = None  # must be init'd before the first plot is created in __init__
         self._last_region: Optional[Union[float, Tuple[float, float]]] = None
@@ -254,7 +301,11 @@ class LinkedMultiPlotWidget(MultiPlotWidget):
         self.sigHoverCursorChanged.emit(position)
         self._last_hover = position
 
-    def _on_region_change(self, sig_plot_item: pg.PlotItem, region: Optional[Union[float, Tuple[float, float]]]) -> None:
+    def _on_region_change(
+        self,
+        sig_plot_item: pg.PlotItem,
+        region: Optional[Union[float, Tuple[float, float]]],
+    ) -> None:
         for plot_item, _ in self._plot_item_data.items():
             if plot_item is not sig_plot_item and isinstance(plot_item, RegionPlot):
                 with QSignalBlocker(plot_item):
@@ -302,6 +353,7 @@ class DragTargetOverlay(QWidget):
 
 class DroppableMultiPlotWidget(MultiPlotWidget):
     """Mixin into the MultiPlotWidget that allows (externally-initiated) drag'n'drop to reorder and merge graphs"""
+
     DRAG_INSERT_TARGET_SIZE = 10  # px, height of overlay and drag target for insertion-between-plots
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -311,7 +363,12 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
         self._drag_overlays: List[DragTargetOverlay] = []
         self.setAcceptDrops(True)
 
-    def _merge_data_into_item(self, source_data_name: str, target_plot_index: int, insert: bool = False) -> None:
+    def _merge_data_into_item(
+        self,
+        source_data_name: str,
+        target_plot_index: int,
+        insert: bool = False,
+    ) -> None:
         """Merges a data (by name) into a target PlotItem, overlaying both on the same plot"""
         source_item = self._data_name_to_plot_item.get(source_data_name)
         if not insert:  # merge mode
@@ -321,8 +378,11 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
             target_plot_item = target_plot_widget.getPlotItem()
             if isinstance(target_plot_item, EnumWaveformPlot):  # can't merge into enum plots
                 return
-            if len(self._plot_item_data[target_plot_item]) > 0 and \
-                    self._data_items[self._plot_item_data[target_plot_item][0] or ""][1] != self._data_items[source_data_name][1]:
+            if (
+                len(self._plot_item_data[target_plot_item]) > 0
+                and self._data_items[self._plot_item_data[target_plot_item][0] or ""][1]
+                != self._data_items[source_data_name][1]
+            ):
                 return  # can't merge different plot types
             self._plot_item_data[target_plot_item].append(source_data_name)
         else:  # create-new-graph-and-insert mode
@@ -370,7 +430,12 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
             if event.pos().y() < target_top_left.y() + self.DRAG_INSERT_TARGET_SIZE:  # was part of above plot
                 if last_plot_index_widget is not None:  # has a widget above
                     top_overlay = DragTargetOverlay(last_plot_index_widget[1])
-                    top_overlay.move(QPoint(0, target_widget.height() - self.DRAG_INSERT_TARGET_SIZE))
+                    top_overlay.move(
+                        QPoint(
+                            0,
+                            target_widget.height() - self.DRAG_INSERT_TARGET_SIZE,
+                        )
+                    )
                     top_overlay.resize(QSize(target_widget.width(), self.DRAG_INSERT_TARGET_SIZE))
                     top_overlay.setVisible(True)
                     self._drag_overlays.append(top_overlay)
@@ -393,8 +458,18 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
 
         if last_plot_index_widget is not None:  # reached the end, append after last plot
             self._drag_overlays = [DragTargetOverlay(last_plot_index_widget[1])]
-            self._drag_overlays[0].move(QPoint(0, last_plot_index_widget[1].height() - self.DRAG_INSERT_TARGET_SIZE))
-            self._drag_overlays[0].resize(QSize(last_plot_index_widget[1].width(), self.DRAG_INSERT_TARGET_SIZE))
+            self._drag_overlays[0].move(
+                QPoint(
+                    0,
+                    last_plot_index_widget[1].height() - self.DRAG_INSERT_TARGET_SIZE,
+                )
+            )
+            self._drag_overlays[0].resize(
+                QSize(
+                    last_plot_index_widget[1].width(),
+                    self.DRAG_INSERT_TARGET_SIZE,
+                )
+            )
             self._drag_overlays[0].setVisible(True)
             self._drag_target = (last_plot_index_widget[0] + 1, True)
             event.accept()
@@ -408,7 +483,7 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
         data = event.mimeData().data(DraggableSignalsTable.DRAG_MIME_TYPE)
         if not data or self._drag_target is None:
             return
-        drag_data_name = bytes(data.data()).decode('utf-8')
+        drag_data_name = bytes(data.data()).decode("utf-8")
 
         target_index, target_insertion = self._drag_target
         self._merge_data_into_item(drag_data_name, target_index, target_insertion)

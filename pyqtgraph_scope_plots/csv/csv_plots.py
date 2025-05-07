@@ -44,7 +44,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
     class Plots(PlotsTableWidget.PlotsTableMultiPlots):
         """Adds legend add functionality"""
 
-        def __init__(self, outer: "CsvLoaderPlotsTableWidget", **kwargs) -> None:
+        def __init__(self, outer: "CsvLoaderPlotsTableWidget", **kwargs: Any) -> None:
             self._outer = outer
             super().__init__(**kwargs)
 

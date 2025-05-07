@@ -20,9 +20,9 @@ import pyqtgraph as pg
 from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots import PlotsTableWidget
+from pyqtgraph_scope_plots.plots_table_widget import PlotsTableWidget
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
-from test_util import assert_cast
+from .test_util import assert_cast
 from pyqtgraph_scope_plots.util import not_none
 
 

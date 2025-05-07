@@ -45,6 +45,10 @@ strict = true
 module = ["pyqtgraph.*", "simpleeval.*", "pytestqt.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disable_error_code = ["union-attr"]
+
 [tool.pytest]
 qt_api = "pyside6"
 pythonpath = "pyqtgraph_scope_plots"

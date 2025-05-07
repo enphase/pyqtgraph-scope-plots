@@ -25,7 +25,7 @@ CastTarget = TypeVar("CastTarget")
 def assert_cast(tpe: Type[CastTarget], obj: Any) -> CastTarget:
     """A static cast that also does a runtime type check"""
     assert isinstance(obj, tpe), f"{obj} not of type {tpe}"
-    return obj  # type: ignore
+    return obj
 
 
 def context_menu(qtbot: QtBot, container: QWidget, target: QPoint = QPoint(0, 0)) -> QMenu:

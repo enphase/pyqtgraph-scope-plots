@@ -15,7 +15,7 @@
 from datetime import datetime
 from typing import List, Any
 
-from . import DeltaAxisItem
+from .interactivity_mixins import DeltaAxisItem
 
 
 class TimeAxisItem(DeltaAxisItem):
@@ -36,4 +36,4 @@ class TimeAxisItem(DeltaAxisItem):
         return out
 
     def deltaString(self, value: float, scale: float, spacing: float) -> str:
-        return super().tickStrings([value], scale, spacing)
+        return super().tickStrings([value], scale, spacing)  # type: ignore

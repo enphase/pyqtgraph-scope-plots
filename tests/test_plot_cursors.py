@@ -20,7 +20,7 @@ from PySide6.QtGui import QColor, Qt, QMouseEvent
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.util import not_none
-from pyqtgraph_scope_plots import PointsOfInterestPlot, LiveCursorPlot, RegionPlot
+from pyqtgraph_scope_plots.interactivity_mixins import PointsOfInterestPlot, LiveCursorPlot, RegionPlot
 
 
 def data_to_screen(plot_item: pg.PlotItem, x: float, y: float) -> QPoint:

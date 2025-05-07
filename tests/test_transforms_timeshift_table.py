@@ -16,6 +16,7 @@ from typing import List, Tuple, Dict, Any
 from unittest import mock
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QInputDialog
@@ -24,7 +25,7 @@ from pytestqt.qtbot import QtBot
 from pyqtgraph_scope_plots.timeshift_signals_table import TimeshiftSignalsTable
 from pyqtgraph_scope_plots.transforms_signal_table import TransformsSignalsTable
 from pyqtgraph_scope_plots.util import not_none
-from test_util import context_menu, menu_action_by_name
+from .test_util import context_menu, menu_action_by_name
 
 
 @pytest.fixture()
@@ -49,14 +50,14 @@ def timeshifts_table(qtbot: QtBot) -> TimeshiftSignalsTable:
     return table
 
 
-def np_immutable(x: List[float]) -> np.ndarray:
+def np_immutable(x: List[float]) -> npt.NDArray[np.float64]:
     """Creates a np.array with immutable set (writable=False)"""
     arr = np.array(x)
     arr.flags.writeable = False
     return arr
 
 
-DATA: Dict[str, Tuple[np.ndarray, np.ndarray]] = {
+DATA: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {
     "0": (np_immutable([0, 0.1, 1, 2]), np_immutable([0.01, 1, 1, 0])),
     "1": (np_immutable([0, 1, 2]), np_immutable([0.5, 0.25, 0.5])),
     "2": (np_immutable([0, 1, 2]), np_immutable([0.7, 0.6, 0.5])),

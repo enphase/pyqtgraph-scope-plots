@@ -22,3 +22,5 @@ from .interactivity_mixins import (
 )
 from .enum_waveform_plotitem import EnumWaveformPlot
 from .plots_table_widget import PlotsTableWidget
+
+from .time_axis import TimeAxisItem

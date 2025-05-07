@@ -13,8 +13,7 @@
 #    limitations under the License.
 
 import bisect
-import os.path
-from typing import Dict, Tuple, Any, List, Mapping
+from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable
 
 import numpy as np
 import numpy.typing as npt
@@ -30,6 +29,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from ..time_axis import TimeAxisItem
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
 from ..signals_table import ColorPickerSignalsTable, StatsSignalsTable
@@ -44,9 +44,9 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
     class Plots(PlotsTableWidget.PlotsTableMultiPlots):
         """Adds legend add functionality"""
 
-        def __init__(self, outer: "CsvLoaderPlotsTableWidget") -> None:
+        def __init__(self, outer: "CsvLoaderPlotsTableWidget", **kwargs) -> None:
             self._outer = outer
-            super().__init__()
+            super().__init__(**kwargs)
 
         def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
             """Called after _create_plot_item, does any post-creation init. Returns the same plot_item.
@@ -81,13 +81,15 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             menu.addAction(self._remove_row_action)
 
     def _make_plots(self) -> "CsvLoaderPlotsTableWidget.Plots":
-        return self.Plots(self)
+        return self.Plots(self, x_axis=self._x_axis)
 
     def _make_table(self) -> "CsvLoaderPlotsTableWidget.CsvSignalsTable":
         return self.CsvSignalsTable(self._plots)
 
-    def __init__(self) -> None:
+    def __init__(self, x_axis: Optional[Callable[[], pg.AxisItem]] = None) -> None:
+        self._x_axis = x_axis
         super().__init__()
+
         self._table: CsvLoaderPlotsTableWidget.CsvSignalsTable
         self._table.sigColorChanged.connect(self._on_color_changed)
         self._drag_handle_data: List[str] = []
@@ -180,9 +182,8 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             return
         self._load_csv(csv_filename, append=True)
 
-    def _load_csv(self, csv_filepath: str, append: bool = False) -> None:
+    def _load_csv(self, csv_filepath: str, append: bool = False) -> "CsvLoaderPlotsTableWidget":
         df = pd.read_csv(csv_filepath)
-        csv_filename = os.path.basename(csv_filepath)
 
         time_values = df[df.columns[0]]
         assert pd.api.types.is_numeric_dtype(time_values)
@@ -214,5 +215,15 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             data_type_dict[col_name] = data_type
 
         data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(data_type_dict.items())]
-        self._set_data_items(data_items)
-        self._set_data(data_dict)
+
+        # create a new plot, because it doesn't seem possible to update plot axes in-place
+        if min(time_values) >= 946684800:  # Jan 1 2000, assume epoch timestamp format
+            new_plots = CsvLoaderPlotsTableWidget(x_axis=lambda: TimeAxisItem(orientation="bottom"))
+        else:
+            new_plots = CsvLoaderPlotsTableWidget()
+        new_plots.resize(1200, 800)
+        new_plots._set_data_items(data_items)
+        new_plots._set_data(data_dict)
+        new_plots.show()
+
+        return new_plots

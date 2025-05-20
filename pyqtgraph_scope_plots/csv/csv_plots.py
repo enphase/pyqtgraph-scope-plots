@@ -185,7 +185,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
     def _load_csv(self, csv_filepath: str, append: bool = False) -> "CsvLoaderPlotsTableWidget":
         df = pd.read_csv(csv_filepath)
 
-        time_values = df[df.columns[0]]  # type: Sequence[int]
+        time_values = df[df.columns[0]]
         assert pd.api.types.is_numeric_dtype(time_values)
 
         data_dict: Dict[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]] = {}  # col header -> xs, ys
@@ -217,7 +217,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(data_type_dict.items())]
 
         # create a new plot, because it doesn't seem possible to update plot axes in-place
-        if min(time_values) >= 946684800:  # Jan 1 2000, assume epoch timestamp format
+        if min(time_values) >= 946684800:  # Jan 1 2000, assume epoch timestamp format  # type: ignore
             new_plots = CsvLoaderPlotsTableWidget(x_axis=lambda: TimeAxisItem(orientation="bottom"))
         else:
             new_plots = CsvLoaderPlotsTableWidget()

@@ -26,6 +26,7 @@ dev = [
     "pytest~=6.2.4",
     "mypy~=0.910",
     "pandas-stubs",
+    "PySide6-stubs",
     "flake8-mypy~=17.8.0",
     "pre-commit~=2.13.0",
 ]

@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import TypeVar, Type, Any, cast
+from typing import TypeVar, Type, Any
 
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QAction
@@ -34,7 +34,7 @@ def context_menu(qtbot: QtBot, container: QWidget, target: QPoint = QPoint(0, 0)
         qtbot.mouseClick(container.viewport(), Qt.MouseButton.RightButton, pos=target)  # set cursor target
     prev_menu = container.findChild(QMenu)
     if prev_menu is not None:
-        cast(QMenu, prev_menu).deleteLater()  # clear out the prior menu so the new one can be found
+        prev_menu.deleteLater()  # clear out the prior menu so the new one can be found
         qtbot.waitUntil(lambda: container.findChild(QMenu) is None)
     container.customContextMenuRequested.emit(target)
     qtbot.waitUntil(lambda: container.findChild(QMenu) is not None)

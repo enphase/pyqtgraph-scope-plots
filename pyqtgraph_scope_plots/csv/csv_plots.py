@@ -13,7 +13,7 @@
 #    limitations under the License.
 
 import bisect
-from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable, Sequence
+from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable, Sequence, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -217,7 +217,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(data_type_dict.items())]
 
         # create a new plot, because it doesn't seem possible to update plot axes in-place
-        if min(time_values) >= 946684800:  # Jan 1 2000, assume epoch timestamp format  # type: ignore
+        if cast(int, min(time_values)) >= 946684800:  # Jan 1 2000, assume epoch timestamp format
             new_plots = CsvLoaderPlotsTableWidget(x_axis=lambda: TimeAxisItem(orientation="bottom"))
         else:
             new_plots = CsvLoaderPlotsTableWidget()

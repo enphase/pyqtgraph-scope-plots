@@ -31,6 +31,12 @@ jobs:
     - name: Check Black style
       run: |
         black --check .
+    - name: Check license headers
+      uses: viperproject/check-license-header@v2
+      with:
+        path: .
+        config: .github/license-check/config.json
+        strict: false
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names

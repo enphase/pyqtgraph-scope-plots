@@ -93,7 +93,9 @@ class IdentityCacheDict(Generic[PrimaryKeyType, ValueType]):
         args: Any,
         ref_args: Sequence[Any],
         default: None = None,
-    ) -> Optional[ValueType]: ...
+    ) -> Optional[ValueType]:
+        ...
+
     @overload
     def get(
         self,
@@ -101,7 +103,9 @@ class IdentityCacheDict(Generic[PrimaryKeyType, ValueType]):
         args: Any,
         ref_args: Sequence[Any],
         default: DefaultType,
-    ) -> Union[ValueType, DefaultType]: ...
+    ) -> Union[ValueType, DefaultType]:
+        ...
+
     def get(
         self,
         key: PrimaryKeyType,

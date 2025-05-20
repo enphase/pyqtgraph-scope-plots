@@ -13,7 +13,7 @@
 #    limitations under the License.
 
 import bisect
-from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable
+from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -185,7 +185,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
     def _load_csv(self, csv_filepath: str, append: bool = False) -> "CsvLoaderPlotsTableWidget":
         df = pd.read_csv(csv_filepath)
 
-        time_values = df[df.columns[0]]
+        time_values = df[df.columns[0]]  # type: Sequence[int]
         assert pd.api.types.is_numeric_dtype(time_values)
 
         data_dict: Dict[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]] = {}  # col header -> xs, ys

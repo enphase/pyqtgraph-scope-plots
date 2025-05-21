@@ -20,18 +20,12 @@ import numpy.typing as npt
 import pandas as pd
 import pyqtgraph as pg
 from PySide6.QtGui import QAction, QColor
-from PySide6.QtWidgets import (
-    QWidget,
-    QPushButton,
-    QFileDialog,
-    QMenu,
-    QCheckBox,
-    QVBoxLayout,
-)
+from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QCheckBox, QVBoxLayout
 
 from ..time_axis import TimeAxisItem
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
+from ..search_signals_table import SearchSignalsTable
 from ..signals_table import ColorPickerSignalsTable, StatsSignalsTable
 from ..timeshift_signals_table import TimeshiftSignalsTable
 from ..transforms_signal_table import TransformsSignalsTable
@@ -61,6 +55,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         PlotsTableWidget.PlotsTableSignalsTable,
         TransformsSignalsTable,
         TimeshiftSignalsTable,
+        SearchSignalsTable,
         StatsSignalsTable,
     ):
         """Adds a hook for item hide"""

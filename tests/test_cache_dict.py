@@ -13,12 +13,14 @@
 #    limitations under the License.
 
 import numpy as np
+import numpy.typing as npt
+
 
 from pyqtgraph_scope_plots.cache_dict import IdentityCacheDict
 
 
 def test_cache_dict() -> None:
-    cd = IdentityCacheDict[np.ndarray, np.ndarray]()
+    cd = IdentityCacheDict[npt.NDArray[np.float64], npt.NDArray[np.float64]]()
     arr1 = np.array([1, 2, 3, 4])
     arr1.flags.writeable = False
     arr1b = np.array([2, 3, 4, 5])

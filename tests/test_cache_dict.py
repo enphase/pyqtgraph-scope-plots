@@ -15,7 +15,6 @@
 import numpy as np
 import numpy.typing as npt
 
-
 from pyqtgraph_scope_plots.cache_dict import IdentityCacheDict
 
 

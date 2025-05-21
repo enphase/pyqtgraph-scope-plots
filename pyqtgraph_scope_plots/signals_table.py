@@ -90,13 +90,10 @@ class SignalsTable(QTableWidget):
 
         self._data_items: Dict[str, QColor] = {}
 
-    def _clear_table(self) -> None:
-        pass
-
     def set_data_items(self, new_data_items: List[Tuple[str, QColor]]) -> None:
         self._data_items = {data_name: color for data_name, color in new_data_items}
-        self._clear_table()
 
+        self.setRowCount(0)  # clear the existing table, other resizing becomes really expensive
         self.setRowCount(len(self._data_items))  # create new items
         for row, (name, color) in enumerate(self._data_items.items()):
             for col in range(self.COL_COUNT):

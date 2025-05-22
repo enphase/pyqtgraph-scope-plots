@@ -182,7 +182,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             for item in plot_item.items:
                 if isinstance(item, pg.PlotCurveItem):
                     if self._thickness is None:
-                        thickness = 0
+                        thickness: float = 0
                     else:
                         thickness = self._thickness
                     item.setPen(color=item.opts["pen"].color(), width=thickness)

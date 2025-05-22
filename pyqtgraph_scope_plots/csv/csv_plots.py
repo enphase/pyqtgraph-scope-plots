@@ -50,11 +50,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
 
         def _update_plots(self) -> None:
             super()._update_plots()
-            if self._outer._thickness:
-                for plot_item, data_names in self._plot_item_data.items():
-                    for item in plot_item.items:
-                        if isinstance(item, pg.PlotCurveItem):
-                            item.setPen(color=item.opts["pen"].color(), width=self._outer._thickness)
+            self._outer._apply_line_width()
 
     class CsvSignalsTable(
         ColorPickerSignalsTable,
@@ -89,7 +85,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
 
     def __init__(self, x_axis: Optional[Callable[[], pg.AxisItem]] = None) -> None:
         self._x_axis = x_axis
-        self._thickness: Optional[float] = None
+        self._thickness: float = 1
 
         super().__init__()
 
@@ -152,40 +148,36 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         self._table.set_timeshift(self._drag_handle_data, pos - self._drag_handle_offset)
 
     def _on_legend_checked(self) -> None:
-        self._legend_action.setDisabled(True)  # enable-only
+        self._legend_action.setDisabled(True)  # pyqtgraph doesn't support deleting legends
         for plot_item, _ in self._plots._plot_item_data.items():
             plot_item.addLegend()
             self._plots._update_plots()
 
-    def _on_linewidth(self) -> None:
+    def _on_line_width_action(self) -> None:
         while True:
             text, ok = QInputDialog().getText(
                 self,
                 "Set thickness",
                 "Line thickness",
                 QLineEdit.EchoMode.Normal,
-                "" if self._thickness is None else str(self._thickness),
+                str(self._thickness),
             )
             if not ok:
                 return
             else:
-                if not text:
-                    self._thickness = None
-                    break
                 try:
                     self._thickness = float(text)
                     break
                 except ValueError as e:
                     pass  # loop again
 
+        self._apply_line_width()
+
+    def _apply_line_width(self) -> None:
         for plot_item, _ in self._plots._plot_item_data.items():
             for item in plot_item.items:
                 if isinstance(item, pg.PlotCurveItem):
-                    if self._thickness is None:
-                        thickness: float = 0
-                    else:
-                        thickness = self._thickness
-                    item.setPen(color=item.opts["pen"].color(), width=thickness)
+                    item.setPen(color=item.opts["pen"].color(), width=self._thickness)
 
     def _make_controls(self) -> QWidget:
         button_load = QPushButton("Load CSV")
@@ -200,7 +192,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         self._legend_action.changed.connect(self._on_legend_checked)
         button_menu.addAction(self._legend_action)
         line_width_action = QAction("Set Line Width", button_menu)
-        line_width_action.triggered.connect(self._on_linewidth)
+        line_width_action.triggered.connect(self._on_line_width_action)
         button_menu.addAction(line_width_action)
         button_visuals.setMenu(button_menu)
 

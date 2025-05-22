@@ -154,23 +154,10 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             self._plots._update_plots()
 
     def _on_line_width_action(self) -> None:
-        while True:
-            text, ok = QInputDialog().getText(
-                self,
-                "Set thickness",
-                "Line thickness",
-                QLineEdit.EchoMode.Normal,
-                str(self._thickness),
-            )
-            if not ok:
-                return
-            else:
-                try:
-                    self._thickness = float(text)
-                    break
-                except ValueError as e:
-                    pass  # loop again
-
+        value, ok = QInputDialog().getDouble(self, "Set thickness", "Line thickness", self._thickness, minValue=0)
+        if not ok:
+            return
+        self._thickness = value
         self._apply_line_width()
 
     def _apply_line_width(self) -> None:
@@ -189,7 +176,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         button_menu = QMenu(self)
         self._legend_action = QAction("Show Legend", button_menu)
         self._legend_action.setCheckable(True)
-        self._legend_action.changed.connect(self._on_legend_checked)
+        self._legend_action.toggled.connect(self._on_legend_checked)
         button_menu.addAction(self._legend_action)
         line_width_action = QAction("Set Line Width", button_menu)
         line_width_action.triggered.connect(self._on_line_width_action)

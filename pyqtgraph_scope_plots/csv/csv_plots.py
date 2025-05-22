@@ -46,7 +46,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             """Called after _create_plot_item, does any post-creation init. Returns the same plot_item.
             Optionally override this with a super() call."""
             plot_item = super()._init_plot_item(plot_item)
-            if self._outer._legend_checkbox.isChecked():
+            if self._outer._legend_action.isChecked():
                 plot_item.addLegend()
             return plot_item
 
@@ -144,23 +144,29 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         self._table.set_timeshift(self._drag_handle_data, pos - self._drag_handle_offset)
 
     def _on_legend_checked(self) -> None:
+        self._legend_action.setDisabled(True)  # enable-only
         for plot_item, _ in self._plots._plot_item_data.items():
-            if self._legend_checkbox.isChecked():
-                self._legend_checkbox.setDisabled(True)
-                plot_item.addLegend()
-                self._plots._update_plots()
+            plot_item.addLegend()
+            self._plots._update_plots()
 
     def _make_controls(self) -> QWidget:
         button_load = QPushButton("Load CSV")
         button_load.clicked.connect(self._on_load_csv)
         button_append = QPushButton("Append CSV")
         button_append.clicked.connect(self._on_append_csv)
-        self._legend_checkbox = QCheckBox("Show Legend")
-        self._legend_checkbox.checkStateChanged.connect(self._on_legend_checked)
+
+        button_visuals = QPushButton("Visual Settings")
+        button_menu = QMenu(self)
+        self._legend_action = QAction("Show Legend", button_menu)
+        self._legend_action.setCheckable(True)
+        self._legend_action.changed.connect(self._on_legend_checked)
+        button_menu.addAction(self._legend_action)
+        button_visuals.setMenu(button_menu)
+
         layout = QVBoxLayout()
         layout.addWidget(button_load)
         layout.addWidget(button_append)
-        layout.addWidget(self._legend_checkbox)
+        layout.addWidget(button_visuals)
         widget = QWidget()
         widget.setLayout(layout)
         return widget

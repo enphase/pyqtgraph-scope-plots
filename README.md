@@ -1,4 +1,7 @@
 # pyqtgraph-scope-plots
+[![PyPI Latest Release](https://img.shields.io/pypi/v/pyqtgraph-scope-plots.svg)](https://pypi.org/project/pyqtgraph-scope-plots/)
+![Unit Tests](https://github.com/enphase/pyqtgraph-scope-plots/actions/workflows/python-app.yml/badge.svg?branch=main)
+
 High-performance, feature-rich, and interactive oscilloscope-like plot widgets built in [PyQtGraph](https://github.com/pyqtgraph/pyqtgraph).
 Designed with electrical and digital waveforms in mind, but generalizes to any timeseries data.
 

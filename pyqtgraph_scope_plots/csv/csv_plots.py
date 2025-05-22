@@ -20,7 +20,7 @@ import numpy.typing as npt
 import pandas as pd
 import pyqtgraph as pg
 from PySide6.QtGui import QAction, QColor
-from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QCheckBox, QVBoxLayout
+from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QCheckBox, QVBoxLayout, QInputDialog, QLineEdit
 
 from ..time_axis import TimeAxisItem
 from ..multi_plot_widget import MultiPlotWidget
@@ -149,6 +149,29 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             plot_item.addLegend()
             self._plots._update_plots()
 
+    def _on_linewidth(self) -> None:
+        while True:
+            text, ok = QInputDialog().getText(
+                self,
+                "Set thickness",
+                "Line thickness",
+                QLineEdit.EchoMode.Normal,
+                "0",
+            )
+            if not ok:
+                return
+            else:
+                try:
+                    thickness = float(text)
+                    break
+                except ValueError as e:
+                    pass  # loop again
+
+        for plot_item, _ in self._plots._plot_item_data.items():
+            for item in plot_item.items:
+                if isinstance(item, pg.PlotCurveItem):
+                    item.setPen(color=item.opts["pen"].color(), width=thickness)
+
     def _make_controls(self) -> QWidget:
         button_load = QPushButton("Load CSV")
         button_load.clicked.connect(self._on_load_csv)
@@ -161,6 +184,9 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         self._legend_action.setCheckable(True)
         self._legend_action.changed.connect(self._on_legend_checked)
         button_menu.addAction(self._legend_action)
+        line_width_action = QAction("Set Line Width", button_menu)
+        line_width_action.triggered.connect(self._on_linewidth)
+        button_menu.addAction(line_width_action)
         button_visuals.setMenu(button_menu)
 
         layout = QVBoxLayout()

@@ -20,7 +20,7 @@ import numpy.typing as npt
 import pandas as pd
 import pyqtgraph as pg
 from PySide6.QtGui import QAction, QColor
-from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QCheckBox, QVBoxLayout, QInputDialog, QLineEdit
+from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QVBoxLayout, QInputDialog, QLineEdit
 
 from ..time_axis import TimeAxisItem
 from ..multi_plot_widget import MultiPlotWidget
@@ -43,12 +43,18 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             super().__init__(**kwargs)
 
         def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
-            """Called after _create_plot_item, does any post-creation init. Returns the same plot_item.
-            Optionally override this with a super() call."""
             plot_item = super()._init_plot_item(plot_item)
             if self._outer._legend_action.isChecked():
                 plot_item.addLegend()
             return plot_item
+
+        def _update_plots(self) -> None:
+            super()._update_plots()
+            if self._outer._thickness:
+                for plot_item, data_names in self._plot_item_data.items():
+                    for item in plot_item.items:
+                        if isinstance(item, pg.PlotCurveItem):
+                            item.setPen(color=item.opts["pen"].color(), width=self._outer._thickness)
 
     class CsvSignalsTable(
         ColorPickerSignalsTable,
@@ -83,6 +89,8 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
 
     def __init__(self, x_axis: Optional[Callable[[], pg.AxisItem]] = None) -> None:
         self._x_axis = x_axis
+        self._thickness: Optional[float] = None
+
         super().__init__()
 
         self._table: CsvLoaderPlotsTableWidget.CsvSignalsTable
@@ -156,13 +164,16 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
                 "Set thickness",
                 "Line thickness",
                 QLineEdit.EchoMode.Normal,
-                "0",
+                "" if self._thickness is None else str(self._thickness),
             )
             if not ok:
                 return
             else:
+                if not text:
+                    self._thickness = None
+                    break
                 try:
-                    thickness = float(text)
+                    self._thickness = float(text)
                     break
                 except ValueError as e:
                     pass  # loop again
@@ -170,6 +181,10 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         for plot_item, _ in self._plots._plot_item_data.items():
             for item in plot_item.items:
                 if isinstance(item, pg.PlotCurveItem):
+                    if self._thickness is None:
+                        thickness = 0
+                    else:
+                        thickness = self._thickness
                     item.setPen(color=item.opts["pen"].color(), width=thickness)
 
     def _make_controls(self) -> QWidget:

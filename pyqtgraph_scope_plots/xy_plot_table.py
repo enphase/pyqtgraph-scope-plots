@@ -16,6 +16,7 @@ from typing import Any
 
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QWidget, QMenu
+import pyqtgraph as pg
 
 from .signals_table import ContextMenuSignalsTable
 
@@ -27,11 +28,16 @@ class XyTable(ContextMenuSignalsTable):
         super().__init__(*args, **kwargs)
         self._xy_action = QAction("Create X-Y Plot", self)
         self._xy_action.triggered.connect(self._on_xy)
+        self._xy_plots = []
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)
         menu.addAction(self._xy_action)
 
-    def _on_xy(self) -> QWidget:
+    def _on_xy(self) -> pg.PlotWidget:
         """Creates an XY plot with the selected signal(s) and returns the new plot."""
-        pass
+        plot = pg.PlotWidget()
+        plot.addItem(pg.PlotCurveItem(x=[0, 1, 2, 4], y=[4, 6, 8, 10]))
+        plot.show()
+        self._xy_plots.append(plot)  # need an active reference to prevent GC'ing
+        return plot

@@ -20,16 +20,17 @@ import numpy.typing as npt
 import pandas as pd
 import pyqtgraph as pg
 from PySide6.QtGui import QAction, QColor
-from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QVBoxLayout, QInputDialog, QLineEdit
+from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QVBoxLayout, QInputDialog
 
-from ..time_axis import TimeAxisItem
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
 from ..search_signals_table import SearchSignalsTable
 from ..signals_table import ColorPickerSignalsTable, StatsSignalsTable
+from ..time_axis import TimeAxisItem
 from ..timeshift_signals_table import TimeshiftSignalsTable
 from ..transforms_signal_table import TransformsSignalsTable
 from ..util import int_color
+from ..xy_plot_table import XyTable
 
 
 class CsvLoaderPlotsTableWidget(PlotsTableWidget):
@@ -53,6 +54,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             self._outer._apply_line_width()
 
     class CsvSignalsTable(
+        XyTable,
         ColorPickerSignalsTable,
         PlotsTableWidget.PlotsTableSignalsTable,
         TransformsSignalsTable,

@@ -19,8 +19,18 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import pyqtgraph as pg
-from PySide6.QtGui import QAction, QColor
-from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QVBoxLayout, QInputDialog, QLineEdit
+from PySide6 import QtWidgets
+from PySide6.QtGui import QAction, QColor, Qt
+from PySide6.QtWidgets import (
+    QWidget,
+    QPushButton,
+    QFileDialog,
+    QMenu,
+    QVBoxLayout,
+    QInputDialog,
+    QLineEdit,
+    QToolButton,
+)
 
 from ..time_axis import TimeAxisItem
 from ..multi_plot_widget import MultiPlotWidget
@@ -169,8 +179,21 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
     def _make_controls(self) -> QWidget:
         button_load = QPushButton("Load CSV")
         button_load.clicked.connect(self._on_load_csv)
-        button_append = QPushButton("Append CSV")
+        button_append = QToolButton()
+        button_append.setText("Append CSV")
+        button_append.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        button_append.setSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
         button_append.clicked.connect(self._on_append_csv)
+        menu_append = QMenu(self)
+        action_refresh = QAction(menu_append)
+        action_refresh.setText("Refresh CSV")
+        menu_append.addAction(action_refresh)
+        action_watch = QAction(menu_append)
+        action_watch.setText("Set Watch")
+        menu_append.addAction(action_watch)
+        button_append.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        button_append.setArrowType(Qt.ArrowType.DownArrow)
+        button_append.setMenu(menu_append)
 
         button_visuals = QPushButton("Visual Settings")
         button_menu = QMenu(self)

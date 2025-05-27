@@ -13,6 +13,7 @@
 #    limitations under the License.
 
 import bisect
+import itertools
 from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable, Sequence, cast
 
 import numpy as np
@@ -21,22 +22,13 @@ import pandas as pd
 import pyqtgraph as pg
 from PySide6 import QtWidgets
 from PySide6.QtGui import QAction, QColor, Qt
-from PySide6.QtWidgets import (
-    QWidget,
-    QPushButton,
-    QFileDialog,
-    QMenu,
-    QVBoxLayout,
-    QInputDialog,
-    QLineEdit,
-    QToolButton,
-)
+from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QVBoxLayout, QInputDialog, QToolButton
 
-from ..time_axis import TimeAxisItem
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
 from ..search_signals_table import SearchSignalsTable
 from ..signals_table import ColorPickerSignalsTable, StatsSignalsTable
+from ..time_axis import TimeAxisItem
 from ..timeshift_signals_table import TimeshiftSignalsTable
 from ..transforms_signal_table import TransformsSignalsTable
 from ..util import int_color
@@ -106,6 +98,8 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         self._table.sigTimeshiftHandle.connect(self._on_timeshift_handle)
         self._table.sigTimeshiftChanged.connect(self._on_timeshift_change)
         self._plots.sigDragCursorChanged.connect(self._on_drag_cursor_drag)
+
+        self._data_csv_source: Dict[str, str] = {}  # data name -> csv path
 
     def _transform_data(
         self,
@@ -187,9 +181,11 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         menu_append = QMenu(self)
         action_refresh = QAction(menu_append)
         action_refresh.setText("Refresh CSV")
+        action_refresh.triggered.connect(self._on_refresh_csv)
         menu_append.addAction(action_refresh)
         action_watch = QAction(menu_append)
         action_watch.setText("Set Watch")
+        action_refresh.triggered.connect(self._on_set_watch)
         menu_append.addAction(action_watch)
         button_append.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
         button_append.setArrowType(Qt.ArrowType.DownArrow)
@@ -226,7 +222,28 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             return
         self._load_csv(csv_filename, append=True)
 
-    def _load_csv(self, csv_filepath: str, append: bool = False) -> "CsvLoaderPlotsTableWidget":
+    def _on_refresh_csv(self) -> None:
+        """Reloads all CSVs. Discards data (but not data items) that are no longer present in the reloaded CSVs.
+        Does not modify data items (new data items are discarded)."""
+        csv_data_items = {
+            key: [pair[0] for pair in pairs]
+            for key, pairs in itertools.groupby(self._data_csv_source.items(), lambda item: item[1])
+        }
+        for csv_filename, curr_data_items in csv_data_items.items():
+            self._load_csv(csv_filename, colnames=curr_data_items, append=True)  # nonew, colnames
+
+    def _on_set_watch(self) -> None:
+        raise NotImplementedError  # TODO IMPLEMENT ME
+
+    def _load_csv(
+        self, csv_filepath: str, append: bool = False, colnames: Optional[List[str]] = None
+    ) -> "CsvLoaderPlotsTableWidget":
+        """Loads a CSV file into the current window.
+        If append is true, preserves the existing data / metadata.
+        If colnames is not None, reads the specified column names from the file.
+          Items in the file but not in colnames are discarded.
+          Items in colnames but not in the file are read as an empty table
+        """
         df = pd.read_csv(csv_filepath)
 
         time_values = df[df.columns[0]]
@@ -260,14 +277,11 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
 
         data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(data_type_dict.items())]
 
-        # create a new plot, because it doesn't seem possible to update plot axes in-place
-        if min(cast(Sequence[int], time_values)) >= 946684800:  # Jan 1 2000, assume epoch timestamp format
-            new_plots = CsvLoaderPlotsTableWidget(x_axis=lambda: TimeAxisItem(orientation="bottom"))
-        else:
-            new_plots = CsvLoaderPlotsTableWidget()
-        new_plots.resize(1200, 800)
-        new_plots._set_data_items(data_items)
-        new_plots._set_data(data_dict)
-        new_plots.show()
+        # if not in append mode, check if a time axis is needed - inferring by if min is Jan 1 2000 in timestamp
+        if not append and min(cast(Sequence[int], time_values)) >= 946684800:
+            self._plots.set_x_axis(lambda: TimeAxisItem(orientation="bottom"))
 
-        return new_plots
+        self._set_data_items(data_items)
+        self._set_data(data_dict)
+
+        return self

@@ -38,6 +38,8 @@ from ..util import int_color
 class CsvLoaderPlotsTableWidget(PlotsTableWidget):
     """Example app-level widget that loads CSV files into the plotter"""
 
+    WATCH_INTERVAL_MS = 200  # polls the filesystem metadata for changes this frequently
+
     class Plots(PlotsTableWidget.PlotsTableMultiPlots):
         """Adds legend add functionality"""
 
@@ -187,10 +189,11 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         action_refresh.triggered.connect(self._on_refresh_csv)
         self.addAction(action_refresh)
         menu_append.addAction(action_refresh)
-        action_watch = QAction(menu_append)
-        action_watch.setText("Set Watch")
-        action_watch.triggered.connect(self._on_set_watch)
-        menu_append.addAction(action_watch)
+        self._action_watch = QAction(menu_append)
+        self._action_watch.setText("Set Watch")
+        self._action_watch.setCheckable(True)
+        self._action_watch.toggled.connect(self._on_toggle_watch)
+        menu_append.addAction(self._action_watch)
         button_append.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
         button_append.setArrowType(Qt.ArrowType.DownArrow)
         button_append.setMenu(menu_append)
@@ -236,7 +239,11 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         for csv_filename, curr_data_items in csv_data_items.items():
             self._load_csv(csv_filename, colnames=curr_data_items, append=True)  # nonew, colnames
 
-    def _on_set_watch(self) -> None:
+    def _on_toggle_watch(self) -> None:
+        if self._action_watch.isChecked():
+            pass
+        else:
+            pass
         raise NotImplementedError  # TODO IMPLEMENT ME
 
     def _load_csv(

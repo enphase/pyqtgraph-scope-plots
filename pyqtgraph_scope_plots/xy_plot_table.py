@@ -22,10 +22,11 @@ from .signals_table import ContextMenuSignalsTable
 
 
 class XyPlotWidget(pg.PlotWidget):
-    def __init__(
-        self,
-    ):
+    def __init__(self):
         super().__init__()
+
+    def add_xy(self):
+        
 
 
 class XyTable(ContextMenuSignalsTable):
@@ -44,7 +45,7 @@ class XyTable(ContextMenuSignalsTable):
     def _on_xy(self) -> XyPlotWidget:
         """Creates an XY plot with the selected signal(s) and returns the new plot."""
         plot = XyPlotWidget()
-        plot.addItem(pg.PlotCurveItem(x=[0, 1, 2, 4], y=[4, 6, 8, 10]))
+        plot.addItem(pg.PlotCurveItem(x=[0, 1, 2, 4, 2], y=[4, 6, 8, 10, 16]))
         plot.show()
         self._xy_plots.append(plot)  # need an active reference to prevent GC'ing
         return plot

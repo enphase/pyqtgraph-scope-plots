@@ -21,6 +21,7 @@ import numpy.typing as npt
 import pandas as pd
 import pyqtgraph as pg
 from PySide6 import QtWidgets
+from PySide6.QtCore import QKeyCombination
 from PySide6.QtGui import QAction, QColor, Qt
 from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QVBoxLayout, QInputDialog, QToolButton
 
@@ -181,11 +182,14 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         menu_append = QMenu(self)
         action_refresh = QAction(menu_append)
         action_refresh.setText("Refresh CSV")
+        action_refresh.setShortcut(QKeyCombination(Qt.KeyboardModifier.ShiftModifier, Qt.Key.Key_F5))
+        action_refresh.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         action_refresh.triggered.connect(self._on_refresh_csv)
+        self.addAction(action_refresh)
         menu_append.addAction(action_refresh)
         action_watch = QAction(menu_append)
         action_watch.setText("Set Watch")
-        action_refresh.triggered.connect(self._on_set_watch)
+        action_watch.triggered.connect(self._on_set_watch)
         menu_append.addAction(action_watch)
         button_append.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
         button_append.setArrowType(Qt.ArrowType.DownArrow)
@@ -240,9 +244,8 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
     ) -> "CsvLoaderPlotsTableWidget":
         """Loads a CSV file into the current window.
         If append is true, preserves the existing data / metadata.
-        If colnames is not None, reads the specified column names from the file.
-          Items in the file but not in colnames are discarded.
-          Items in colnames but not in the file are read as an empty table
+        If colnames is not None, reads the specified column names from the file. These must already be in the dataset.
+        Items in colnames but not in the file are read as an empty table
         """
         df = pd.read_csv(csv_filepath)
 
@@ -251,11 +254,18 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
 
         data_dict: Dict[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]] = {}  # col header -> xs, ys
         data_type_dict: Dict[str, MultiPlotWidget.PlotType] = {}  # col header -> plot type IF NOT Default
+        data_csv_source: Dict[str, str] = {}
         if append:
-            for data_name, data_values in self._data.items():
-                data_dict[data_name] = data_values
-            for data_name, (data_color, data_type) in self._data_items.items():
-                data_type_dict[data_name] = data_type
+            data_dict.update(self._data)
+            data_type_dict.update(
+                {data_name: data_type for data_name, (data_color, data_type) in self._data_items.items()}
+            )
+            data_csv_source.update(self._data_csv_source)
+
+        if colnames is not None:
+            for data_name in colnames:  # clear colnames data is specified
+                data_dict[data_name] = (np.array([]), np.array([]))
+                assert data_name in data_type_dict  # keeps prior value
 
         for col_name, dtype in zip(df.columns[1:], df.dtypes[1:]):
             values = df[col_name]
@@ -268,6 +278,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
                 xs = time_values[not_nans]
                 ys = values[not_nans]
             data_dict[col_name] = (xs, ys)
+            data_csv_source[col_name] = csv_filepath
 
             if pd.api.types.is_numeric_dtype(values):  # is numeric
                 data_type = MultiPlotWidget.PlotType.DEFAULT
@@ -283,5 +294,6 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
 
         self._set_data_items(data_items)
         self._set_data(data_dict)
+        self._data_csv_source = data_csv_source
 
         return self

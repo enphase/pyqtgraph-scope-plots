@@ -38,7 +38,7 @@ from ..util import int_color
 class CsvLoaderPlotsTableWidget(PlotsTableWidget):
     """Example app-level widget that loads CSV files into the plotter"""
 
-    WATCH_INTERVAL_MS = 200  # polls the filesystem metadata for changes this frequently
+    WATCH_INTERVAL_MS = 250  # polls the filesystem metadata for changes this frequently
 
     class Plots(PlotsTableWidget.PlotsTableMultiPlots):
         """Adds legend add functionality"""

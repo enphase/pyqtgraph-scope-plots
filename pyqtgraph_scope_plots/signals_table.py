@@ -123,6 +123,8 @@ class StatsSignalsTable(SignalsTable):
         COL_STAT_STDEV,
     ]
 
+    FULL_RANGE = (-float("inf"), float("inf"))
+
     class StatsCalculatorSignals(QObject):
         update = Signal(object, object, object)  # input array, region, {stat (by offset col) -> value}
 
@@ -143,7 +145,7 @@ class StatsSignalsTable(SignalsTable):
         def __init__(self, parent: Any):
             super().__init__(parent)
             self.signals = StatsSignalsTable.StatsCalculatorSignals()
-            self.queue = queue.Queue[StatsSignalsTable.StatsCalculatorThread.Task]()
+            self.queue: queue.Queue[StatsSignalsTable.StatsCalculatorThread.Task] = queue.Queue()
 
         def run(self) -> None:
             while True:
@@ -201,7 +203,7 @@ class StatsSignalsTable(SignalsTable):
         # since calculating stats across the full range is VERY EXPENSIVE, cache the results
         self._full_range_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
         self._region_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
-        self._range: Tuple[float, float] = (-float("inf"), float("inf"))
+        self._range: Tuple[float, float] = self.FULL_RANGE
 
         self._stats_compute_thread = self.StatsCalculatorThread(self)
         self._stats_compute_thread.signals.update.connect(self._on_stats_updated)
@@ -211,7 +213,7 @@ class StatsSignalsTable(SignalsTable):
     def _on_stats_updated(
         self, input_arr: npt.NDArray[np.float64], region: Tuple[float, float], stats_dict: Dict[int, float]
     ) -> None:
-        if region == (-float("inf"), float("inf")):
+        if region == self.FULL_RANGE:
             self._full_range_stats.set(input_arr, None, [], stats_dict)
         elif region == self._range:
             self._region_stats.set(input_arr, region, [], stats_dict)
@@ -234,7 +236,7 @@ class StatsSignalsTable(SignalsTable):
         self._update_stats()
 
     def _create_stats_task(self) -> None:
-        if self._range == (-float("inf"), float("inf")):  # for full range, deduplicate with cache
+        if self._range == self.FULL_RANGE:  # for full range, deduplicate with cache
             needed_stats = [
                 (weakref.ref(xs), weakref.ref(ys))
                 for name, (xs, ys) in self._data.items()
@@ -256,7 +258,7 @@ class StatsSignalsTable(SignalsTable):
                     not_none(self.item(row, self.COL_STAT + col)).setText("")
                 continue
 
-            if self._range == (-float("inf"), float("inf")):  # fetch from cache if available
+            if self._range == self.FULL_RANGE:  # fetch from cache if available
                 stats_dict: Dict[int, float] = self._full_range_stats.get(ys, None, [], {})
             else:  # slice
                 stats_dict = self._region_stats.get(ys, self._range, [], {})

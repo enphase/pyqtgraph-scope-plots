@@ -14,7 +14,9 @@
 
 import bisect
 import math
-from typing import Dict, Tuple, List, Any, Mapping
+import queue
+import weakref
+from typing import Dict, Tuple, List, Any, Mapping, Optional, NamedTuple
 
 import numpy as np
 import numpy.typing as npt
@@ -86,7 +88,7 @@ class SignalsTable(QTableWidget):
 
         header = self.horizontalHeader()
         for col in range(self.columnCount()):
-            header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+            header.setSectionResizeMode(col, QHeaderView.ResizeMode.Interactive)
 
         self._data_items: Dict[str, QColor] = {}
 
@@ -121,36 +123,71 @@ class StatsSignalsTable(SignalsTable):
         COL_STAT_STDEV,
     ]
 
+    FULL_RANGE = (-float("inf"), float("inf"))
+
     class StatsCalculatorSignals(QObject):
-        update = Signal(object, object)  # input array, {stat (by offset col) -> value}
+        update = Signal(object, object, object)  # input array, region, {stat (by offset col) -> value}
 
     class StatsCalculatorThread(QThread):
-        """Core of the stats calculation"""
+        """Stats calculated in a separate thread to avoid blocking the main GUI thread when large regions
+        are selected.
+        This thread is persistent and monitors its queue for requests to work. Requests (near)immediately
+        override whatever previous computation was in progress and are not queued.
+        Thread sleeps when current task and queue is empty."""
 
-        def __init__(self, parent: Any, data: List[npt.NDArray[np.float64]]):
+        class Task(NamedTuple):
+            """A request for computing statistics of some ys and region (over xs, inclusive).
+            data is stored as a weakref to terminate computation early if data goes out of scope"""
+
+            data: List[Tuple[weakref.ref[npt.NDArray[np.float64]], weakref.ref[npt.NDArray[np.float64]]]]
+            region: Tuple[float, float]
+
+        def __init__(self, parent: Any):
             super().__init__(parent)
             self.signals = StatsSignalsTable.StatsCalculatorSignals()
-            self._data = data
+            self.queue: queue.Queue[StatsSignalsTable.StatsCalculatorThread.Task] = queue.Queue()
 
         def run(self) -> None:
-            for ys in self._data:
-                stats_dict = StatsSignalsTable._calculate_stats(ys)
-                self.signals.update.emit(ys, stats_dict)
+            while True:
+                task = self.queue.get()  # get at least one task, blocking
+                while not self.queue.empty():  # but get the latest, if multiple, discarding earlier
+                    task = self.queue.get()
 
-    @classmethod
-    def _calculate_stats(cls, ys: npt.NDArray[np.float64]) -> Dict[int, float]:
-        """Calculates stats (as dict of col offset -> value) for the specified xs, ys.
-        Does not spawn a separate thread, does not affect global state."""
-        if len(ys) == 0:
-            return {}
-        stats_dict = {}
-        mean = sum(ys) / len(ys)
-        stats_dict[cls.COL_STAT_MIN] = min(ys)
-        stats_dict[cls.COL_STAT_MAX] = max(ys)
-        stats_dict[cls.COL_STAT_AVG] = mean
-        stats_dict[cls.COL_STAT_RMS] = math.sqrt(sum([x**2 for x in ys]) / len(ys))
-        stats_dict[cls.COL_STAT_STDEV] = math.sqrt(sum([(x - mean) ** 2 for x in ys]) / len(ys))
-        return stats_dict
+                for xs_ys_ref in task.data:
+                    if not self.queue.empty():  # new task, drop current task
+                        break
+
+                    xs = xs_ys_ref[0]()
+                    ys = xs_ys_ref[1]()
+                    if xs is None or ys is None:  # skip objects that have been deleted
+                        continue
+                    low_index = bisect.bisect_left(xs, task.region[0])  # inclusive
+                    high_index = bisect.bisect_right(xs, task.region[1])  # inclusive
+                    if low_index >= high_index:  # empty set
+                        ys_region = np.array([])
+                    else:
+                        ys_region = ys[low_index:high_index]
+                    stats_dict = self._calculate_stats(ys_region)
+                    self.signals.update.emit(ys, task.region, stats_dict)
+
+        def terminate_wait(self) -> None:
+            self.terminate()
+            self.wait()  # needed otherwise pytest fails on Linux
+
+        @classmethod
+        def _calculate_stats(cls, ys: npt.NDArray[np.float64]) -> Dict[int, float]:
+            """Calculates stats (as dict of col offset -> value) for the specified xs, ys.
+            Does not spawn a separate thread, does not affect global state."""
+            if len(ys) == 0:
+                return {}
+            stats_dict = {}
+            mean = sum(ys) / len(ys)
+            stats_dict[StatsSignalsTable.COL_STAT_MIN] = min(ys)
+            stats_dict[StatsSignalsTable.COL_STAT_MAX] = max(ys)
+            stats_dict[StatsSignalsTable.COL_STAT_AVG] = mean
+            stats_dict[StatsSignalsTable.COL_STAT_RMS] = math.sqrt(sum([x**2 for x in ys]) / len(ys))
+            stats_dict[StatsSignalsTable.COL_STAT_STDEV] = math.sqrt(sum([(x - mean) ** 2 for x in ys]) / len(ys))
+            return stats_dict
 
     def _post_cols(self) -> int:
         self.COL_STAT = super()._post_cols()
@@ -168,15 +205,25 @@ class StatsSignalsTable(SignalsTable):
         super().__init__(*args, **kwargs)
         self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
         # since calculating stats across the full range is VERY EXPENSIVE, cache the results
-        self._full_range_stats = IdentityCacheDict[
-            npt.NDArray[np.float64], Dict[int, float]
-        ]()  # input array -> stats dict
-        self._range: Tuple[float, float] = (-float("inf"), float("inf"))
+        self._full_range_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
+        self._region_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
+        self._range: Tuple[float, float] = self.FULL_RANGE
 
-    def _on_full_range_stats_updated(self, input_arr: npt.NDArray[np.float64], stats_dict: Dict[int, float]) -> None:
-        self._full_range_stats.set(input_arr, None, [], stats_dict)
-        if self._range == (-float("inf"), float("inf")):
-            self._update_stats()  # update display if needed
+        self._stats_compute_thread = self.StatsCalculatorThread(self)
+        self._stats_compute_thread.signals.update.connect(self._on_stats_updated)
+        self._stats_compute_thread.start(QThread.Priority.IdlePriority)
+        self.destroyed.connect(lambda: self._stats_compute_thread.terminate_wait())
+
+    def _on_stats_updated(
+        self, input_arr: npt.NDArray[np.float64], region: Tuple[float, float], stats_dict: Dict[int, float]
+    ) -> None:
+        if region == self.FULL_RANGE:
+            self._full_range_stats.set(input_arr, None, [], stats_dict)
+        elif region == self._range:
+            self._region_stats.set(input_arr, region, [], stats_dict)
+
+        if region == self._range:  # update display as needed
+            self._update_stats()
 
     def set_data(
         self,
@@ -184,19 +231,24 @@ class StatsSignalsTable(SignalsTable):
     ) -> None:
         """Sets the data and updates statistics"""
         self._data = data
-        needed_stats = []
-        for name, (xs, ys) in data.items():
-            if self._full_range_stats.get(ys, None, []) is None:
-                needed_stats.append(ys)
-        thread = self.StatsCalculatorThread(self, needed_stats)
-        thread.signals.update.connect(self._on_full_range_stats_updated)
-        thread.finished.connect(thread.deleteLater)
-        thread.start()
+        self._create_stats_task()
         self._update_stats()
 
     def set_range(self, range: Tuple[float, float]) -> None:
         self._range = range
+        self._create_stats_task()
         self._update_stats()
+
+    def _create_stats_task(self) -> None:
+        if self._range == self.FULL_RANGE:  # for full range, deduplicate with cache
+            needed_stats = [
+                (weakref.ref(xs), weakref.ref(ys))
+                for name, (xs, ys) in self._data.items()
+                if self._full_range_stats.get(ys, None, []) is None
+            ]
+        else:
+            needed_stats = [(weakref.ref(xs), weakref.ref(ys)) for name, (xs, ys) in self._data.items()]
+        self._stats_compute_thread.queue.put(self.StatsCalculatorThread.Task(needed_stats, self._range))
 
     def _render_value(self, data_name: str, value: float) -> str:
         """Float-to-string conversion for a value. Optionally override this to provide smarter precision."""
@@ -204,26 +256,16 @@ class StatsSignalsTable(SignalsTable):
 
     def _update_stats(self) -> None:
         for row, name in enumerate(self._data_items.keys()):
-            if name not in self._data:
+            xs, ys = self._data.get(name, (None, None))
+            if xs is None or ys is None:
                 for col in self.STATS_COLS:
                     not_none(self.item(row, self.COL_STAT + col)).setText("")
                 continue
 
-            xs, ys = self._data[name]
-
-            if self._range == (
-                -float("inf"),
-                float("inf"),
-            ):  # fetch from cache if available
+            if self._range == self.FULL_RANGE:  # fetch from cache if available
                 stats_dict: Dict[int, float] = self._full_range_stats.get(ys, None, [], {})
             else:  # slice
-                low_index = bisect.bisect_left(xs, self._range[0])  # inclusive
-                high_index = bisect.bisect_right(xs, self._range[1])  # inclusive
-                if low_index >= high_index:  # empty set
-                    for col in self.STATS_COLS:
-                        not_none(self.item(row, self.COL_STAT + col)).setText("∅")
-                    continue
-                stats_dict = self._calculate_stats(ys[low_index:high_index])
+                stats_dict = self._region_stats.get(ys, self._range, [], {})
 
             for col_offset in self.STATS_COLS:
                 if col_offset in stats_dict:

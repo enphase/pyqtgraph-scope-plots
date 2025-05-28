@@ -68,7 +68,7 @@ class MultiPlotWidget(QSplitter):
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
-        self._x_axis = x_axis
+        self._x_axis_fn = x_axis
         self._new_data_action = new_data_action
 
         self._data_items: Mapping[str, Tuple[QColor, MultiPlotWidget.PlotType]] = {}  # ordered
@@ -95,6 +95,17 @@ class MultiPlotWidget(QSplitter):
         """Returns the current x view range"""
         return self._anchor_x_plot_item.viewRect().left(), self._anchor_x_plot_item.viewRect().right()
 
+    def set_x_axis(self, x_axis: Callable[[], pg.AxisItem]) -> None:
+        """Sets the X axis of plots, updating existing plots and for future plots.
+        The axis must be given as a function, to return a fresh axis for each plot."""
+        self._x_axis_fn = x_axis
+        for i in range(self.count()):
+            widget = self.widget(i)
+            if not isinstance(widget, pg.PlotWidget):
+                continue
+            widget.setAxisItems({"bottom": self._x_axis_fn()})
+        self._update_plots_x_axis()
+
     def _update_data_name_to_plot_item(self) -> None:
         """Creates the data name to plot item dict."""
         self._data_name_to_plot_item = {}
@@ -105,8 +116,8 @@ class MultiPlotWidget(QSplitter):
     def _create_plot_item(self, plot_type: "MultiPlotWidget.PlotType") -> pg.PlotItem:
         """Given a PlotType, creates the PlotItem and returns it. Override to change the instantiated PlotItem type."""
         plot_args = {}
-        if self._x_axis is not None:
-            plot_args["axisItems"] = {"bottom": self._x_axis()}
+        if self._x_axis_fn is not None:
+            plot_args["axisItems"] = {"bottom": self._x_axis_fn()}
         if plot_type == self.PlotType.DEFAULT:
             return InteractivePlot(**plot_args)
         elif plot_type == self.PlotType.ENUM_WAVEFORM:

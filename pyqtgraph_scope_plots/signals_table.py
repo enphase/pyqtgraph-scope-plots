@@ -170,6 +170,10 @@ class StatsSignalsTable(SignalsTable):
                     stats_dict = self._calculate_stats(ys_region)
                     self.signals.update.emit(ys, task.region, stats_dict)
 
+        def terminate_wait(self) -> None:
+            self.terminate()
+            self.wait()  # needed otherwise pytest fails on Linux
+
         @classmethod
         def _calculate_stats(cls, ys: npt.NDArray[np.float64]) -> Dict[int, float]:
             """Calculates stats (as dict of col offset -> value) for the specified xs, ys.
@@ -208,7 +212,7 @@ class StatsSignalsTable(SignalsTable):
         self._stats_compute_thread = self.StatsCalculatorThread(self)
         self._stats_compute_thread.signals.update.connect(self._on_stats_updated)
         self._stats_compute_thread.start(QThread.Priority.IdlePriority)
-        self.destroyed.connect(lambda: self._stats_compute_thread.terminate())
+        self.destroyed.connect(lambda: self._stats_compute_thread.terminate_wait())
 
     def _on_stats_updated(
         self, input_arr: npt.NDArray[np.float64], region: Tuple[float, float], stats_dict: Dict[int, float]

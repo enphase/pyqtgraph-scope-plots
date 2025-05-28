@@ -16,7 +16,7 @@ import bisect
 import itertools
 import os.path
 import time
-from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable, Sequence, cast
+from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable, Sequence, cast, Set, Iterable
 
 import numpy as np
 import numpy.typing as npt
@@ -105,9 +105,8 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         self._table.sigTimeshiftChanged.connect(self._on_timeshift_change)
         self._plots.sigDragCursorChanged.connect(self._on_drag_cursor_drag)
 
-        self._data_csv_source: Dict[str, str] = {}  # data name -> csv path
-        # csv path -> load time, modification time, stable count
-        self._csv_time: Dict[str, Tuple[float, float, int]] = {}
+        self._csv_data_items: Dict[str, Set[str]] = {}  # csv path -> data name
+        self._csv_time: Dict[str, Tuple[float, float, int]] = {}  # csv path -> load time, modify time, stable count
         self._watch_timer = QTimer()
         self._watch_timer.setInterval(self.WATCH_INTERVAL_MS)
         self._watch_timer.timeout.connect(self._check_watch)
@@ -240,11 +239,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
     def _on_refresh_csv(self) -> None:
         """Reloads all CSVs. Discards data (but not data items) that are no longer present in the reloaded CSVs.
         Does not modify data items (new data items are discarded)."""
-        csv_data_items = {
-            key: [pair[0] for pair in pairs]
-            for key, pairs in itertools.groupby(self._data_csv_source.items(), lambda item: item[1])
-        }
-        for csv_filename, curr_data_items in csv_data_items.items():
+        for csv_filename, curr_data_items in self._csv_data_items.items():
             self._load_csv(csv_filename, colnames=curr_data_items, append=True)
 
     def _on_toggle_watch(self) -> None:
@@ -254,11 +249,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             self._watch_timer.stop()
 
     def _check_watch(self) -> None:
-        csv_data_items = {
-            key: [pair[0] for pair in pairs]
-            for key, pairs in itertools.groupby(self._data_csv_source.items(), lambda item: item[1])
-        }
-        for csv_filename, curr_data_items in csv_data_items.items():
+        for csv_filename, curr_data_items in self._csv_data_items.items():
             if csv_filename not in self._csv_time:  # skip files where the load time is unknown
                 continue
             if not os.path.exists(csv_filename):  # ignore transiently missing files
@@ -278,7 +269,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
                 self._csv_time[csv_filename] = csv_load_time, new_modify_time, csv_stable_count
 
     def _load_csv(
-        self, csv_filepath: str, append: bool = False, colnames: Optional[List[str]] = None
+        self, csv_filepath: str, append: bool = False, colnames: Optional[Iterable[str]] = None
     ) -> "CsvLoaderPlotsTableWidget":
         """Loads a CSV file into the current window.
         If append is true, preserves the existing data / metadata.
@@ -292,13 +283,13 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
 
         data_dict: Dict[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]] = {}  # col header -> xs, ys
         data_type_dict: Dict[str, MultiPlotWidget.PlotType] = {}  # col header -> plot type IF NOT Default
-        data_csv_source: Dict[str, str] = {}
+        csv_data_items_dict: Dict[str, Set[str]] = {}
         if append:
             data_dict.update(self._data)
             data_type_dict.update(
                 {data_name: data_type for data_name, (data_color, data_type) in self._data_items.items()}
             )
-            data_csv_source.update(self._data_csv_source)
+            csv_data_items_dict.update(self._csv_data_items)
 
         if colnames is not None:
             for data_name in colnames:  # clear colnames data is specified
@@ -316,7 +307,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
                 xs = time_values[not_nans]
                 ys = values[not_nans]
             data_dict[col_name] = (xs, ys)
-            data_csv_source[col_name] = csv_filepath
+            csv_data_items_dict.setdefault(csv_filepath, set()).add(col_name)
 
             if pd.api.types.is_numeric_dtype(values):  # is numeric
                 data_type = MultiPlotWidget.PlotType.DEFAULT
@@ -332,7 +323,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
 
         self._set_data_items(data_items)
         self._set_data(data_dict)
-        self._data_csv_source = data_csv_source
+        self._csv_data_items = csv_data_items_dict
         self._csv_time[csv_filepath] = (time.time(), time.time(), 0)
 
         return self

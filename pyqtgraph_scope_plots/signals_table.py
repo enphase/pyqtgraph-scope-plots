@@ -124,7 +124,7 @@ class StatsSignalsTable(SignalsTable):
     ]
 
     class StatsCalculatorSignals(QObject):
-        update = Signal(object, object, object)  # input array, opt indices, {stat (by offset col) -> value}
+        update = Signal(object, object, object)  # input array, region, {stat (by offset col) -> value}
 
     class StatsCalculatorThread(QThread):
         """Stats calculated in a separate thread to avoid blocking the main GUI thread when large regions

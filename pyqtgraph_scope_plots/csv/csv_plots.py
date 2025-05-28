@@ -266,25 +266,30 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             self._watch_timer.stop()
 
     def _check_watch(self) -> None:
-        pass
-        # for csv_filename, curr_data_items in self._csv_data_items.items():
-        #     if csv_filename not in self._csv_time:  # skip files where the load time is unknown
-        #         continue
-        #     if not os.path.exists(csv_filename):  # ignore transiently missing files
-        #         continue
-        #     csv_load_time, csv_modify_time, csv_stable_count = self._csv_time[csv_filename]
-        #     new_modify_time = os.path.getmtime(csv_filename)
-        #     if new_modify_time <= csv_load_time:
-        #         continue
-        #     if new_modify_time != csv_modify_time:
-        #         csv_stable_count = 0
-        #     else:
-        #         csv_stable_count += 1
-        #
-        #     if csv_stable_count >= self.WATCH_STABLE_COUNT:
-        #         self._load_csv(csv_filename, colnames=curr_data_items, append=True)
-        #     else:  # update record
-        #         self._csv_time[csv_filename] = csv_load_time, new_modify_time, csv_stable_count
+        files_to_load = []  # aggregate items to load for batch loading
+        data_items_to_load = []
+        for csv_filename, curr_data_items in self._csv_data_items.items():
+            if csv_filename not in self._csv_time:  # skip files where the load time is unknown
+                continue
+            if not os.path.exists(csv_filename):  # ignore transiently missing files
+                continue
+            csv_load_time, csv_modify_time, csv_stable_count = self._csv_time[csv_filename]
+            new_modify_time = os.path.getmtime(csv_filename)
+            if new_modify_time <= csv_load_time:
+                continue
+            if new_modify_time != csv_modify_time:
+                csv_stable_count = 0
+            else:
+                csv_stable_count += 1
+
+            if csv_stable_count >= self.WATCH_STABLE_COUNT:
+                files_to_load.append(csv_filename)
+                data_items_to_load.extend(curr_data_items)
+            else:  # update record
+                self._csv_time[csv_filename] = csv_load_time, new_modify_time, csv_stable_count
+
+        if files_to_load:
+            self._load_csv(files_to_load, colnames=data_items_to_load, append=True)
 
     def _load_csv(
         self, csv_filepaths: List[str], append: bool = False, colnames: Optional[Iterable[str]] = None

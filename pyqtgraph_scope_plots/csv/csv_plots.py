@@ -181,29 +181,43 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
                     item.setPen(color=item.opts["pen"].color(), width=self._thickness)
 
     def _make_controls(self) -> QWidget:
-        button_load = QPushButton("Load CSV")
-        button_load.clicked.connect(self._on_load_csv)
         button_append = QToolButton()
         button_append.setText("Append CSV")
         button_append.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
         button_append.setSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
         button_append.clicked.connect(self._on_append_csv)
+
         menu_append = QMenu(self)
-        action_refresh = QAction(menu_append)
-        action_refresh.setText("Refresh CSV")
+        action_load = QAction(menu_append)
+        action_load.setText("Load CSV")
+        action_load.triggered.connect(self._on_load_csv)
+        menu_append.addAction(action_load)
+        button_append.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        button_append.setArrowType(Qt.ArrowType.DownArrow)
+        button_append.setMenu(menu_append)
+
+        button_refresh = QToolButton()
+        button_refresh.setText("Refresh CSV")
+        button_refresh.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        button_refresh.setSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        button_refresh.clicked.connect(self._on_refresh_csv)
+
+        menu_refresh = QMenu(self)
+        self._action_watch = QAction(menu_refresh)
+        self._action_watch.setText("Set Watch")
+        self._action_watch.setCheckable(True)
+        self._action_watch.toggled.connect(self._on_toggle_watch)
+        menu_refresh.addAction(self._action_watch)
+        button_refresh.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        button_refresh.setArrowType(Qt.ArrowType.DownArrow)
+        button_refresh.setMenu(menu_refresh)
+
+        # hotkey shortcut for refresh
+        action_refresh = QAction(self)
         action_refresh.setShortcut(QKeyCombination(Qt.KeyboardModifier.ShiftModifier, Qt.Key.Key_F5))
         action_refresh.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         action_refresh.triggered.connect(self._on_refresh_csv)
         self.addAction(action_refresh)
-        menu_append.addAction(action_refresh)
-        self._action_watch = QAction(menu_append)
-        self._action_watch.setText("Set Watch")
-        self._action_watch.setCheckable(True)
-        self._action_watch.toggled.connect(self._on_toggle_watch)
-        menu_append.addAction(self._action_watch)
-        button_append.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
-        button_append.setArrowType(Qt.ArrowType.DownArrow)
-        button_append.setMenu(menu_append)
 
         button_visuals = QPushButton("Visual Settings")
         button_menu = QMenu(self)
@@ -217,30 +231,33 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         button_visuals.setMenu(button_menu)
 
         layout = QVBoxLayout()
-        layout.addWidget(button_load)
         layout.addWidget(button_append)
+        layout.addWidget(button_refresh)
         layout.addWidget(button_visuals)
         widget = QWidget()
         widget.setLayout(layout)
         return widget
 
     def _on_load_csv(self) -> None:
-        csv_filename, _ = QFileDialog.getOpenFileName(None, "Select CSV File", filter="CSV files (*.csv)")
-        if not csv_filename:  # nothing selected, user canceled
+        csv_filenames, _ = QFileDialog.getOpenFileNames(None, "Select CSV Files", filter="CSV files (*.csv)")
+        if not csv_filenames:  # nothing selected, user canceled
             return
-        self._load_csv(csv_filename)
+        self._load_csv(csv_filenames)
 
     def _on_append_csv(self) -> None:
-        csv_filename, _ = QFileDialog.getOpenFileName(None, "Select CSV File", filter="CSV files (*.csv)")
-        if not csv_filename:  # nothing selected, user canceled
+        csv_filenames, _ = QFileDialog.getOpenFileNames(None, "Select CSV Files", filter="CSV files (*.csv)")
+        if not csv_filenames:  # nothing selected, user canceled
             return
-        self._load_csv(csv_filename, append=True)
+        self._load_csv(csv_filenames, append=True)
 
     def _on_refresh_csv(self) -> None:
         """Reloads all CSVs. Discards data (but not data items) that are no longer present in the reloaded CSVs.
         Does not modify data items (new data items are discarded)."""
-        for csv_filename, curr_data_items in self._csv_data_items.items():
-            self._load_csv(csv_filename, colnames=curr_data_items, append=True)
+        self._load_csv(
+            list(self._csv_data_items.keys()),
+            colnames=itertools.chain(*self._csv_data_items.values()),
+            append=True,
+        )
 
     def _on_toggle_watch(self) -> None:
         if self._action_watch.isChecked():
@@ -249,81 +266,88 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             self._watch_timer.stop()
 
     def _check_watch(self) -> None:
-        for csv_filename, curr_data_items in self._csv_data_items.items():
-            if csv_filename not in self._csv_time:  # skip files where the load time is unknown
-                continue
-            if not os.path.exists(csv_filename):  # ignore transiently missing files
-                continue
-            csv_load_time, csv_modify_time, csv_stable_count = self._csv_time[csv_filename]
-            new_modify_time = os.path.getmtime(csv_filename)
-            if new_modify_time <= csv_load_time:
-                continue
-            if new_modify_time != csv_modify_time:
-                csv_stable_count = 0
-            else:
-                csv_stable_count += 1
-
-            if csv_stable_count >= self.WATCH_STABLE_COUNT:
-                self._load_csv(csv_filename, colnames=curr_data_items, append=True)
-            else:  # update record
-                self._csv_time[csv_filename] = csv_load_time, new_modify_time, csv_stable_count
+        pass
+        # for csv_filename, curr_data_items in self._csv_data_items.items():
+        #     if csv_filename not in self._csv_time:  # skip files where the load time is unknown
+        #         continue
+        #     if not os.path.exists(csv_filename):  # ignore transiently missing files
+        #         continue
+        #     csv_load_time, csv_modify_time, csv_stable_count = self._csv_time[csv_filename]
+        #     new_modify_time = os.path.getmtime(csv_filename)
+        #     if new_modify_time <= csv_load_time:
+        #         continue
+        #     if new_modify_time != csv_modify_time:
+        #         csv_stable_count = 0
+        #     else:
+        #         csv_stable_count += 1
+        #
+        #     if csv_stable_count >= self.WATCH_STABLE_COUNT:
+        #         self._load_csv(csv_filename, colnames=curr_data_items, append=True)
+        #     else:  # update record
+        #         self._csv_time[csv_filename] = csv_load_time, new_modify_time, csv_stable_count
 
     def _load_csv(
-        self, csv_filepath: str, append: bool = False, colnames: Optional[Iterable[str]] = None
+        self, csv_filepaths: List[str], append: bool = False, colnames: Optional[Iterable[str]] = None
     ) -> "CsvLoaderPlotsTableWidget":
-        """Loads a CSV file into the current window.
+        """Loads CSV files into the current window.
         If append is true, preserves the existing data / metadata.
         If colnames is not None, reads the specified column names from the file. These must already be in the dataset.
         Items in colnames but not in the file are read as an empty table
         """
-        df = pd.read_csv(csv_filepath)
-
-        time_values = df[df.columns[0]]
-        assert pd.api.types.is_numeric_dtype(time_values)
-
-        data_dict: Dict[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]] = {}  # col header -> xs, ys
+        # prepare data structures
         data_type_dict: Dict[str, MultiPlotWidget.PlotType] = {}  # col header -> plot type IF NOT Default
+        data_dict: Dict[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]] = {}  # col header -> xs, ys
         csv_data_items_dict: Dict[str, Set[str]] = {}
         if append:
-            data_dict.update(self._data)
             data_type_dict.update(
                 {data_name: data_type for data_name, (data_color, data_type) in self._data_items.items()}
             )
+            data_dict.update(self._data)
             csv_data_items_dict.update(self._csv_data_items)
 
-        if colnames is not None:
-            for data_name in colnames:  # clear colnames data is specified
+        if colnames is not None:  # clear colnames data, if specified
+            for data_name in colnames:
                 data_dict[data_name] = (np.array([]), np.array([]))
                 assert data_name in data_type_dict  # keeps prior value
 
-        for col_name, dtype in zip(df.columns[1:], df.dtypes[1:]):
-            values = df[col_name]
+        # read through CSVs
+        any_is_timevalue = False
+        for csv_filepath in csv_filepaths:
+            df = pd.read_csv(csv_filepath)
+            self._csv_time[csv_filepath] = (time.time(), time.time(), 0)
 
-            not_nans = pd.notna(values)
-            if not_nans.all():
-                xs = time_values
-                ys = values
-            else:  # get rid of nans
-                xs = time_values[not_nans]
-                ys = values[not_nans]
-            data_dict[col_name] = (xs, ys)
-            csv_data_items_dict.setdefault(csv_filepath, set()).add(col_name)
+            time_values = df[df.columns[0]]
+            assert pd.api.types.is_numeric_dtype(time_values)
 
-            if pd.api.types.is_numeric_dtype(values):  # is numeric
-                data_type = MultiPlotWidget.PlotType.DEFAULT
-            else:  # assume string
-                data_type = MultiPlotWidget.PlotType.ENUM_WAVEFORM
-            data_type_dict[col_name] = data_type
+            for col_name, dtype in zip(df.columns[1:], df.dtypes[1:]):
+                csv_data_items_dict.setdefault(csv_filepath, set()).add(col_name)
 
-        data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(data_type_dict.items())]
+                values = df[col_name]
+                if pd.api.types.is_numeric_dtype(values):  # is numeric
+                    data_type = MultiPlotWidget.PlotType.DEFAULT
+                else:  # assume string
+                    data_type = MultiPlotWidget.PlotType.ENUM_WAVEFORM
+                data_type_dict[col_name] = data_type
 
-        # if not in append mode, check if a time axis is needed - inferring by if min is Jan 1 2000 in timestamp
-        if not append and min(cast(Sequence[int], time_values)) >= 946684800:
+                not_nans = pd.notna(values)
+                if not_nans.all():
+                    xs = time_values
+                    ys = values
+                else:  # get rid of nans
+                    xs = time_values[not_nans]
+                    ys = values[not_nans]
+                data_dict[col_name] = (xs, ys)
+
+                # if not in append mode, check if a time axis is needed - inferring by if min is Jan 1 2000 in timestamp
+                if not append and min(cast(Sequence[int], time_values)) >= 946684800:
+                    any_is_timevalue = True
+
+        if any_is_timevalue:
             self._plots.set_x_axis(lambda: TimeAxisItem(orientation="bottom"))
 
+        data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(data_type_dict.items())]
         self._set_data_items(data_items)
         self._set_data(data_dict)
         self._csv_data_items = csv_data_items_dict
-        self._csv_time[csv_filepath] = (time.time(), time.time(), 0)
 
         return self

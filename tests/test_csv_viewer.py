@@ -13,6 +13,8 @@
 #    limitations under the License.
 
 import os
+import time
+from unittest import mock
 
 import pytest
 from pytestqt.qtbot import QtBot
@@ -31,10 +33,36 @@ def plot(qtbot: QtBot) -> CsvLoaderPlotsTableWidget:
 
 
 def test_load_mixed_csv(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
-    new_plot = plot._load_csv(os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv"))
-    qtbot.waitUntil(lambda: new_plot._plots.count() == 3)  # just make sure it loads
+    plot._load_csv(os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv"))
+    qtbot.waitUntil(lambda: plot._plots.count() == 3)  # just make sure it loads
 
 
 def test_load_sparse_csv(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
-    new_plot = plot._load_csv(os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data_sparse.csv"))
-    qtbot.waitUntil(lambda: new_plot._plots.count() == 3)  # just make sure it loads
+    plot._load_csv(os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data_sparse.csv"))
+    qtbot.waitUntil(lambda: plot._plots.count() == 3)  # just make sure it loads
+
+
+def test_watch_stability(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
+    plot._load_csv(os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv"))
+    qtbot.waitUntil(lambda: plot._plots.count() == 3)
+    with mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csv") as mock_load_csv, mock.patch.object(
+        os.path, "getmtime"
+    ) as mock_getmtime:
+        mock_getmtime.return_value = time.time() + 10
+        plot._watch_timer.timeout.emit()
+        mock_load_csv.assert_not_called()
+        plot._watch_timer.timeout.emit()
+        mock_load_csv.assert_not_called()
+        plot._watch_timer.timeout.emit()
+
+        mock_getmtime.return_value = mock_getmtime.return_value + 10  # reset the counter
+        plot._watch_timer.timeout.emit()
+        mock_load_csv.assert_not_called()
+        plot._watch_timer.timeout.emit()
+        mock_load_csv.assert_not_called()
+        plot._watch_timer.timeout.emit()
+        mock_load_csv.assert_not_called()
+        qtbot.wait(10)  # add a delay for the call to happen just in case
+        mock_load_csv.assert_not_called()
+        plot._watch_timer.timeout.emit()
+        qtbot.waitUntil(lambda: mock_load_csv.called)  # check the load happens

@@ -86,7 +86,7 @@ class SignalsTable(QTableWidget):
 
         header = self.horizontalHeader()
         for col in range(self.columnCount()):
-            header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+            header.setSectionResizeMode(col, QHeaderView.ResizeMode.Interactive)
 
         self._data_items: Dict[str, QColor] = {}
 
@@ -191,7 +191,7 @@ class StatsSignalsTable(SignalsTable):
         thread = self.StatsCalculatorThread(self, needed_stats)
         thread.signals.update.connect(self._on_full_range_stats_updated)
         thread.finished.connect(thread.deleteLater)
-        thread.start()
+        thread.start(QThread.Priority.IdlePriority)
         self._update_stats()
 
     def set_range(self, range: Tuple[float, float]) -> None:

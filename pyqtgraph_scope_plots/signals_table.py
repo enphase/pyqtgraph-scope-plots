@@ -143,7 +143,7 @@ class StatsSignalsTable(SignalsTable):
         def __init__(self, parent: Any):
             super().__init__(parent)
             self.signals = StatsSignalsTable.StatsCalculatorSignals()
-            self.queue = queue.Queue[self.Task]()
+            self.queue = queue.Queue[StatsSignalsTable.StatsCalculatorThread.Task]()
 
         def run(self) -> None:
             while True:

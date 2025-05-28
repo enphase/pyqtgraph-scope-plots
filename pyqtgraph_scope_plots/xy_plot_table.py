@@ -11,13 +11,15 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-
-from typing import Any, List, Tuple
+from functools import partial
+from typing import Any, List, Tuple, Mapping
 
 import numpy as np
 import pyqtgraph as pg
+from PySide6 import QtGui
 from PySide6.QtGui import QAction, QColor
 from PySide6.QtWidgets import QMenu
+from numpy import typing as npt
 
 from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable
 
@@ -36,6 +38,9 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
     def set_range(self, region: Tuple[float, float]) -> None:
         self._region = region
         self._update()
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        self._parent._on_closed_xy(self)
 
     def _update(self) -> None:
         for data_item in self.listDataItems():  # clear existing
@@ -75,8 +80,18 @@ class XyTable(ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTabl
 
     def set_range(self, range: Tuple[float, float]) -> None:
         super().set_range(range)
+        self._update_xys()
+
+    def set_data(
+        self,
+        data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
+    ) -> None:
+        super().set_data(data)
+        self._update_xys()
+
+    def _update_xys(self):
         for xy_plot in self._xy_plots:
-            xy_plot.set_range(range)
+            xy_plot.set_range(self._range)
 
     def _on_xy(self) -> XyPlotWidget:
         """Creates an XY plot with the selected signal(s) and returns the new plot."""
@@ -87,3 +102,6 @@ class XyTable(ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTabl
         plot.add_xy(data[0], data[1])
         self._xy_plots.append(plot)  # need an active reference to prevent GC'ing
         return plot
+
+    def _on_closed_xy(self, closed: XyPlotWidget):
+        self._xy_plots = [plot for plot in self._xy_plots if plot is not closed]

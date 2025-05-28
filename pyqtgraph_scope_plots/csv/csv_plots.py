@@ -14,6 +14,8 @@
 
 import bisect
 import itertools
+import os.path
+import time
 from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable, Sequence, cast
 
 import numpy as np
@@ -21,7 +23,7 @@ import numpy.typing as npt
 import pandas as pd
 import pyqtgraph as pg
 from PySide6 import QtWidgets
-from PySide6.QtCore import QKeyCombination
+from PySide6.QtCore import QKeyCombination, QTimer
 from PySide6.QtGui import QAction, QColor, Qt
 from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QVBoxLayout, QInputDialog, QToolButton
 
@@ -38,7 +40,8 @@ from ..util import int_color
 class CsvLoaderPlotsTableWidget(PlotsTableWidget):
     """Example app-level widget that loads CSV files into the plotter"""
 
-    WATCH_INTERVAL_MS = 250  # polls the filesystem metadata for changes this frequently
+    WATCH_INTERVAL_MS = 100  # polls the filesystem metadata for changes this frequently
+    WATCH_STABLE_COUNT = 3  # files must be stable for this many watch cycles before refreshing
 
     class Plots(PlotsTableWidget.PlotsTableMultiPlots):
         """Adds legend add functionality"""
@@ -103,6 +106,11 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         self._plots.sigDragCursorChanged.connect(self._on_drag_cursor_drag)
 
         self._data_csv_source: Dict[str, str] = {}  # data name -> csv path
+        # csv path -> load time, modification time, stable count
+        self._csv_time: Dict[str, Tuple[float, float, int]] = {}
+        self._watch_timer = QTimer()
+        self._watch_timer.setInterval(self.WATCH_INTERVAL_MS)
+        self._watch_timer.timeout.connect(self._check_watch)
 
     def _transform_data(
         self,
@@ -237,14 +245,35 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
             for key, pairs in itertools.groupby(self._data_csv_source.items(), lambda item: item[1])
         }
         for csv_filename, curr_data_items in csv_data_items.items():
-            self._load_csv(csv_filename, colnames=curr_data_items, append=True)  # nonew, colnames
+            self._load_csv(csv_filename, colnames=curr_data_items, append=True)
 
     def _on_toggle_watch(self) -> None:
         if self._action_watch.isChecked():
-            pass
+            self._watch_timer.start()
         else:
-            pass
-        raise NotImplementedError  # TODO IMPLEMENT ME
+            self._watch_timer.stop()
+
+    def _check_watch(self) -> None:
+        csv_data_items = {
+            key: [pair[0] for pair in pairs]
+            for key, pairs in itertools.groupby(self._data_csv_source.items(), lambda item: item[1])
+        }
+        for csv_filename, curr_data_items in csv_data_items.items():
+            if csv_filename not in self._csv_time:  # skip files where the load time is unknown
+                continue
+            csv_load_time, csv_modify_time, csv_stable_count = self._csv_time[csv_filename]
+            new_modify_time = os.path.getmtime(csv_filename)
+            if new_modify_time <= csv_load_time:
+                continue
+            if new_modify_time != csv_modify_time:
+                csv_stable_count = 0
+            else:
+                csv_stable_count += 1
+
+            if csv_stable_count >= self.WATCH_STABLE_COUNT:
+                self._load_csv(csv_filename, colnames=curr_data_items, append=True)
+            else:  # update record
+                self._csv_time[csv_filename] = csv_load_time, new_modify_time, csv_stable_count
 
     def _load_csv(
         self, csv_filepath: str, append: bool = False, colnames: Optional[List[str]] = None
@@ -302,5 +331,6 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         self._set_data_items(data_items)
         self._set_data(data_dict)
         self._data_csv_source = data_csv_source
+        self._csv_time[csv_filepath] = (time.time(), time.time(), 0)
 
         return self

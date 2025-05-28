@@ -26,7 +26,7 @@ class XyPlotWidget(pg.PlotWidget):
         super().__init__()
 
     def add_xy(self):
-        
+        pass
 
 
 class XyTable(ContextMenuSignalsTable):

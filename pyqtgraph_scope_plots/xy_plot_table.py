@@ -47,9 +47,13 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
             y_color = self._parent._data_items.get(y_name, QColor("white"))
             if x_xs is None or x_ys is None or y_xs is None or y_ys is None:
                 return
-            assert np.array_equal(x_xs, y_xs), "TODO support resampling"
+            x_lo, x_hi = HasRegionSignalsTable._indices_of_region(x_xs, self._region)
+            y_lo, y_hi = HasRegionSignalsTable._indices_of_region(x_xs, self._region)
+            if x_lo is None or x_hi is None or y_lo is None or y_hi is None:
+                return  # empty plot
+            assert np.array_equal(x_xs[x_lo:x_hi], y_xs[x_lo:x_hi]), "TODO support resampling"
 
-            curve = pg.PlotCurveItem(x=x_ys, y=y_ys)
+            curve = pg.PlotCurveItem(x=x_ys[x_lo:x_hi], y=y_ys[x_lo:x_hi])
             curve.setPen(color=y_color, width=1)
             self.addItem(curve)
 

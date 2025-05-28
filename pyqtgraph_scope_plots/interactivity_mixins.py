@@ -342,7 +342,8 @@ class RegionPlot(SnappableHoverPlot):
                 self.cursor_range.sigRegionChanged.connect(self._on_region_drag)
                 self.addItem(self.cursor_range, ignoreBounds=True)
             self._last_cursor_range = region
-            self.cursor_range.setRegion(self._last_cursor_range)
+            with QSignalBlocker(self.cursor_range):
+                self.cursor_range.setRegion(self._last_cursor_range)
 
             self._update_cursor_labels()
             self.sigCursorRangeChanged.emit(self.cursor_range.getRegion())
@@ -354,7 +355,8 @@ class RegionPlot(SnappableHoverPlot):
                 self.cursor = pg.InfiniteLine(movable=True)
                 self.cursor.sigDragged.connect(self._on_cursor_drag)
                 self.addItem(self.cursor, ignoreBounds=True)
-            self.cursor.setPos(region)
+            with QSignalBlocker(self.cursor):
+                self.cursor.setPos(region)
 
             self._update_cursor_labels()
             self.sigCursorRangeChanged.emit(self.cursor.pos().x())

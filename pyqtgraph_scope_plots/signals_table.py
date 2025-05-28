@@ -153,7 +153,7 @@ class StatsSignalsTable(SignalsTable):
                     ys_region = np.array([])
                 else:
                     ys_region = ys[low_index:high_index]
-                stats_dict = self._calculate_stats(ys)
+                stats_dict = self._calculate_stats(ys_region)
                 self.signals.update.emit(ys, self._region, stats_dict)
 
         @classmethod
@@ -187,17 +187,20 @@ class StatsSignalsTable(SignalsTable):
         super().__init__(*args, **kwargs)
         self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
         # since calculating stats across the full range is VERY EXPENSIVE, cache the results
-        self._full_range_stats = IdentityCacheDict[
-            npt.NDArray[np.float64], Dict[int, float]
-        ]()  # input array -> stats dict
+        self._full_range_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
+        self._region_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
         self._range: Tuple[float, float] = (-float("inf"), float("inf"))
 
-    def _on_full_range_stats_updated(
+    def _on_stats_updated(
         self, input_arr: npt.NDArray[np.float64], region: Tuple[float, float], stats_dict: Dict[int, float]
     ) -> None:
-        self._full_range_stats.set(input_arr, None, [], stats_dict)
-        if self._range == (-float("inf"), float("inf")):
-            self._update_stats()  # update display if needed
+        if region == (-float("inf"), float("inf")):
+            self._full_range_stats.set(input_arr, None, [], stats_dict)
+        elif region == self._range:
+            self._region_stats.set(input_arr, region, [], stats_dict)
+
+        if region == self._range:  # update display as needed
+            self._update_stats()
 
     def set_data(
         self,
@@ -211,13 +214,20 @@ class StatsSignalsTable(SignalsTable):
             if self._full_range_stats.get(ys, None, []) is None
         ]
         thread = self.StatsCalculatorThread(self, needed_stats, (-float("inf"), float("inf")))
-        thread.signals.update.connect(self._on_full_range_stats_updated)
+        thread.signals.update.connect(self._on_stats_updated)
         thread.finished.connect(thread.deleteLater)
         thread.start(QThread.Priority.IdlePriority)
+        self.set_range(self._range)
         self._update_stats()
 
     def set_range(self, range: Tuple[float, float]) -> None:
         self._range = range
+        if range != (-float("inf"), float("inf")):  # start a compute thread for non-full range
+            data = [(weakref.ref(xs), weakref.ref(ys)) for name, (xs, ys) in self._data.items()]
+            thread = self.StatsCalculatorThread(self, data, self._range)
+            thread.signals.update.connect(self._on_stats_updated)
+            thread.finished.connect(thread.deleteLater)
+            thread.start(QThread.Priority.IdlePriority)
         self._update_stats()
 
     def _render_value(self, data_name: str, value: float) -> str:
@@ -226,28 +236,16 @@ class StatsSignalsTable(SignalsTable):
 
     def _update_stats(self) -> None:
         for row, name in enumerate(self._data_items.keys()):
-            if name not in self._data:
+            xs, ys = self._data.get(name, (None, None))
+            if xs is None or ys is None:
                 for col in self.STATS_COLS:
                     not_none(self.item(row, self.COL_STAT + col)).setText("")
                 continue
 
-            xs, ys = self._data[name]
-
-            if self._range == (
-                -float("inf"),
-                float("inf"),
-            ):  # fetch from cache if available
+            if self._range == (-float("inf"), float("inf")):  # fetch from cache if available
                 stats_dict: Dict[int, float] = self._full_range_stats.get(ys, None, [], {})
             else:  # slice
-                pass
-                stats_dict = {}
-                # low_index = bisect.bisect_left(xs, self._range[0])  # inclusive
-                # high_index = bisect.bisect_right(xs, self._range[1])  # inclusive
-                # if low_index >= high_index:  # empty set
-                #     for col in self.STATS_COLS:
-                #         not_none(self.item(row, self.COL_STAT + col)).setText("∅")
-                #     continue
-                # stats_dict = self._calculate_stats(ys[low_index:high_index])
+                stats_dict = self._region_stats.get(ys, self._range, [], {})
 
             for col_offset in self.STATS_COLS:
                 if col_offset in stats_dict:

@@ -350,8 +350,9 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         if any_is_timevalue:
             self._plots.set_x_axis(lambda: TimeAxisItem(orientation="bottom"))
 
-        data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(data_type_dict.items())]
-        self._set_data_items(data_items)
+        if colnames is None:  # colnames not None means update only
+            data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(data_type_dict.items())]
+            self._set_data_items(data_items)
         self._set_data(data_dict)
         self._csv_data_items = csv_data_items_dict
 

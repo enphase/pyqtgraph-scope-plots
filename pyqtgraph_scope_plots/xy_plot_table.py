@@ -12,24 +12,49 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import Any, List
+from typing import Any, List, Tuple
 
-from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QWidget, QMenu
+import numpy as np
 import pyqtgraph as pg
+from PySide6.QtGui import QAction, QColor
+from PySide6.QtWidgets import QMenu
 
-from .signals_table import ContextMenuSignalsTable
+from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable
 
 
-class XyPlotWidget(pg.PlotWidget):
-    def __init__(self):
+class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
+    def __init__(self, parent: "XyTable"):
         super().__init__()
+        self._parent = parent
+        self._xys: List[Tuple[str, str]] = []
+        self._region = (-float("inf"), float("inf"))
 
-    def add_xy(self):
-        pass
+    def add_xy(self, x_name: str, y_name: str) -> None:
+        self._xys.append((x_name, y_name))
+        self._update()
+
+    def set_range(self, region: Tuple[float, float]) -> None:
+        self._region = region
+        self._update()
+
+    def _update(self) -> None:
+        for data_item in self.listDataItems():  # clear existing
+            self.removeItem(data_item)
+
+        for x_name, y_name in self._xys:
+            x_xs, x_ys = self._parent._data.get(x_name, (None, None))
+            y_xs, y_ys = self._parent._data.get(y_name, (None, None))
+            y_color = self._parent._data_items.get(y_name, QColor("white"))
+            if x_xs is None or x_ys is None or y_xs is None or y_ys is None:
+                return
+            assert np.array_equal(x_xs, y_xs), "TODO support resampling"
+
+            curve = pg.PlotCurveItem(x=x_ys, y=y_ys)
+            curve.setPen(color=y_color, width=1)
+            self.addItem(curve)
 
 
-class XyTable(ContextMenuSignalsTable):
+class XyTable(ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTable):
     """Mixin into SignalsTable that adds the option to open an XY plot in a separate window."""
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -40,12 +65,21 @@ class XyTable(ContextMenuSignalsTable):
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)
+        rows = list(set([item.row() for item in self.selectedItems()]))
+        self._xy_action.setDisabled(len(rows) != 2)
         menu.addAction(self._xy_action)
+
+    def set_range(self, range: Tuple[float, float]) -> None:
+        super().set_range(range)
+        for xy_plot in self._xy_plots:
+            xy_plot.set_range(range)
 
     def _on_xy(self) -> XyPlotWidget:
         """Creates an XY plot with the selected signal(s) and returns the new plot."""
-        plot = XyPlotWidget()
-        plot.addItem(pg.PlotCurveItem(x=[0, 1, 2, 4, 2], y=[4, 6, 8, 10, 16]))
+        data = list(set([self.item(item.row(), self.COL_NAME).text() for item in self.selectedItems()]))
+        assert len(data) == 2
+        plot = XyPlotWidget(self)
         plot.show()
+        plot.add_xy(data[0], data[1])
         self._xy_plots.append(plot)  # need an active reference to prevent GC'ing
         return plot

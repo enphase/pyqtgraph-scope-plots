@@ -22,7 +22,13 @@ from .interactivity_mixins import (
 )
 from .enum_waveform_plotitem import EnumWaveformPlot
 from .plots_table_widget import PlotsTableWidget
-from .signals_table import DeleteableSignalsTable
+from .signals_table import (
+    DeleteableSignalsTable,
+    HasDataSignalsTable,
+    StatsSignalsTable,
+    ColorPickerSignalsTable,
+    DraggableSignalsTable,
+)
 from .timeshift_signals_table import TimeshiftSignalsTable
 from .transforms_signal_table import TransformsSignalsTable
 from .search_signals_table import SearchSignalsTable

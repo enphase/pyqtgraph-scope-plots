@@ -146,19 +146,27 @@ class StatsSignalsTable(SignalsTable):
             self.queue = queue.Queue[self.Task]()
 
         def run(self) -> None:
-            for xs_ys_ref in self._data:
-                xs = xs_ys_ref[0]()
-                ys = xs_ys_ref[1]()
-                if xs is None or ys is None:  # skip objects that have been deleted
-                    continue
-                low_index = bisect.bisect_left(xs, self._region[0])  # inclusive
-                high_index = bisect.bisect_right(xs, self._region[1])  # inclusive
-                if low_index >= high_index:  # empty set
-                    ys_region = np.array([])
-                else:
-                    ys_region = ys[low_index:high_index]
-                stats_dict = self._calculate_stats(ys_region)
-                self.signals.update.emit(ys, self._region, stats_dict)
+            while True:
+                task = self.queue.get()  # get at least one task, blocking
+                while not self.queue.empty():  # but get the latest, if multiple, discarding earlier
+                    task = self.queue.get()
+
+                for xs_ys_ref in task.data:
+                    if not self.queue.empty():  # new task, drop current task
+                        break
+
+                    xs = xs_ys_ref[0]()
+                    ys = xs_ys_ref[1]()
+                    if xs is None or ys is None:  # skip objects that have been deleted
+                        continue
+                    low_index = bisect.bisect_left(xs, task.region[0])  # inclusive
+                    high_index = bisect.bisect_right(xs, task.region[1])  # inclusive
+                    if low_index >= high_index:  # empty set
+                        ys_region = np.array([])
+                    else:
+                        ys_region = ys[low_index:high_index]
+                    stats_dict = self._calculate_stats(ys_region)
+                    self.signals.update.emit(ys, task.region, stats_dict)
 
         @classmethod
         def _calculate_stats(cls, ys: npt.NDArray[np.float64]) -> Dict[int, float]:
@@ -195,6 +203,11 @@ class StatsSignalsTable(SignalsTable):
         self._region_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
         self._range: Tuple[float, float] = (-float("inf"), float("inf"))
 
+        self._stats_compute_thread = self.StatsCalculatorThread(self)
+        self._stats_compute_thread.signals.update.connect(self._on_stats_updated)
+        self._stats_compute_thread.start(QThread.Priority.IdlePriority)
+        self.destroyed.connect(lambda: self._stats_compute_thread.terminate())
+
     def _on_stats_updated(
         self, input_arr: npt.NDArray[np.float64], region: Tuple[float, float], stats_dict: Dict[int, float]
     ) -> None:
@@ -212,27 +225,24 @@ class StatsSignalsTable(SignalsTable):
     ) -> None:
         """Sets the data and updates statistics"""
         self._data = data
-        needed_stats = [
-            (weakref.ref(xs), weakref.ref(ys))
-            for name, (xs, ys) in data.items()
-            if self._full_range_stats.get(ys, None, []) is None
-        ]
-        thread = self.StatsCalculatorThread(self, needed_stats, (-float("inf"), float("inf")))
-        thread.signals.update.connect(self._on_stats_updated)
-        thread.finished.connect(thread.deleteLater)
-        thread.start(QThread.Priority.IdlePriority)
-        self.set_range(self._range)
+        self._create_stats_task()
         self._update_stats()
 
     def set_range(self, range: Tuple[float, float]) -> None:
         self._range = range
-        if range != (-float("inf"), float("inf")):  # start a compute thread for non-full range
-            data = [(weakref.ref(xs), weakref.ref(ys)) for name, (xs, ys) in self._data.items()]
-            thread = self.StatsCalculatorThread(self, data, self._range)
-            thread.signals.update.connect(self._on_stats_updated)
-            thread.finished.connect(thread.deleteLater)
-            thread.start(QThread.Priority.IdlePriority)
+        self._create_stats_task()
         self._update_stats()
+
+    def _create_stats_task(self) -> None:
+        if self._range == (-float("inf"), float("inf")):  # for full range, deduplicate with cache
+            needed_stats = [
+                (weakref.ref(xs), weakref.ref(ys))
+                for name, (xs, ys) in self._data.items()
+                if self._full_range_stats.get(ys, None, []) is None
+            ]
+        else:
+            needed_stats = [(weakref.ref(xs), weakref.ref(ys)) for name, (xs, ys) in self._data.items()]
+        self._stats_compute_thread.queue.put(self.StatsCalculatorThread.Task(needed_stats, self._range))
 
     def _render_value(self, data_name: str, value: float) -> str:
         """Float-to-string conversion for a value. Optionally override this to provide smarter precision."""

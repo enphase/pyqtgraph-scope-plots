@@ -261,6 +261,8 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         for csv_filename, curr_data_items in csv_data_items.items():
             if csv_filename not in self._csv_time:  # skip files where the load time is unknown
                 continue
+            if not os.path.exists(csv_filename):  # ignore transiently missing files
+                continue
             csv_load_time, csv_modify_time, csv_stable_count = self._csv_time[csv_filename]
             new_modify_time = os.path.getmtime(csv_filename)
             if new_modify_time <= csv_load_time:

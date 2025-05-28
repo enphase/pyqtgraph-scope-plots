@@ -45,10 +45,9 @@ def test_load_sparse_csv(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
 def test_watch_stability(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     plot._load_csv(os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv"))
     qtbot.waitUntil(lambda: plot._plots.count() == 3)
-    with (
-        mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csv") as mock_load_csv,
-        mock.patch.object(os.path, "getmtime") as mock_getmtime,
-    ):
+    with mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csv") as mock_load_csv, mock.patch.object(
+        os.path, "getmtime"
+    ) as mock_getmtime:
         mock_getmtime.return_value = time.time() + 10
         plot._watch_timer.timeout.emit()
         mock_load_csv.assert_not_called()

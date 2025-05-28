@@ -14,8 +14,9 @@
 
 import bisect
 import math
+import queue
 import weakref
-from typing import Dict, Tuple, List, Any, Mapping, Optional
+from typing import Dict, Tuple, List, Any, Mapping, Optional, NamedTuple
 
 import numpy as np
 import numpy.typing as npt
@@ -128,18 +129,21 @@ class StatsSignalsTable(SignalsTable):
     class StatsCalculatorThread(QThread):
         """Stats calculated in a separate thread to avoid blocking the main GUI thread when large regions
         are selected.
-        Data are stored as weakref so computation terminates if the object is deleted elsewhere."""
+        This thread is persistent and monitors its queue for requests to work. Requests (near)immediately
+        override whatever previous computation was in progress and are not queued.
+        Thread sleeps when current task and queue is empty."""
 
-        def __init__(
-            self,
-            parent: Any,
-            data: List[Tuple[weakref.ref[npt.NDArray[np.float64]], weakref.ref[npt.NDArray[np.float64]]]],
-            region: Tuple[float, float],
-        ):
+        class Task(NamedTuple):
+            """A request for computing statistics of some ys and region (over xs, inclusive).
+            data is stored as a weakref to terminate computation early if data goes out of scope"""
+
+            data: List[Tuple[weakref.ref[npt.NDArray[np.float64]], weakref.ref[npt.NDArray[np.float64]]]]
+            region: Tuple[float, float]
+
+        def __init__(self, parent: Any):
             super().__init__(parent)
             self.signals = StatsSignalsTable.StatsCalculatorSignals()
-            self._data = data
-            self._region = region
+            self.queue = queue.Queue[self.Task]()
 
         def run(self) -> None:
             for xs_ys_ref in self._data:

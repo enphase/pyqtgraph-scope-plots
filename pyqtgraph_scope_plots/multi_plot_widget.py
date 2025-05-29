@@ -304,7 +304,7 @@ class LinkedMultiPlotWidget(MultiPlotWidget):
             plot_item.sigDragCursorCleared.connect(partial(self._on_drag_cursor_clear, plot_item))
         return plot_item
 
-    def _on_hover_cursor_change(self, sig_plot_item: pg.PlotItem, position: Optional[float]) -> None:
+    def _on_hover_cursor_change(self, sig_plot_item: Optional[pg.PlotItem], position: Optional[float]) -> None:
         for plot_item, _ in self._plot_item_data.items():
             if plot_item is not sig_plot_item and isinstance(plot_item, LiveCursorPlot):
                 with QSignalBlocker(plot_item):
@@ -313,7 +313,7 @@ class LinkedMultiPlotWidget(MultiPlotWidget):
         self._last_hover = position
 
     def _on_region_change(
-        self, sig_plot_item: pg.PlotItem, region: Optional[Union[float, Tuple[float, float]]]
+        self, sig_plot_item: Optional[pg.PlotItem], region: Optional[Union[float, Tuple[float, float]]]
     ) -> None:
         for plot_item, _ in self._plot_item_data.items():
             if plot_item is not sig_plot_item and isinstance(plot_item, RegionPlot):
@@ -322,7 +322,7 @@ class LinkedMultiPlotWidget(MultiPlotWidget):
         self.sigCursorRangeChanged.emit(region)
         self._last_region = region
 
-    def _on_poi_change(self, sig_plot_item: pg.PlotItem, pois: List[float]) -> None:
+    def _on_poi_change(self, sig_plot_item: Optional[pg.PlotItem], pois: List[float]) -> None:
         for plot_item, _ in self._plot_item_data.items():
             if plot_item is not sig_plot_item and isinstance(plot_item, PointsOfInterestPlot):
                 with QSignalBlocker(plot_item):

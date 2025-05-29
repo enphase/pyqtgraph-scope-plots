@@ -28,13 +28,14 @@ from .multi_plot_widget import (
 )
 from .signals_table import StatsSignalsTable, DraggableSignalsTable
 from .transforms_signal_table import TransformsSignalsTable
+from .xy_plot_table import XyTable
 
 
 class PlotsTableWidget(QSplitter):
     class PlotsTableMultiPlots(DroppableMultiPlotWidget, LinkedMultiPlotWidget):
         """MultiPlotWidget used in PlotsTableWidget with required mixins."""
 
-    class PlotsTableSignalsTable(DraggableSignalsTable, TransformsSignalsTable, StatsSignalsTable):
+    class PlotsTableSignalsTable(DraggableSignalsTable, XyTable, TransformsSignalsTable, StatsSignalsTable):
         """SignalsTable used in PlotsTableWidget with required mixins."""
 
         def __init__(self, plots: MultiPlotWidget, *args: Any, **kwargs: Any) -> None:
@@ -104,9 +105,8 @@ class PlotsTableWidget(QSplitter):
         for data_name in data.keys():
             transformed = self._table.apply_transform(data_name, data)
             if isinstance(transformed, Exception):
-                pass
-            else:
-                transformed_data[data_name] = data[data_name][0], transformed
+                continue
+            transformed_data[data_name] = data[data_name][0], transformed
         return transformed_data
 
     def _set_data(

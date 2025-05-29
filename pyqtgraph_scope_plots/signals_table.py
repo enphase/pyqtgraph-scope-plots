@@ -105,7 +105,40 @@ class SignalsTable(QTableWidget):
             not_none(self.item(row, self.COL_NAME)).setText(name)
 
 
-class StatsSignalsTable(SignalsTable):
+class HasRegionSignalsTable(SignalsTable):
+    """A SignalsTable that listens for a region change and provides some utilities"""
+
+    def set_range(self, range: Tuple[float, float]) -> None:
+        self._range = range
+
+    @classmethod
+    def _indices_of_region(
+        cls, xs: npt.NDArray[np.float64], region: Tuple[float, float]
+    ) -> Tuple[Optional[int], Optional[int]]:
+        """Given the x points and a region, return the indices of xs containing the region"""
+        low_index = bisect.bisect_left(xs, region[0])  # inclusive
+        high_index = bisect.bisect_right(xs, region[1])  # exclusive
+        if low_index >= high_index:  # empty set
+            return None, None
+        else:
+            return low_index, high_index
+
+
+class HasDataSignalsTable(SignalsTable):
+    """A SignalsTable that stores a copy of the data"""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
+
+    def set_data(
+        self,
+        data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
+    ) -> None:
+        self._data = data
+
+
+class StatsSignalsTable(HasRegionSignalsTable, HasDataSignalsTable):
     """Mixin into SignalsTable with statistics rows. Optional range to specify computation of statistics.
     Values passed into set_data must all be numeric."""
 
@@ -161,9 +194,8 @@ class StatsSignalsTable(SignalsTable):
                     ys = xs_ys_ref[1]()
                     if xs is None or ys is None:  # skip objects that have been deleted
                         continue
-                    low_index = bisect.bisect_left(xs, task.region[0])  # inclusive
-                    high_index = bisect.bisect_right(xs, task.region[1])  # inclusive
-                    if low_index >= high_index:  # empty set
+                    low_index, high_index = HasRegionSignalsTable._indices_of_region(xs, task.region)
+                    if low_index is None or high_index is None:  # empty set
                         ys_region = np.array([])
                     else:
                         ys_region = ys[low_index:high_index]
@@ -203,7 +235,6 @@ class StatsSignalsTable(SignalsTable):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
         # since calculating stats across the full range is VERY EXPENSIVE, cache the results
         self._full_range_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
         self._region_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
@@ -230,12 +261,12 @@ class StatsSignalsTable(SignalsTable):
         data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
     ) -> None:
         """Sets the data and updates statistics"""
-        self._data = data
+        super().set_data(data)
         self._create_stats_task()
         self._update_stats()
 
     def set_range(self, range: Tuple[float, float]) -> None:
-        self._range = range
+        super().set_range(range)
         self._create_stats_task()
         self._update_stats()
 

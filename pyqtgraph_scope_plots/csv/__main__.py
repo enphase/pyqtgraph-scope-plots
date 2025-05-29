@@ -47,7 +47,7 @@ if __name__ == "__main__":
     plots._set_data(
         {
             "sine": (xs, np.sin(xs / X_PER_CYCLE * 2 * math.pi)),
-            "square": (xs, np.signbit(np.sin(xs / X_PER_CYCLE * 2 * math.pi))),
+            "square": (xs, np.signbit(np.sin(xs / X_PER_CYCLE * 2 * math.pi)).astype(float)),
             "cycle": (
                 xs,
                 [f"Cycle {int(x)}" for x in np.floor(xs / X_PER_CYCLE)],

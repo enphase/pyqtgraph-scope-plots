@@ -104,9 +104,8 @@ class PlotsTableWidget(QSplitter):
         for data_name in data.keys():
             transformed = self._table.apply_transform(data_name, data)
             if isinstance(transformed, Exception):
-                pass
-            else:
-                transformed_data[data_name] = data[data_name][0], transformed
+                continue
+            transformed_data[data_name] = data[data_name][0], transformed
         return transformed_data
 
     def _set_data(

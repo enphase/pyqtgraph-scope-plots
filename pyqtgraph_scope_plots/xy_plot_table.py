@@ -55,9 +55,8 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
             for data_name in data.keys():
                 transformed = self._parent.apply_transform(data_name, data)
                 if isinstance(transformed, Exception):
-                    pass
-                else:
-                    transformed_data[data_name] = data[data_name][0], transformed
+                    continue
+                transformed_data[data_name] = data[data_name][0], transformed
             data = transformed_data
 
         for x_name, y_name in self._xys:

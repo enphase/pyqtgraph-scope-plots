@@ -106,7 +106,7 @@ class SignalsTable(QTableWidget):
 
 
 class HasRegionSignalsTable(SignalsTable):
-    """A SignalsTable that listens for a region change and provides some utiltiies"""
+    """A SignalsTable that listens for a region change and provides some utilities"""
 
     def set_range(self, range: Tuple[float, float]) -> None:
         self._range = range
@@ -135,7 +135,6 @@ class HasDataSignalsTable(SignalsTable):
         self,
         data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
     ) -> None:
-        """Sets the data and updates statistics"""
         self._data = data
 
 

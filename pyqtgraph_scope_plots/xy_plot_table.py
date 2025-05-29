@@ -21,8 +21,8 @@ from PySide6.QtGui import QAction, QColor
 from PySide6.QtWidgets import QMenu, QTableWidgetItem, QMessageBox
 from numpy import typing as npt
 
-from . import TransformsSignalsTable
 from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable
+from .transforms_signal_table import TransformsSignalsTable
 
 
 class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
@@ -127,7 +127,7 @@ class XyTable(ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTabl
         super().set_data(data)
         self._update_xys()
 
-    def _update_xys(self):
+    def _update_xys(self) -> None:
         for xy_plot in self._xy_plots:
             xy_plot.set_range(self._range)
 
@@ -146,5 +146,5 @@ class XyTable(ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTabl
         xy_plot.add_xy(data[0], data[1])
         return xy_plot
 
-    def _on_closed_xy(self, closed: XyPlotWidget):
+    def _on_closed_xy(self, closed: XyPlotWidget) -> None:
         self._xy_plots = [plot for plot in self._xy_plots if plot is not closed]

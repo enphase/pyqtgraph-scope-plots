@@ -27,6 +27,7 @@ from PySide6.QtCore import QKeyCombination, QTimer
 from PySide6.QtGui import QAction, QColor, Qt
 from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QVBoxLayout, QInputDialog, QToolButton
 
+from ..animation_plot_table_widget import AnimationPlotsTableWidget
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
 from ..search_signals_table import SearchSignalsTable
@@ -37,7 +38,7 @@ from ..transforms_signal_table import TransformsSignalsTable
 from ..util import int_color
 
 
-class CsvLoaderPlotsTableWidget(PlotsTableWidget):
+class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget):
     """Example app-level widget that loads CSV files into the plotter"""
 
     WATCH_INTERVAL_MS = 333  # polls the filesystem metadata for changes this frequently
@@ -227,6 +228,9 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         line_width_action = QAction("Set Line Width", button_menu)
         line_width_action.triggered.connect(self._on_line_width_action)
         button_menu.addAction(line_width_action)
+        animation_action = QAction("Create Animation", button_menu)
+        animation_action.triggered.connect(self._start_animation_ui_flow)
+        button_menu.addAction(animation_action)
         button_visuals.setMenu(button_menu)
 
         layout = QVBoxLayout()

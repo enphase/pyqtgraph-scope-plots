@@ -35,6 +35,9 @@ class AnimationPlotsTableWidget(PlotsTableWidget):
 
         frames_count = self.FRAMES_PER_SEGMENT * (100 / region_percentage)
 
+        print(self.size())
+        self.grab()
+
         with open(filename, "w", newline="") as f:
             pass
 

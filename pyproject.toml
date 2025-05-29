@@ -22,6 +22,7 @@ license = "Apache-2.0"
 dependencies = [
     "PySide6~=6.6",
     "pyqtgraph~=0.13",
+    "pillow>=9.0",
     "pandas~=2.0",
     "numpy>=1.19",
     "simpleeval==1.0.3",

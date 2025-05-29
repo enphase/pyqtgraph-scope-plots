@@ -12,13 +12,13 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import Any, List, Tuple, Mapping
+from typing import Any, List, Tuple, Mapping, Optional
 
 import numpy as np
 import pyqtgraph as pg
 from PySide6 import QtGui
 from PySide6.QtGui import QAction, QColor
-from PySide6.QtWidgets import QMenu
+from PySide6.QtWidgets import QMenu, QTableWidgetItem, QMessageBox
 from numpy import typing as npt
 
 from . import TransformsSignalsTable
@@ -103,10 +103,17 @@ class XyTable(ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTabl
         self._xy_action.triggered.connect(self._on_xy)
         self._xy_plots: List[XyPlotWidget] = []
 
+        self._ordered_selects: List[QTableWidgetItem] = []
+        self.itemSelectionChanged.connect(self._on_select_changed)
+
+    def _on_select_changed(self) -> None:
+        # since selectedItems is not ordered by selection, keep an internal order by tracking changes
+        new_selects = [item for item in self.selectedItems() if item not in self._ordered_selects]
+        self._ordered_selects = [item for item in self._ordered_selects if item in self.selectedItems()]
+        self._ordered_selects.extend(new_selects)
+
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)
-        rows = list(set([item.row() for item in self.selectedItems()]))
-        self._xy_action.setDisabled(len(rows) != 2)
         menu.addAction(self._xy_action)
 
     def set_range(self, range: Tuple[float, float]) -> None:
@@ -124,10 +131,14 @@ class XyTable(ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTabl
         for xy_plot in self._xy_plots:
             xy_plot.set_range(self._range)
 
-    def _on_xy(self) -> XyPlotWidget:
+    def _on_xy(self) -> Optional[XyPlotWidget]:
         """Creates an XY plot with the selected signal(s) and returns the new plot."""
-        data = list(set([self.item(item.row(), self.COL_NAME).text() for item in self.selectedItems()]))
-        assert len(data) == 2
+        data = [self.item(item.row(), self.COL_NAME).text() for item in self._ordered_selects]
+        if len(data) != 2:
+            QMessageBox.critical(
+                self, "Error", f"Select two items for X-Y plotting, got {data}", QMessageBox.StandardButton.Ok
+            )
+            return None
         xy_plot = XyPlotWidget(self)
         xy_plot.show()
         xy_plot.set_range(self._range)

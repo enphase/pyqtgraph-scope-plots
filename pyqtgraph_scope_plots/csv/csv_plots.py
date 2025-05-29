@@ -40,8 +40,7 @@ from ..util import int_color
 class CsvLoaderPlotsTableWidget(PlotsTableWidget):
     """Example app-level widget that loads CSV files into the plotter"""
 
-    WATCH_INTERVAL_MS = 100  # polls the filesystem metadata for changes this frequently
-    WATCH_STABLE_COUNT = 3  # files must be stable for this many watch cycles before refreshing
+    WATCH_INTERVAL_MS = 333  # polls the filesystem metadata for changes this frequently
 
     class Plots(PlotsTableWidget.PlotsTableMultiPlots):
         """Adds legend add functionality"""
@@ -106,7 +105,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         self._plots.sigDragCursorChanged.connect(self._on_drag_cursor_drag)
 
         self._csv_data_items: Dict[str, Set[str]] = {}  # csv path -> data name
-        self._csv_time: Dict[str, Tuple[float, float, int]] = {}  # csv path -> load time, modify time, stable count
+        self._csv_time: Dict[str, float] = {}  # csv path -> load time
         self._watch_timer = QTimer()
         self._watch_timer.setInterval(self.WATCH_INTERVAL_MS)
         self._watch_timer.timeout.connect(self._check_watch)
@@ -273,20 +272,11 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
                 continue
             if not os.path.exists(csv_filepath):  # ignore transiently missing files
                 continue
-            csv_load_time, csv_modify_time, csv_stable_count = self._csv_time[csv_filepath]
-            new_modify_time = os.path.getmtime(csv_filepath)
-            if new_modify_time <= csv_load_time:
+            if os.path.getmtime(csv_filepath) <= self._csv_time[csv_filepath]:
                 continue
-            if new_modify_time != csv_modify_time:
-                csv_stable_count = 0
-            else:
-                csv_stable_count += 1
 
-            if csv_stable_count >= self.WATCH_STABLE_COUNT:
-                files_to_load.append(csv_filepath)
-                data_items_to_load.extend(curr_data_items)
-            else:  # update record
-                self._csv_time[csv_filepath] = csv_load_time, new_modify_time, csv_stable_count
+            files_to_load.append(csv_filepath)
+            data_items_to_load.extend(curr_data_items)
 
         if files_to_load:
             self._load_csv(files_to_load, colnames=data_items_to_load, append=True)
@@ -319,7 +309,7 @@ class CsvLoaderPlotsTableWidget(PlotsTableWidget):
         any_is_timevalue = False
         for csv_filepath in csv_filepaths:
             df = pd.read_csv(csv_filepath)
-            self._csv_time[csv_filepath] = (time.time(), time.time(), 0)
+            self._csv_time[csv_filepath] = time.time()
 
             time_values = df[df.columns[0]]
             assert pd.api.types.is_numeric_dtype(time_values)

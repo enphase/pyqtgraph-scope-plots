@@ -21,6 +21,7 @@ from PySide6.QtGui import QAction, QColor
 from PySide6.QtWidgets import QMenu
 from numpy import typing as npt
 
+from . import TransformsSignalsTable
 from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable
 
 
@@ -48,9 +49,20 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
         for data_item in self.listDataItems():  # clear existing
             self.removeItem(data_item)
 
+        data = self._parent._data
+        if isinstance(self._parent, TransformsSignalsTable):  # TODO deduplicate with PlotsTableWidget
+            transformed_data = {}
+            for data_name in data.keys():
+                transformed = self._parent.apply_transform(data_name, data)
+                if isinstance(transformed, Exception):
+                    pass
+                else:
+                    transformed_data[data_name] = data[data_name][0], transformed
+            data = transformed_data
+
         for x_name, y_name in self._xys:
-            x_xs, x_ys = self._parent._data.get(x_name, (None, None))
-            y_xs, y_ys = self._parent._data.get(y_name, (None, None))
+            x_xs, x_ys = data.get(x_name, (None, None))
+            y_xs, y_ys = data.get(y_name, (None, None))
             y_color = self._parent._data_items.get(y_name, QColor("white"))
             if x_xs is None or x_ys is None or y_xs is None or y_ys is None:
                 return
@@ -61,7 +73,7 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
             if not np.array_equal(x_xs[x_lo:x_hi], y_xs[x_lo:x_hi]):
                 print(f"X/Y indices of {x_name}, {y_name} do not match")
                 return
-            if x_hi - x_lo == 0:
+            if x_hi - x_lo < 2:
                 return
 
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
@@ -116,11 +128,12 @@ class XyTable(ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTabl
         """Creates an XY plot with the selected signal(s) and returns the new plot."""
         data = list(set([self.item(item.row(), self.COL_NAME).text() for item in self.selectedItems()]))
         assert len(data) == 2
-        plot = XyPlotWidget(self)
-        plot.show()
-        self._xy_plots.append(plot)  # need an active reference to prevent GC'ing
-        plot.add_xy(data[0], data[1])
-        return plot
+        xy_plot = XyPlotWidget(self)
+        xy_plot.show()
+        xy_plot.set_range(self._range)
+        self._xy_plots.append(xy_plot)  # need an active reference to prevent GC'ing
+        xy_plot.add_xy(data[0], data[1])
+        return xy_plot
 
     def _on_closed_xy(self, closed: XyPlotWidget):
         self._xy_plots = [plot for plot in self._xy_plots if plot is not closed]

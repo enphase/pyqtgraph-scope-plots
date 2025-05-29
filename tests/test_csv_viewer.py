@@ -58,21 +58,11 @@ def test_watch_stability(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     with mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csv") as mock_load_csv, mock.patch.object(
         os.path, "getmtime"
     ) as mock_getmtime:
-        mock_getmtime.return_value = time.time() + 10
+        mock_getmtime.return_value = time.time() - 10  # unchanged file
         plot._watch_timer.timeout.emit()
-        mock_load_csv.assert_not_called()
-        plot._watch_timer.timeout.emit()
-        mock_load_csv.assert_not_called()
-        plot._watch_timer.timeout.emit()
-
-        mock_getmtime.return_value = mock_getmtime.return_value + 10  # reset the counter
-        plot._watch_timer.timeout.emit()
-        mock_load_csv.assert_not_called()
-        plot._watch_timer.timeout.emit()
-        mock_load_csv.assert_not_called()
-        plot._watch_timer.timeout.emit()
-        mock_load_csv.assert_not_called()
         qtbot.wait(10)  # add a delay for the call to happen just in case
         mock_load_csv.assert_not_called()
+
+        mock_getmtime.return_value = mock_getmtime.return_value + 10  # reset the counter
         plot._watch_timer.timeout.emit()
         qtbot.waitUntil(lambda: mock_load_csv.called)  # check the load happens

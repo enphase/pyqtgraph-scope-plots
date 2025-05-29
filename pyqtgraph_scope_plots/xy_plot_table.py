@@ -25,6 +25,8 @@ from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegi
 
 
 class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
+    FADE_SEGMENTS = 16
+
     def __init__(self, parent: "XyTable"):
         super().__init__()
         self._parent = parent
@@ -56,11 +58,28 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
             y_lo, y_hi = HasRegionSignalsTable._indices_of_region(x_xs, self._region)
             if x_lo is None or x_hi is None or y_lo is None or y_hi is None:
                 return  # empty plot
-            assert np.array_equal(x_xs[x_lo:x_hi], y_xs[x_lo:x_hi]), "TODO support resampling"
+            if not np.array_equal(x_xs[x_lo:x_hi], y_xs[x_lo:x_hi]):
+                print(f"X/Y indices of {x_name}, {y_name} do not match")
+                return
+            if x_hi - x_lo == 0:
+                return
 
-            curve = pg.PlotCurveItem(x=x_ys[x_lo:x_hi], y=y_ys[x_lo:x_hi])
-            curve.setPen(color=y_color, width=1)
-            self.addItem(curve)
+            # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
+            fade_segments = min(self.FADE_SEGMENTS, x_hi - x_lo)
+            last_segment_end = x_lo
+            segments = []
+            for i in range(fade_segments):
+                this_end = int(i / (fade_segments - 1) * (x_hi - x_lo)) + x_lo
+                segments.append((last_segment_end, this_end))
+                curve = pg.PlotCurveItem(
+                    x=x_ys[last_segment_end : this_end + 1], y=y_ys[last_segment_end : this_end + 1]
+                )
+                last_segment_end = this_end
+
+                segment_color = QColor(y_color)
+                segment_color.setAlpha(int(i / (fade_segments - 1) * 255))
+                curve.setPen(color=segment_color, width=1)
+                self.addItem(curve)
 
 
 class XyTable(ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTable):
@@ -99,8 +118,8 @@ class XyTable(ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTabl
         assert len(data) == 2
         plot = XyPlotWidget(self)
         plot.show()
-        plot.add_xy(data[0], data[1])
         self._xy_plots.append(plot)  # need an active reference to prevent GC'ing
+        plot.add_xy(data[0], data[1])
         return plot
 
     def _on_closed_xy(self, closed: XyPlotWidget):

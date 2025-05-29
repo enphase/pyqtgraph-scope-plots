@@ -115,7 +115,7 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
                 new_y = self._simpleeval.eval(expr, parsed)
                 # note, float and int are technically different, but are same enough here
                 if not (isinstance(new_y, numbers.Number) and isinstance(y, numbers.Number)) and type(new_y) != type(y):
-                    raise TypeError
+                    raise TypeError(f"returned {new_y} of type {type(new_y)} != original type {type(y)}")
                 new_ys.append(new_y)
             except Exception as e:
                 data_name_to_row = {data_name: i for i, data_name in enumerate(self._data_items.keys())}

@@ -117,7 +117,7 @@ class HasRegionSignalsTable(SignalsTable):
     ) -> Tuple[Optional[int], Optional[int]]:
         """Given the x points and a region, return the indices of xs containing the region"""
         low_index = bisect.bisect_left(xs, region[0])  # inclusive
-        high_index = bisect.bisect_right(xs, region[1])  # inclusive
+        high_index = bisect.bisect_right(xs, region[1])  # exclusive
         if low_index >= high_index:  # empty set
             return None, None
         else:

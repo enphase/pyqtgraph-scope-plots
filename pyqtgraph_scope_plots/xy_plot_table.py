@@ -63,14 +63,14 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
             x_xs, x_ys = data.get(x_name, (None, None))
             y_xs, y_ys = data.get(y_name, (None, None))
             if x_xs is None or x_ys is None or y_xs is None or y_ys is None:
-                return
+                continue
             x_lo, x_hi = HasRegionSignalsTable._indices_of_region(x_xs, self._region)
             y_lo, y_hi = HasRegionSignalsTable._indices_of_region(y_xs, self._region)
             if x_lo is None or x_hi is None or y_lo is None or y_hi is None or x_hi - x_lo < 2:
-                return  # empty plot
+                continue  # empty plot
             if not np.array_equal(x_xs[x_lo:x_hi], y_xs[x_lo:x_hi]):
                 print(f"X/Y indices of {x_name}, {y_name} do not match")
-                return
+                continue
 
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
             y_color = self._parent._data_items.get(y_name, QColor("white"))

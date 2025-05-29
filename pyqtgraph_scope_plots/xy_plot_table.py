@@ -62,26 +62,22 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
         for x_name, y_name in self._xys:
             x_xs, x_ys = data.get(x_name, (None, None))
             y_xs, y_ys = data.get(y_name, (None, None))
-            y_color = self._parent._data_items.get(y_name, QColor("white"))
             if x_xs is None or x_ys is None or y_xs is None or y_ys is None:
                 return
             x_lo, x_hi = HasRegionSignalsTable._indices_of_region(x_xs, self._region)
-            y_lo, y_hi = HasRegionSignalsTable._indices_of_region(x_xs, self._region)
-            if x_lo is None or x_hi is None or y_lo is None or y_hi is None:
+            y_lo, y_hi = HasRegionSignalsTable._indices_of_region(y_xs, self._region)
+            if x_lo is None or x_hi is None or y_lo is None or y_hi is None or x_hi - x_lo < 2:
                 return  # empty plot
             if not np.array_equal(x_xs[x_lo:x_hi], y_xs[x_lo:x_hi]):
                 print(f"X/Y indices of {x_name}, {y_name} do not match")
                 return
-            if x_hi - x_lo < 2:
-                return
 
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
+            y_color = self._parent._data_items.get(y_name, QColor("white"))
             fade_segments = min(self.FADE_SEGMENTS, x_hi - x_lo)
             last_segment_end = x_lo
-            segments = []
             for i in range(fade_segments):
                 this_end = int(i / (fade_segments - 1) * (x_hi - x_lo)) + x_lo
-                segments.append((last_segment_end, this_end))
                 curve = pg.PlotCurveItem(
                     x=x_ys[last_segment_end : this_end + 1], y=y_ys[last_segment_end : this_end + 1]
                 )

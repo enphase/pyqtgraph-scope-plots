@@ -40,14 +40,9 @@ class AnimationPlotsTableWidget(PlotsTableWidget):
         sliding_region_size = region_size - frame_size
         frames_count = int(self.FRAMES_PER_SEGMENT * (100 / region_percentage))
 
-        capture_windows: List[QWidget] = [self]
+        capture_windows: List[QWidget] = [self._plots]
         if isinstance(self._table, XyTable):
             capture_windows.extend(self._table._xy_plots)
-        window_widths = [widget.size().width() for widget in capture_windows]
-        combined_width = sum(window_widths)
-        combined_height = max([widget.size().height() for widget in capture_windows])
-        print(window_widths)
-        print(combined_height)
 
         images = []
         for i in range(frames_count):
@@ -55,12 +50,17 @@ class AnimationPlotsTableWidget(PlotsTableWidget):
             self._plots._on_region_change(None, (frame_center - frame_size / 2, frame_center + frame_size / 2))
             QtGui.QGuiApplication.processEvents()
 
+            window_images = []
+            for window in capture_windows:
+                window_images.append(Image.fromqpixmap(window.grab()))
+
+            combined_width = sum(image.width for image in window_images)
+            combined_height = max(image.height for image in window_images)
             combined_image = Image.new("RGB", (combined_width, combined_height))
             x_offset = 0
-            for window, width in zip(capture_windows, window_widths):
-                image = Image.fromqpixmap(window.grab())
+            for image in window_images:
                 combined_image.paste(image, (x_offset, 0))
-                x_offset += width
+                x_offset += image.width
             images.append(combined_image)
 
         if restore_full_region:

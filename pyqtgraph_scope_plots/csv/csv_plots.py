@@ -16,6 +16,7 @@ import bisect
 import itertools
 import os.path
 import time
+from functools import partial
 from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable, Sequence, cast, Set, Iterable
 
 import numpy as np
@@ -229,7 +230,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget):
         line_width_action.triggered.connect(self._on_line_width_action)
         button_menu.addAction(line_width_action)
         animation_action = QAction("Create Animation", button_menu)
-        animation_action.triggered.connect(self._start_animation_ui_flow)
+        animation_action.triggered.connect(partial(self._start_animation_ui_flow, ""))
         button_menu.addAction(animation_action)
         button_visuals.setMenu(button_menu)
 

@@ -4,6 +4,7 @@ from PySide6 import QtGui
 from PySide6.QtWidgets import QInputDialog, QFileDialog, QWidget
 from PIL import Image
 
+from .xy_plot_table import XyTable
 from .plots_table_widget import PlotsTableWidget
 
 
@@ -12,7 +13,7 @@ class AnimationPlotsTableWidget(PlotsTableWidget):
     This function handles the UI flow for generating an animation, but does not provide the controls
     to initiate this flow (which is left up to the subclass to implement)"""
 
-    FRAMES_PER_SEGMENT = 4  # TODO these should be user-configurable
+    FRAMES_PER_SEGMENT = 8  # TODO these should be user-configurable
     MS_PER_FRAME = 50
 
     def _start_animation_ui_flow(self, default_filename: str = "") -> None:
@@ -40,15 +41,27 @@ class AnimationPlotsTableWidget(PlotsTableWidget):
         frames_count = int(self.FRAMES_PER_SEGMENT * (100 / region_percentage))
 
         capture_windows: List[QWidget] = [self]
-        print(self.size())
+        if isinstance(self._table, XyTable):
+            capture_windows.extend(self._table._xy_plots)
+        window_widths = [widget.size().width() for widget in capture_windows]
+        combined_width = sum(window_widths)
+        combined_height = max([widget.size().height() for widget in capture_windows])
+        print(window_widths)
+        print(combined_height)
+
         images = []
         for i in range(frames_count):
             frame_center = full_region[0] + (frame_size / 2) + (i / (frames_count - 1) * sliding_region_size)
-            print(i, frame_center, (frame_center - frame_size / 2, frame_center + frame_size / 2))
             self._plots._on_region_change(None, (frame_center - frame_size / 2, frame_center + frame_size / 2))
             QtGui.QGuiApplication.processEvents()
-            image = Image.fromqpixmap(self.grab())
-            images.append(image)
+
+            combined_image = Image.new("RGB", (combined_width, combined_height))
+            x_offset = 0
+            for window, width in zip(capture_windows, window_widths):
+                image = Image.fromqpixmap(window.grab())
+                combined_image.paste(image, (x_offset, 0))
+                x_offset += width
+            images.append(combined_image)
 
         if restore_full_region:
             self._plots._on_region_change(None, full_region)

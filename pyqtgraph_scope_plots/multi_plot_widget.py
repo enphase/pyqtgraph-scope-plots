@@ -111,7 +111,28 @@ class MultiPlotWidget(HasSaveRestoreModel, QSplitter):
 
     def _restore_model(self, model: BaseTopModel) -> None:
         super()._restore_model(model)
-        raise NotImplementedError
+
+        # remove all existing plots
+        self._plot_item_data = {}
+        self._clean_plot_widgets()
+
+        # create plots from model
+        assert isinstance(model, MultiPlotStateModel)
+        for widget_data_items in model.widget_data_items:
+            if len(widget_data_items) <= 0:  # skip empty plots
+                continue
+            color, plot_type = self._data_items.get(widget_data_items[0], (None, None))
+            if plot_type is None:
+                continue
+            add_plot_item = self._init_plot_item(self._create_plot_item(plot_type))
+            plot_widget = pg.PlotWidget(plotItem=add_plot_item)
+            self.addWidget(plot_widget)
+            self._plot_item_data[add_plot_item] = widget_data_items
+
+        self._check_create_default_plot()
+        self._update_plots_x_axis()
+        self._update_data_name_to_plot_item()
+        self._update_plots()  # TODO can be removed and dedup'd
 
     def render_value(self, data_name: str, value: float) -> str:
         """Float-to-string conversion for a value. Optionally override this to provide smarter precision."""

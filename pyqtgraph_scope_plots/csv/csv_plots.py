@@ -255,6 +255,9 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         save_state_action = QAction("Save State", button_menu)
         save_state_action.triggered.connect(self._on_save_state)
         button_menu.addAction(save_state_action)
+        load_state_action = QAction("Load State", button_menu)
+        load_state_action.triggered.connect(self._on_load_state)
+        button_menu.addAction(load_state_action)
 
         layout = QVBoxLayout()
         layout.addWidget(button_load)
@@ -384,3 +387,12 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         model_str = yaml.dump(model.model_dump())
         with open(filename, "w") as f:
             f.write(model_str)
+
+    def _on_load_state(self):
+        filename, _ = QFileDialog.getOpenFileName(None, "Load state", filter="YAML files (*.yml)")
+        if not filename:  # nothing selected, user canceled
+            return
+        with open(filename, "r") as f:
+            model = self._create_skeleton_model_type()(**yaml.safe_load(f))
+
+        self._restore_model(model)

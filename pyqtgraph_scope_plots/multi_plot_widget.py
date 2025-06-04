@@ -377,9 +377,10 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
         self._drag_overlays: List[DragTargetOverlay] = []
         self.setAcceptDrops(True)
 
-    def _merge_data_into_item(self, source_data_name: str, target_plot_index: int, insert: bool = False) -> None:
+    def _merge_data_into_item(self, source_data_names: List[str], target_plot_index: int, insert: bool = False) -> None:
         """Merges a data (by name) into a target PlotItem, overlaying both on the same plot"""
-        source_item = self._data_name_to_plot_item.get(source_data_name)
+        created_data_names = []  # list of data names that were successfully created / moved
+        assert len(source_data_names) > 0
         if not insert:  # merge mode
             target_plot_widget = self.widget(target_plot_index)
             if not isinstance(target_plot_widget, pg.PlotWidget):
@@ -387,29 +388,45 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
             target_plot_item = target_plot_widget.getPlotItem()
             if isinstance(target_plot_item, EnumWaveformPlot):  # can't merge into enum plots
                 return
-            if (
-                len(self._plot_item_data[target_plot_item]) > 0
-                and self._data_items[self._plot_item_data[target_plot_item][0] or ""][1]
-                != self._data_items[source_data_name][1]
-            ):
-                return  # can't merge different plot types
-            self._plot_item_data[target_plot_item].append(source_data_name)
+            for source_data_name in source_data_names:
+                if len(self._plot_item_data[target_plot_item]) > 0:  # check for merge-ability, for empty plots
+                    if (
+                        self._data_items[self._plot_item_data[target_plot_item][0] or ""][1]
+                        != self._data_items[source_data_name][1]
+                    ):
+                        continue
+                self._plot_item_data[target_plot_item].append(source_data_name)
+                created_data_names.append(source_data_name)
         else:  # create-new-graph-and-insert mode
-            plot_item = self._init_plot_item(self._create_plot_item(self._data_items[source_data_name][1]))
+            plot_item = self._init_plot_item(self._create_plot_item(self._data_items[source_data_names[0]][1]))
             if self._anchor_x_plot_item is not None:
                 plot_item.setXLink(self._anchor_x_plot_item)
             else:
                 self._anchor_x_plot_item = plot_item
             plot_widget = pg.PlotWidget(plotItem=plot_item)
             self.insertWidget(target_plot_index, plot_widget)
-            self._plot_item_data[plot_item] = [source_data_name]
+
+            self._plot_item_data[plot_item] = [source_data_names[0]]
+            created_data_names.append(source_data_names[0])
+
+            if isinstance(plot_item, EnumWaveformPlot):  # only one data item
+                pass
+            else:  # append all compatible
+                for source_data_name in source_data_names[1:]:
+                    if self._data_items[source_data_names[0]][1] != self._data_items[source_data_name][1]:
+                        continue
+                    self._plot_item_data[plot_item].append(source_data_names[0])
+                    created_data_names.append(source_data_names[0])
+
             self._update_plots_x_axis()
 
-        if source_item is not None:  # delete source
-            self._plot_item_data[source_item].remove(source_data_name)
-            if not len(self._plot_item_data[source_item]):
-                self._clean_plot_widgets()
-                self._update_plots_x_axis()
+        for created_data_name in created_data_names:
+            created_item = self._data_name_to_plot_item.get(created_data_name)
+            if created_item is not None:  # delete source
+                self._plot_item_data[created_item].remove(created_data_name)
+                if not len(self._plot_item_data[created_item]):
+                    self._clean_plot_widgets()
+                    self._update_plots_x_axis()
 
         self._update_data_name_to_plot_item()
         self._update_plots()
@@ -477,9 +494,9 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
         data = event.mimeData().data(DraggableSignalsTable.DRAG_MIME_TYPE)
         if not data or self._drag_target is None:
             return
-        drag_data_name = bytes(data.data()).decode("utf-8")
+        drag_data_names = bytes(data.data()).decode("utf-8").split("\0")
 
         target_index, target_insertion = self._drag_target
-        self._merge_data_into_item(drag_data_name, target_index, target_insertion)
+        self._merge_data_into_item(drag_data_names, target_index, target_insertion)
         self._drag_target = None
         event.accept()

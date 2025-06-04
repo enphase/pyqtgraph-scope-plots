@@ -97,7 +97,7 @@ def test_empty_default_plots(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 def test_plot_merge(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     qtbot.waitUntil(lambda: plot._plots.count() == 3)  # wait for plots to be ready
 
-    plot._plots._merge_data_into_item("0", 1)  # merge
+    plot._plots._merge_data_into_item(["0"], 1)  # merge
     qtbot.waitUntil(lambda: plot._plots.count() == 2)  # wait for widgets to merge
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 2
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(1)).getPlotItem()).listDataItems()) == 1
@@ -106,7 +106,7 @@ def test_plot_merge(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     assert plot._table.item(1, plot._table.COL_NAME).text() == "1"
     assert plot._table.item(2, plot._table.COL_NAME).text() == "2"
 
-    plot._plots._merge_data_into_item("0", 1)  # move
+    plot._plots._merge_data_into_item(["0"], 1)  # move
     qtbot.waitUntil(lambda: plot._plots.count() == 2)
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 1
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(1)).getPlotItem()).listDataItems()) == 2
@@ -115,7 +115,7 @@ def test_plot_merge(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     assert plot._table.item(1, plot._table.COL_NAME).text() == "1"
     assert plot._table.item(2, plot._table.COL_NAME).text() == "2"
 
-    plot._plots._merge_data_into_item("1", 1)  # merge all
+    plot._plots._merge_data_into_item(["1"], 1)  # merge all
     qtbot.waitUntil(lambda: plot._plots.count() == 1)
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 3
     assert plot._table.rowCount() == 3  # signals table should not change
@@ -123,14 +123,14 @@ def test_plot_merge(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     assert plot._table.item(1, plot._table.COL_NAME).text() == "1"
     assert plot._table.item(2, plot._table.COL_NAME).text() == "2"
 
-    plot._plots._merge_data_into_item("2", 0, insert=True)  # insert at top
+    plot._plots._merge_data_into_item(["2"], 0, insert=True)  # insert at top
     qtbot.waitUntil(lambda: plot._plots.count() == 2)  # new plot created
     assert plot._table.rowCount() == 3  # signals table should not change
     assert plot._table.item(0, plot._table.COL_NAME).text() == "0"
     assert plot._table.item(1, plot._table.COL_NAME).text() == "1"
     assert plot._table.item(2, plot._table.COL_NAME).text() == "2"
 
-    plot._plots._merge_data_into_item("0", 2, insert=True)  # insert at bottom
+    plot._plots._merge_data_into_item(["0"], 2, insert=True)  # insert at bottom
     qtbot.waitUntil(lambda: plot._plots.count() == 3)
 
 
@@ -147,10 +147,10 @@ def test_invalid_plot_merge(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 
     qtbot.waitUntil(lambda: plot._plots.count() == 5)  # wait for plots to be ready
 
-    plot._plots._merge_data_into_item("3", 0)  # invalid merge, different types
-    plot._plots._merge_data_into_item("0", 3)  # invalid merge, different types
-    plot._plots._merge_data_into_item("3", 4)  # can't merge enums
-    plot._plots._merge_data_into_item("4", 3)  # can't merge enums
+    plot._plots._merge_data_into_item(["3"], 0)  # invalid merge, different types
+    plot._plots._merge_data_into_item(["0"], 3)  # invalid merge, different types
+    plot._plots._merge_data_into_item(["3"], 4)  # can't merge enums
+    plot._plots._merge_data_into_item(["4"], 3)  # can't merge enums
 
     assert plot._plots.count() == 5  # check nothing changes
 
@@ -159,7 +159,7 @@ def test_plot_remove(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     plot._plots.remove_plot_items(["1"])
     qtbot.waitUntil(lambda: plot._plots.count() == 2)  # plot removed
 
-    plot._plots._merge_data_into_item("2", 0)  # merge all into top
+    plot._plots._merge_data_into_item(["2"], 0)  # merge all into top
     qtbot.waitUntil(lambda: plot._plots.count() == 1)
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 2
 

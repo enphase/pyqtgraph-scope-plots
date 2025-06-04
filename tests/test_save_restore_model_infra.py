@@ -33,8 +33,8 @@ class SaveRestoreSub(HasSaveRestoreModel):
         data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
         return [DataModelSub1, DataModelSub2] + data_bases, [BaseModelSub1, BaseModelSub2] + misc_bases
 
-    def _save_model(self, model: BaseTopModel) -> None:
-        super()._save_model(model)
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
 
         assert isinstance(model, BaseModelSub1) and isinstance(model, BaseModelSub2)
         for data_name, data_model in model.data.items():
@@ -66,7 +66,7 @@ def test_save_model() -> None:
     assert skeleton.base_field1 == 4.2
     assert skeleton.inner.a_field == "in"
 
-    instance._save_model(skeleton)
+    instance._write_model(skeleton)
     assert skeleton.base_field1 == 2.0
     assert skeleton.inner.a_field == "a"
     assert skeleton.data["data1"].field2 == "data1"

@@ -97,8 +97,8 @@ class MultiPlotWidget(HasSaveRestoreModel, QSplitter):
         data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
         return data_bases, [MultiPlotStateModel] + misc_bases
 
-    def _save_model(self, model: BaseTopModel) -> None:
-        super()._save_model(model)
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
         assert isinstance(model, MultiPlotStateModel)
         model.widget_data_items = []
         for i in range(self.count()):
@@ -351,8 +351,8 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveRestoreModel):
         data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
         return data_bases, [LinkedMultiPlotStateModel] + misc_bases
 
-    def _save_model(self, model: BaseTopModel) -> None:
-        super()._save_model(model)
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
         assert isinstance(model, LinkedMultiPlotStateModel)
         model.region = self._last_region
         model.pois = self._last_pois

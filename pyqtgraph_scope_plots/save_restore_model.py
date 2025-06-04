@@ -65,7 +65,13 @@ class HasSaveRestoreModel:
         top_model = top_model_cls(data={data_name: data_model_cls() for data_name in data_names})
         return top_model
 
-    def _save_model(self, model: BaseTopModel) -> None:
+    def _dump_model(self, data_names: Iterable[str]) -> BaseTopModel:
+        """For top-level self, generate the save state model. Convenience wrapper around model creation and writing."""
+        model = self._create_skeleton_model(data_names)
+        self._write_model(model)
+        return model
+
+    def _write_model(self, model: BaseTopModel) -> None:
         """Saves the data into the top-level model. model.data is pre-populated with models for every data item.
         Mutates the model in-place.
 

@@ -362,8 +362,8 @@ class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveRestoreModel):
         data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
         return [ColorPickerDataStateModel] + data_bases, misc_bases
 
-    def _save_model(self, model: BaseTopModel) -> None:
-        super()._save_model(model)
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, ColorPickerDataStateModel)
             color = self._colors.get(data_name, None)

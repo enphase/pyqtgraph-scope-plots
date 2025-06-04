@@ -134,10 +134,10 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         data_bases, misc_bases = self._table._get_model_bases(data_bases, misc_bases)
         return data_bases, misc_bases
 
-    def _save_model(self, model: BaseTopModel) -> None:
-        super()._save_model(model)
-        self._plots._save_model(model)
-        self._table._save_model(model)
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
+        self._plots._write_model(model)
+        self._table._write_model(model)
 
     def _restore_model(self, model: BaseTopModel) -> None:
         super()._restore_model(model)
@@ -396,11 +396,8 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         filename, _ = QFileDialog.getSaveFileName(None, "Save state", filter="YAML files (*.yml)")
         if not filename:  # nothing selected, user canceled
             return
-        model = self._create_skeleton_model(self._table._data_items.keys())
-        self._save_model(model)
-        model_str = yaml.dump(model.model_dump())
         with open(filename, "w") as f:
-            f.write(model_str)
+            f.write(yaml.dump(self._dump_model(self._table._data_items.keys()).model_dump()))
 
     def _on_load_state(self) -> None:
         filename, _ = QFileDialog.getOpenFileName(None, "Load state", filter="YAML files (*.yml)")

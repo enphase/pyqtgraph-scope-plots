@@ -17,10 +17,12 @@ from typing import Any, List, Tuple, Mapping, Optional
 import numpy as np
 import pyqtgraph as pg
 from PySide6 import QtGui
-from PySide6.QtGui import QAction, QColor
+from PySide6.QtCore import QSize
+from PySide6.QtGui import QAction, QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent
 from PySide6.QtWidgets import QMenu, QTableWidgetItem, QMessageBox
 from numpy import typing as npt
 
+from .multi_plot_widget import DragTargetOverlay
 from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable, DraggableSignalsTable
 from .transforms_signal_table import TransformsSignalsTable
 
@@ -33,6 +35,9 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
         self._parent = parent
         self._xys: List[Tuple[str, str]] = []
         self._region = (-float("inf"), float("inf"))
+
+        self._drag_overlays: List[DragTargetOverlay] = []
+        self.setAcceptDrops(True)
 
     def add_xy(self, x_name: str, y_name: str) -> None:
         self._xys.append((x_name, y_name))
@@ -87,6 +92,44 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
                 segment_color.setAlpha(int(i / (fade_segments - 1) * 255))
                 curve.setPen(color=segment_color, width=1)
                 self.addItem(curve)
+
+    def dragEnterEvent(self, event: QDragMoveEvent) -> None:
+        if not event.mimeData().data(DraggableSignalsTable.DRAG_MIME_TYPE):  # check for right type
+            return
+        overlay = DragTargetOverlay(self)
+        overlay.resize(QSize(self.width(), self.height()))
+        overlay.setVisible(True)
+        self._drag_overlays.append(overlay)
+        event.accept()
+
+    def _clear_drag_overlays(self) -> None:
+        for drag_overlay in self._drag_overlays:
+            drag_overlay.deleteLater()
+        self._drag_overlays = []
+
+    def dragMoveEvent(self, event: QDragMoveEvent) -> None:
+        event.accept()
+
+    def dragLeaveEvent(self, event: QDragLeaveEvent) -> None:
+        self._clear_drag_overlays()
+
+    def dropEvent(self, event: QDropEvent) -> None:
+        self._clear_drag_overlays()
+
+        data = event.mimeData().data(DraggableSignalsTable.DRAG_MIME_TYPE)
+        if not data:
+            return
+        drag_data_names = bytes(data.data()).decode("utf-8").split("\0")
+        if len(drag_data_names) != 2:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Select two items for X-Y plotting, got {drag_data_names}",
+                QMessageBox.StandardButton.Ok,
+            )
+            return
+        self.add_xy(drag_data_names[0], drag_data_names[1])
+        event.accept()
 
 
 class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTable):

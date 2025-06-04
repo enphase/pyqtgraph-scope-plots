@@ -19,7 +19,7 @@ import pyqtgraph as pg
 from PySide6 import QtGui
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QAction, QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent
-from PySide6.QtWidgets import QMenu, QTableWidgetItem, QMessageBox
+from PySide6.QtWidgets import QMenu, QMessageBox
 from numpy import typing as npt
 
 from .multi_plot_widget import DragTargetOverlay

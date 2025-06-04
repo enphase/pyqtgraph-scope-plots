@@ -25,7 +25,8 @@ dependencies = [
     "pillow>=9.0",
     "pandas~=2.0",
     "numpy>=1.19",
-    "simpleeval==1.0.3",
+    "pydantic>=2.0",
+    "simpleeval>=1.0",
 ]
 
 [project.urls]

@@ -42,6 +42,17 @@ from ..transforms_signal_table import TransformsSignalsTable
 from ..util import int_color
 
 
+class TupleSafeLoader(yaml.SafeLoader):
+    pass
+
+
+def construct_python_tuple(loader, node):
+    return tuple(loader.construct_sequence(node))
+
+
+TupleSafeLoader.add_constructor("tag:yaml.org,2002:python/tuple", construct_python_tuple)
+
+
 class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, HasSaveRestoreModel):
     """Example app-level widget that loads CSV files into the plotter"""
 
@@ -394,6 +405,6 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             return
         with open(filename, "r") as f:
             _, top_model_cls = self._create_skeleton_model_type()
-            model = top_model_cls(**yaml.safe_load(f))
+            model = top_model_cls(**yaml.load(f, Loader=TupleSafeLoader))
 
         self._restore_model(model)

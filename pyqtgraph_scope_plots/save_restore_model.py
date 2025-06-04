@@ -70,7 +70,9 @@ class HasSaveRestoreModel:
         """Restores data from the top-level model.
 
         It is guaranteed that by the time the subclasses of this have the load called, the data_items
-        are correctly populated (responsibility of the top-level load).
+        are correctly populated (responsibility of the top-level load). HOWEVER, some data_items
+        restores may fail, so this should check for the existence of each data_item.
+
         TODO: definition for delayed single bulk update
 
         IMPLEMENT ME."""

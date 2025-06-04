@@ -32,7 +32,13 @@ class SaveRestoreSub(HasSaveRestoreModel):
         return [DataModelSub1, DataModelSub2] + data_bases, [BaseModelSub1, BaseModelSub2] + misc_bases
 
     def _save_model(self, model: BaseTopModel) -> None:
-        pass
+        assert isinstance(model, BaseModelSub2) and isinstance(model, BaseModelSub2)
+        for data_name, data_model in model.data.items():
+            assert isinstance(data_model, DataModelSub1) and isinstance(data_model, DataModelSub2)
+            data_model.field2 = data_name
+
+        model.base_field1 = 2.0
+        model.inner.a_field = "a"
 
     def _restore_model(self, model: BaseTopModel) -> None:
         pass
@@ -50,3 +56,10 @@ def test_save_model() -> None:
 
     assert skeleton.base_field1 == 4.2
     assert skeleton.inner.a_field == "in"
+
+    instance._save_model(skeleton)
+    assert skeleton.base_field1 == 2.0
+    assert skeleton.inner.a_field == "a"
+    assert skeleton.data["data1"].field2 == "data1"
+    assert skeleton.data["data2"].field2 == "data2"
+    assert skeleton.data["data3"].field2 == "data3"

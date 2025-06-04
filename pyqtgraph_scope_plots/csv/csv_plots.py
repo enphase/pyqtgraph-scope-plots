@@ -131,15 +131,18 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
     ) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
         data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
         data_bases, misc_bases = self._plots._get_model_bases(data_bases, misc_bases)
+        data_bases, misc_bases = self._table._get_model_bases(data_bases, misc_bases)
         return data_bases, misc_bases
 
     def _save_model(self, model: BaseTopModel) -> None:
         super()._save_model(model)
         self._plots._save_model(model)
+        self._table._save_model(model)
 
     def _restore_model(self, model: BaseTopModel) -> None:
         super()._restore_model(model)
         self._plots._restore_model(model)
+        self._table._restore_model(model)
 
     def _transform_data(
         self,

@@ -22,15 +22,10 @@ import numpy as np
 import numpy.typing as npt
 from PySide6.QtCore import QMimeData, QPoint, Signal, QObject, QThread
 from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
-from PySide6.QtWidgets import (
-    QTableWidgetItem,
-    QTableWidget,
-    QHeaderView,
-    QMenu,
-    QLabel,
-    QColorDialog,
-)
+from PySide6.QtWidgets import QTableWidgetItem, QTableWidget, QHeaderView, QMenu, QLabel, QColorDialog
+from pydantic._internal._model_construction import ModelMetaclass
 
+from .save_restore_model import HasSaveRestoreModel, DataTopModel, BaseTopModel
 from .cache_dict import IdentityCacheDict
 from .util import not_none
 
@@ -346,15 +341,44 @@ class DeleteableSignalsTable(ContextMenuSignalsTable):
         menu.addAction(self._delete_row_action)
 
 
-class ColorPickerSignalsTable(ContextMenuSignalsTable):
+class ColorPickerDataStateModel(DataTopModel):
+    color: Optional[Tuple[int, int, int]] = None  # R, G, B
+
+
+class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveRestoreModel):
     """Mixin into SignalsTable that adds a context menu item for the user to change the color.
     This gets sent as a signal, and an upper must handle plumbing the colors through.
     """
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
+        self._colors: Dict[str, QColor] = {}  # only for save state
         self._set_color_action = QAction("Set Color", self)
         self._set_color_action.triggered.connect(self._on_set_color)
+
+    def _get_model_bases(
+        self, data_bases: List[ModelMetaclass], misc_bases: List[ModelMetaclass]
+    ) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
+        data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
+        return [ColorPickerDataStateModel] + data_bases, misc_bases
+
+    def _save_model(self, model: BaseTopModel) -> None:
+        super()._save_model(model)
+        for data_name, data_model in model.data.items():
+            assert isinstance(data_model, ColorPickerDataStateModel)
+            color = self._colors.get(data_name, None)
+            if color is None:
+                continue
+            data_model.color = (color.red(), color.green(), color.blue())
+
+    def _restore_model(self, model: BaseTopModel) -> None:
+        super()._restore_model(model)
+        data_name_colors = [
+            (data_name, QColor(data_model.color[0], data_model.color[1], data_model.color[2]))
+            for data_name, data_model in model.data.items()
+            if data_model.color is not None
+        ]
+        self.sigColorChanged.emit(data_name_colors)
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)
@@ -364,6 +388,8 @@ class ColorPickerSignalsTable(ContextMenuSignalsTable):
         data_names = list(self._data_items.keys())
         selected_data_names = [data_names[item.row()] for item in self.selectedItems()]
         color = QColorDialog.getColor()
+        for data_name in selected_data_names:
+            self._colors[data_name] = color
         self.sigColorChanged.emit([(data_name, color) for data_name in selected_data_names])
 
 

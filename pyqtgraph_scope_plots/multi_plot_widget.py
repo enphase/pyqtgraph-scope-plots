@@ -45,7 +45,7 @@ class EnumWaveformInteractivePlot(
     POI_ANCHOR = (0, 0.5)
 
 
-class MultiPlotStateModel(BaseModel):
+class MultiPlotStateModel(BaseTopModel):
     widget_data_items: List[List[str]] = []  # window index -> list of data items
 
 
@@ -330,7 +330,7 @@ class MultiPlotWidget(HasSaveRestoreModel, QSplitter):
                 plot_item.enableAutoRange(axis="y", enable=enable)
 
 
-class LinkedMultiPlotStateModel(BaseModel):
+class LinkedMultiPlotStateModel(BaseTopModel):
     region: Optional[Union[float, Tuple[float, float]]] = None
     pois: List[float] = []
 

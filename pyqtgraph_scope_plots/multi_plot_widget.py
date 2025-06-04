@@ -386,8 +386,10 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
 
     def _merge_data_into_item(self, source_data_names: List[str], target_plot_index: int, insert: bool = False) -> None:
         """Merges a data (by name) into a target PlotItem, overlaying both on the same plot"""
+        if len(source_data_names) == 0:  # notihng to be done
+            return
+
         created_data_names = []  # list of data names that were successfully created / moved
-        assert len(source_data_names) > 0
         if not insert:  # merge mode
             target_plot_widget = self.widget(target_plot_index)
             if not isinstance(target_plot_widget, pg.PlotWidget):

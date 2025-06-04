@@ -134,6 +134,28 @@ def test_plot_merge(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     qtbot.waitUntil(lambda: plot._plots.count() == 3)
 
 
+def test_plot_merge_multi(qtbot: QtBot, plot: PlotsTableWidget) -> None:
+    qtbot.waitUntil(lambda: plot._plots.count() == 3)  # wait for plots to be ready
+
+    plot._plots._merge_data_into_item(["0", "1"], 0)  # merge into self, including self
+    qtbot.waitUntil(lambda: plot._plots.count() == 2)  # wait for widgets to merge
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 2
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(1)).getPlotItem()).listDataItems()) == 1
+
+    plot._plots._merge_data_into_item(["0", "1"], 1)  # merge into other, not including self
+    qtbot.waitUntil(lambda: plot._plots.count() == 1)  # wait for widgets to merge
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 3
+
+    plot._plots._merge_data_into_item(["1", "2"], 2, insert=True)  # insert at bottom
+    qtbot.waitUntil(lambda: plot._plots.count() == 2)
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 1
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(1)).getPlotItem()).listDataItems()) == 2
+
+    plot._plots._merge_data_into_item(["0", "1", "2"], 2, insert=True)  # insert all
+    qtbot.waitUntil(lambda: plot._plots.count() == 1)
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 3
+
+
 def test_invalid_plot_merge(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     plot._set_data_items(
         [
@@ -193,7 +215,7 @@ def test_no_excessive_plots(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     qtbot.waitUntil(lambda: plot._plots.count() == 1)  # should just create an empty plot
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 0
 
-    plot._plots._merge_data_into_item("A", 0)  # check that stuff can be dragged into the default empty plot
+    plot._plots._merge_data_into_item(["A"], 0)  # check that stuff can be dragged into the default empty plot
     qtbot.waitUntil(lambda: plot._plots.count() == 1)
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 1
 

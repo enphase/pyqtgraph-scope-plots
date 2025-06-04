@@ -70,10 +70,16 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
             y_ts, y_ys = data.get(y_name, (None, None))
             if x_ts is None or x_ys is None or y_ts is None or y_ys is None:
                 continue
-            xt_lo, xt_hi = HasRegionSignalsTable._indices_of_region(x_ts, self._region)
-            yt_lo, yt_hi = HasRegionSignalsTable._indices_of_region(y_ts, self._region)
+
+            # truncate to smaller series, if needed
+            region_lo = max(self._region[0], x_ts[0], y_ts[0])
+            region_hi = min(self._region[1], x_ts[-1], y_ts[-1])
+
+            xt_lo, xt_hi = HasRegionSignalsTable._indices_of_region(x_ts, (region_lo, region_hi))
+            yt_lo, yt_hi = HasRegionSignalsTable._indices_of_region(y_ts, (region_lo, region_hi))
             if xt_lo is None or xt_hi is None or yt_lo is None or yt_hi is None or xt_hi - xt_lo < 2:
                 continue  # empty plot
+
             if not np.array_equal(x_ts[xt_lo:xt_hi], y_ts[yt_lo:yt_hi]):
                 print(f"X/Y indices of {x_name}, {y_name} do not match")
                 continue
@@ -87,10 +93,12 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
             for i in range(fade_segments):
                 this_end = int(i / (fade_segments - 1) * (xt_hi - xt_lo)) + xt_lo
                 curve = pg.PlotCurveItem(
-                    x=x_ys[last_segment_end : this_end + 1],
-                    y=y_ys[last_segment_end + yt_lo - xt_lo : this_end + 1 + yt_lo - xt_lo],
+                    x=x_ys[last_segment_end:this_end],
+                    y=y_ys[last_segment_end + yt_lo - xt_lo : this_end + yt_lo - xt_lo],
                 )
-                last_segment_end = this_end
+                # make sure segments are continuous since this_end is exclusive,
+                # but only as far as the beginning of this segment
+                last_segment_end = max(last_segment_end, this_end - 1)
 
                 segment_color = QColor(y_color)
                 segment_color.setAlpha(int(i / (fade_segments - 1) * 255))

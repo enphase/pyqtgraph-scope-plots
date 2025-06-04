@@ -32,6 +32,8 @@ class SaveRestoreSub(HasSaveRestoreModel):
         return [DataModelSub1, DataModelSub2] + data_bases, [BaseModelSub1, BaseModelSub2] + misc_bases
 
     def _save_model(self, model: BaseTopModel) -> None:
+        super()._save_model(model)
+
         assert isinstance(model, BaseModelSub2) and isinstance(model, BaseModelSub2)
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, DataModelSub1) and isinstance(data_model, DataModelSub2)
@@ -41,7 +43,7 @@ class SaveRestoreSub(HasSaveRestoreModel):
         model.inner.a_field = "a"
 
     def _restore_model(self, model: BaseTopModel) -> None:
-        pass
+        super()._restore_model(model)
 
 
 def test_save_model() -> None:

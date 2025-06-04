@@ -1,6 +1,7 @@
 from typing import Optional, Type, List, Tuple
 
 from pydantic import BaseModel
+from pydantic._internal._model_construction import ModelMetaclass
 
 from pyqtgraph_scope_plots.save_restore_model import DataTopModel, BaseTopModel, HasSaveRestoreModel
 
@@ -27,14 +28,15 @@ class BaseModelSub2(BaseTopModel):
 
 class SaveRestoreSub(HasSaveRestoreModel):
     def _get_model_bases(
-        self, data_bases: List[Type[BaseModel]], misc_bases: List[Type[BaseModel]]
-    ) -> Tuple[List[Type[BaseModel]], List[Type[BaseModel]]]:
+        self, data_bases: List[ModelMetaclass], misc_bases: List[ModelMetaclass]
+    ) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
+        data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
         return [DataModelSub1, DataModelSub2] + data_bases, [BaseModelSub1, BaseModelSub2] + misc_bases
 
     def _save_model(self, model: BaseTopModel) -> None:
         super()._save_model(model)
 
-        assert isinstance(model, BaseModelSub2) and isinstance(model, BaseModelSub2)
+        assert isinstance(model, BaseModelSub1) and isinstance(model, BaseModelSub2)
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, DataModelSub1) and isinstance(data_model, DataModelSub2)
             data_model.field2 = data_name
@@ -50,6 +52,11 @@ def test_save_model() -> None:
     """Tests composition of the save model"""
     instance = SaveRestoreSub()
     skeleton = instance._create_skeleton_model(["data1", "data2", "data3"])
+
+    assert isinstance(skeleton, BaseModelSub1) and isinstance(skeleton, BaseModelSub2)
+    assert isinstance(skeleton.data["data1"], DataModelSub1) and isinstance(skeleton.data["data1"], DataModelSub2)
+    assert isinstance(skeleton.data["data2"], DataModelSub1) and isinstance(skeleton.data["data2"], DataModelSub2)
+    assert isinstance(skeleton.data["data3"], DataModelSub1) and isinstance(skeleton.data["data3"], DataModelSub2)
 
     assert skeleton.data["data1"].field1 == 1
     assert skeleton.data["data1"].field2 is None

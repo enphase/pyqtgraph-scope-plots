@@ -16,6 +16,7 @@ from typing import List, Type, Tuple, Dict, Iterable
 
 import pydantic
 from pydantic import BaseModel
+from pydantic._internal._model_construction import ModelMetaclass
 
 
 class DataTopModel(BaseModel):
@@ -42,8 +43,8 @@ class HasSaveRestoreModel:
     """
 
     def _get_model_bases(
-        self, data_bases: List[Type[BaseModel]], misc_bases: List[Type[BaseModel]]
-    ) -> Tuple[List[Type[BaseModel]], List[Type[BaseModel]]]:
+        self, data_bases: List[ModelMetaclass], misc_bases: List[ModelMetaclass]
+    ) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
         """Returns the (data bases, misc bases) of this. Typically implemented as a concat of the incoming types.
 
         IMPLEMENT ME."""
@@ -53,12 +54,12 @@ class HasSaveRestoreModel:
         """Returns an empty model of the correct type (containing all _get_model_bases)
         that can be passed into _save_model."""
         data_bases, model_bases = self._get_model_bases([DataTopModel], [BaseTopModel])
-        data_model_cls = pydantic.create_model("DataModel", __base__=tuple(data_bases))
+        data_model_cls = pydantic.create_model("DataModel", __base__=tuple(data_bases))  # type: ignore
         top_model_cls = pydantic.create_model(
-            "TopModel", __base__=tuple(model_bases), data=(Dict[str, data_model_cls], ...)
+            "TopModel", __base__=tuple(model_bases), data=(Dict[str, data_model_cls], ...)  # type: ignore
         )
-        top_model = top_model_cls(data={data_name: data_model_cls() for data_name in data_names})  # type: BaseTopModel
-        return top_model
+        top_model = top_model_cls(data={data_name: data_model_cls() for data_name in data_names})
+        return top_model  # type: ignore
 
     def _save_model(self, model: BaseTopModel) -> None:
         """Saves the data into the top-level model. model.data is pre-populated with models for every data item.

@@ -389,7 +389,7 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
             if isinstance(target_plot_item, EnumWaveformPlot):  # can't merge into enum plots
                 return
             for source_data_name in source_data_names:
-                if len(self._plot_item_data[target_plot_item]) > 0:  # check for merge-ability, for empty plots
+                if len(self._plot_item_data[target_plot_item]) > 0:  # check for merge-ability, for nonempty plots
                     if (
                         self._data_items[self._plot_item_data[target_plot_item][0] or ""][1]
                         != self._data_items[source_data_name][1]
@@ -415,8 +415,8 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
                 for source_data_name in source_data_names[1:]:
                     if self._data_items[source_data_names[0]][1] != self._data_items[source_data_name][1]:
                         continue
-                    self._plot_item_data[plot_item].append(source_data_names[0])
-                    created_data_names.append(source_data_names[0])
+                    self._plot_item_data[plot_item].append(source_data_name)
+                    created_data_names.append(source_data_name)
 
             self._update_plots_x_axis()
 

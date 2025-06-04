@@ -359,6 +359,13 @@ class LinkedMultiPlotWidget(MultiPlotWidget):
 
 
 class DragTargetOverlay(QWidget):
+    def __init__(self, parent: QWidget):
+        super().__init__(parent)
+        # these prevent overlay flickering when the overlay intercepts the drag
+        # and cancels the underlying widget's drag
+        self.setAcceptDrops(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+
     def paintEvent(self, event: QPaintEvent) -> None:
         painter = QPainter()
         painter.begin(self)

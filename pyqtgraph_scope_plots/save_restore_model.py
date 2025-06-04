@@ -12,13 +12,20 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import List, Type, Tuple
+from typing import List, Type, Tuple, Dict, Iterable
 
+import pydantic
 from pydantic import BaseModel
 
 
-class BaseTopModel(BaseModel):
+class DataTopModel(BaseModel):
+    # note, fields dynamically set by HasSaveRestoreModel._get_model_bases
     pass
+
+
+class BaseTopModel(BaseModel):
+    data: Dict[str, DataTopModel]
+    # note, fields dynamically set by HasSaveRestoreModel._get_model_bases
 
 
 class HasSaveRestoreModel:
@@ -42,8 +49,19 @@ class HasSaveRestoreModel:
         IMPLEMENT ME."""
         return data_bases, misc_bases
 
+    def _create_skeleton_model(self, data_names: Iterable[str]) -> BaseTopModel:
+        """Returns an empty model of the correct type that can be passed into _save_model."""
+        data_bases, model_bases = self._get_model_bases([DataTopModel], [BaseTopModel])
+        data_model_cls = pydantic.create_model("DataModel", __base__=tuple(data_bases))
+        top_model_cls = pydantic.create_model(
+            "TopModel", __base__=tuple(model_bases), data=(Dict[str, data_model_cls], ...)
+        )
+        top_model = top_model_cls(data={data_name: data_model_cls() for data_name in data_names})  # type: BaseTopModel
+        return top_model
+
     def _save_model(self, model: BaseTopModel) -> None:
-        """Saves the data into the top-level model. Mutates the model in-place.
+        """Saves the data into the top-level model. model.data is pre-populated with models for every data item.
+        Mutates the model in-place.
 
         IMPLEMENT ME."""
         pass

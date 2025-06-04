@@ -88,7 +88,7 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
             y_color = self._parent._data_items.get(y_name, QColor("white"))
             fade_segments = min(
                 self.FADE_SEGMENTS, xt_hi - xt_lo
-            )  # keep track of the x time indices, offset for y time indices
+            )  # keep track of the x time indices, apply offset for y time indices
             last_segment_end = xt_lo
             for i in range(fade_segments):
                 this_end = int(i / (fade_segments - 1) * (xt_hi - xt_lo)) + xt_lo

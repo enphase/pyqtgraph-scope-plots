@@ -66,26 +66,29 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
             data = transformed_data
 
         for x_name, y_name in self._xys:
-            x_xs, x_ys = data.get(x_name, (None, None))
-            y_xs, y_ys = data.get(y_name, (None, None))
-            if x_xs is None or x_ys is None or y_xs is None or y_ys is None:
+            x_ts, x_ys = data.get(x_name, (None, None))
+            y_ts, y_ys = data.get(y_name, (None, None))
+            if x_ts is None or x_ys is None or y_ts is None or y_ys is None:
                 continue
-            x_lo, x_hi = HasRegionSignalsTable._indices_of_region(x_xs, self._region)
-            y_lo, y_hi = HasRegionSignalsTable._indices_of_region(y_xs, self._region)
-            if x_lo is None or x_hi is None or y_lo is None or y_hi is None or x_hi - x_lo < 2:
+            xt_lo, xt_hi = HasRegionSignalsTable._indices_of_region(x_ts, self._region)
+            yt_lo, yt_hi = HasRegionSignalsTable._indices_of_region(y_ts, self._region)
+            if xt_lo is None or xt_hi is None or yt_lo is None or yt_hi is None or xt_hi - xt_lo < 2:
                 continue  # empty plot
-            if not np.array_equal(x_xs[x_lo:x_hi], y_xs[x_lo:x_hi]):
+            if not np.array_equal(x_ts[xt_lo:xt_hi], y_ts[yt_lo:yt_hi]):
                 print(f"X/Y indices of {x_name}, {y_name} do not match")
                 continue
 
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
             y_color = self._parent._data_items.get(y_name, QColor("white"))
-            fade_segments = min(self.FADE_SEGMENTS, x_hi - x_lo)
-            last_segment_end = x_lo
+            fade_segments = min(
+                self.FADE_SEGMENTS, xt_hi - xt_lo
+            )  # keep track of the x time indices, offset for y time indices
+            last_segment_end = xt_lo
             for i in range(fade_segments):
-                this_end = int(i / (fade_segments - 1) * (x_hi - x_lo)) + x_lo
+                this_end = int(i / (fade_segments - 1) * (xt_hi - xt_lo)) + xt_lo
                 curve = pg.PlotCurveItem(
-                    x=x_ys[last_segment_end : this_end + 1], y=y_ys[last_segment_end : this_end + 1]
+                    x=x_ys[last_segment_end : this_end + 1],
+                    y=y_ys[last_segment_end + yt_lo - xt_lo : this_end + 1 + yt_lo - xt_lo],
                 )
                 last_segment_end = this_end
 

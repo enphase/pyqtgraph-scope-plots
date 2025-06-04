@@ -104,7 +104,11 @@ class MultiPlotWidget(HasSaveRestoreModel, QSplitter):
         for i in range(self.count()):
             widget = self.widget(i)
             if isinstance(widget, pg.PlotWidget):
-                widget_data_items = self._plot_item_data.get(widget.getPlotItem(), [])
+                widget_data_items = [
+                    data_item
+                    for data_item in self._plot_item_data.get(widget.getPlotItem(), [])
+                    if data_item is not None
+                ]
             else:
                 widget_data_items = []
             model.widget_data_items.append(widget_data_items)
@@ -127,7 +131,7 @@ class MultiPlotWidget(HasSaveRestoreModel, QSplitter):
             add_plot_item = self._init_plot_item(self._create_plot_item(plot_type))
             plot_widget = pg.PlotWidget(plotItem=add_plot_item)
             self.addWidget(plot_widget)
-            self._plot_item_data[add_plot_item] = widget_data_items
+            self._plot_item_data[add_plot_item] = widget_data_items  # type: ignore
 
         self._check_create_default_plot()
         self._update_plots_x_axis()
@@ -326,7 +330,12 @@ class MultiPlotWidget(HasSaveRestoreModel, QSplitter):
                 plot_item.enableAutoRange(axis="y", enable=enable)
 
 
-class LinkedMultiPlotWidget(MultiPlotWidget):
+class LinkedMultiPlotStateModel(BaseModel):
+    region: Optional[Union[float, Tuple[float, float]]] = None
+    pois: List[float] = []
+
+
+class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveRestoreModel):
     """Mixin into the MultiPlotWidget that links PointsOfInterestPlot, RegionPlot, and LiveCursorPlot"""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -335,6 +344,24 @@ class LinkedMultiPlotWidget(MultiPlotWidget):
         self._last_pois: List[float] = []
         self._last_drag_cursor: Optional[float] = None
         super().__init__(*args, **kwargs)
+
+    def _get_model_bases(
+        self, data_bases: List[ModelMetaclass], misc_bases: List[ModelMetaclass]
+    ) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
+        data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
+        return data_bases, [LinkedMultiPlotStateModel] + misc_bases
+
+    def _save_model(self, model: BaseTopModel) -> None:
+        super()._save_model(model)
+        assert isinstance(model, LinkedMultiPlotStateModel)
+        model.region = self._last_region
+        model.pois = self._last_pois
+
+    def _restore_model(self, model: BaseTopModel) -> None:
+        super()._restore_model(model)
+        assert isinstance(model, LinkedMultiPlotStateModel)
+        self._on_region_change(None, model.region)
+        self._on_poi_change(None, model.pois)
 
     def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
         """Called after _create_plot_item, does any post-creation init. Returns the same plot_item."""

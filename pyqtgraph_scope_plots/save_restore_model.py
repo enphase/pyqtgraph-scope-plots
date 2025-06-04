@@ -50,19 +50,20 @@ class HasSaveRestoreModel:
         IMPLEMENT ME."""
         return data_bases, misc_bases
 
-    def _create_skeleton_model_type(self) -> Type[BaseTopModel]:
+    def _create_skeleton_model_type(self) -> Tuple[Type[DataTopModel], Type[BaseTopModel]]:
         data_bases, model_bases = self._get_model_bases([DataTopModel], [BaseTopModel])
         data_model_cls = pydantic.create_model("DataModel", __base__=tuple(data_bases))  # type: ignore
-        return pydantic.create_model(
+        top_model_cls = pydantic.create_model(
             "TopModel", __base__=tuple(model_bases), data=(Dict[str, data_model_cls], ...)  # type: ignore
         )
+        return data_model_cls, top_model_cls
 
     def _create_skeleton_model(self, data_names: Iterable[str]) -> BaseTopModel:
         """Returns an empty model of the correct type (containing all _get_model_bases)
         that can be passed into _save_model."""
-        data_model_cls = pydantic.create_model("DataModel", __base__=tuple(data_bases))  # type: ignore
-        top_model = self._create_skeleton_model_type()(data={data_name: data_model_cls() for data_name in data_names})
-        return top_model  # type: ignore
+        data_model_cls, top_model_cls = self._create_skeleton_model_type()
+        top_model = top_model_cls(data={data_name: data_model_cls() for data_name in data_names})
+        return top_model
 
     def _save_model(self, model: BaseTopModel) -> None:
         """Saves the data into the top-level model. model.data is pre-populated with models for every data item.

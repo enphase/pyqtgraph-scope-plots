@@ -378,7 +378,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
         return self
 
-    def _on_save_state(self):
+    def _on_save_state(self) -> None:
         filename, _ = QFileDialog.getSaveFileName(None, "Save state", filter="YAML files (*.yml)")
         if not filename:  # nothing selected, user canceled
             return
@@ -388,11 +388,12 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         with open(filename, "w") as f:
             f.write(model_str)
 
-    def _on_load_state(self):
+    def _on_load_state(self) -> None:
         filename, _ = QFileDialog.getOpenFileName(None, "Load state", filter="YAML files (*.yml)")
         if not filename:  # nothing selected, user canceled
             return
         with open(filename, "r") as f:
-            model = self._create_skeleton_model_type()(**yaml.safe_load(f))
+            _, top_model_cls = self._create_skeleton_model_type()
+            model = top_model_cls(**yaml.safe_load(f))
 
         self._restore_model(model)

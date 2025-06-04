@@ -72,8 +72,10 @@ class HasSaveRestoreModel:
         It is guaranteed that by the time the subclasses of this have the load called, the data_items
         are correctly populated (responsibility of the top-level load). HOWEVER, some data_items
         restores may fail, so this should check for the existence of each data_item.
+        data values will not be valid.
 
-        TODO: definition for delayed single bulk update
+        data values will be set after all mixins have completed restore.
+        This function does not need to duplicate any work that would otherwise be done on a data value set.
 
         IMPLEMENT ME."""
         pass

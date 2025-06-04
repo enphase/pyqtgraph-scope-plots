@@ -35,7 +35,7 @@ class PlotsTableWidget(QSplitter):
     class PlotsTableMultiPlots(DroppableMultiPlotWidget, LinkedMultiPlotWidget):
         """MultiPlotWidget used in PlotsTableWidget with required mixins."""
 
-    class PlotsTableSignalsTable(DraggableSignalsTable, XyTable, TransformsSignalsTable, StatsSignalsTable):
+    class PlotsTableSignalsTable(XyTable, DraggableSignalsTable, TransformsSignalsTable, StatsSignalsTable):
         """SignalsTable used in PlotsTableWidget with required mixins."""
 
         def __init__(self, plots: MultiPlotWidget, *args: Any, **kwargs: Any) -> None:

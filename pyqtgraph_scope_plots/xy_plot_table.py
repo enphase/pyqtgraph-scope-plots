@@ -21,7 +21,7 @@ from PySide6.QtGui import QAction, QColor
 from PySide6.QtWidgets import QMenu, QTableWidgetItem, QMessageBox
 from numpy import typing as npt
 
-from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable
+from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable, DraggableSignalsTable
 from .transforms_signal_table import TransformsSignalsTable
 
 
@@ -89,7 +89,7 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
                 self.addItem(curve)
 
 
-class XyTable(ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTable):
+class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTable):
     """Mixin into SignalsTable that adds the option to open an XY plot in a separate window."""
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -97,15 +97,6 @@ class XyTable(ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTabl
         self._xy_action = QAction("Create X-Y Plot", self)
         self._xy_action.triggered.connect(self._on_xy)
         self._xy_plots: List[XyPlotWidget] = []
-
-        self._ordered_selects: List[QTableWidgetItem] = []
-        self.itemSelectionChanged.connect(self._on_select_changed)
-
-    def _on_select_changed(self) -> None:
-        # since selectedItems is not ordered by selection, keep an internal order by tracking changes
-        new_selects = [item for item in self.selectedItems() if item not in self._ordered_selects]
-        self._ordered_selects = [item for item in self._ordered_selects if item in self.selectedItems()]
-        self._ordered_selects.extend(new_selects)
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)

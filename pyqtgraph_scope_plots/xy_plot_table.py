@@ -40,8 +40,9 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
         self.setAcceptDrops(True)
 
     def add_xy(self, x_name: str, y_name: str) -> None:
-        self._xys.append((x_name, y_name))
-        self._update()
+        if (x_name, y_name) not in self._xys:
+            self._xys.append((x_name, y_name))
+            self._update()
 
     def set_range(self, region: Tuple[float, float]) -> None:
         self._region = region

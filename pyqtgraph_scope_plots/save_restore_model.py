@@ -50,7 +50,8 @@ class HasSaveRestoreModel:
         return data_bases, misc_bases
 
     def _create_skeleton_model(self, data_names: Iterable[str]) -> BaseTopModel:
-        """Returns an empty model of the correct type that can be passed into _save_model."""
+        """Returns an empty model of the correct type (containing all _get_model_bases)
+        that can be passed into _save_model."""
         data_bases, model_bases = self._get_model_bases([DataTopModel], [BaseTopModel])
         data_model_cls = pydantic.create_model("DataModel", __base__=tuple(data_bases))
         top_model_cls = pydantic.create_model(

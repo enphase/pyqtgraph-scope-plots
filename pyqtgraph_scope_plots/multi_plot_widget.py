@@ -22,10 +22,13 @@ import pyqtgraph as pg
 from PySide6.QtCore import QSignalBlocker, QPoint, QSize, Signal
 from PySide6.QtGui import QColor, Qt, QDropEvent, QDragLeaveEvent, QPainter, QBrush, QDragMoveEvent, QPaintEvent
 from PySide6.QtWidgets import QWidget, QSplitter
+from pydantic import BaseModel
+from pydantic._internal._model_construction import ModelMetaclass
 
 from .enum_waveform_plotitem import EnumWaveformPlot
 from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot
 from .signals_table import DraggableSignalsTable
+from .save_restore_model import HasSaveRestoreModel, BaseTopModel
 
 
 class InteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot):
@@ -42,7 +45,11 @@ class EnumWaveformInteractivePlot(
     POI_ANCHOR = (0, 0.5)
 
 
-class MultiPlotWidget(QSplitter):
+class MultiPlotStateModel(BaseModel):
+    widget_data_items: List[List[str]] = []  # window index -> list of data items
+
+
+class MultiPlotWidget(HasSaveRestoreModel, QSplitter):
     """A splitter that can contain multiple (vertically stacked) plots with linked x-axis"""
 
     class PlotType(Enum):
@@ -83,6 +90,28 @@ class MultiPlotWidget(QSplitter):
         # re-derived when _plot_item_data updated
         self._data_name_to_plot_item: Dict[Optional[str], pg.PlotItem] = {None: default_plot_item}
         self._anchor_x_plot_item: pg.PlotItem = default_plot_item  # PlotItem that everyone's x-axis is linked to
+
+    def _get_model_bases(
+        self, data_bases: List[ModelMetaclass], misc_bases: List[ModelMetaclass]
+    ) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
+        data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
+        return data_bases, [MultiPlotStateModel] + misc_bases
+
+    def _save_model(self, model: BaseTopModel) -> None:
+        super()._save_model(model)
+        assert isinstance(model, MultiPlotStateModel)
+        model.widget_data_items = []
+        for i in range(self.count()):
+            widget = self.widget(i)
+            if isinstance(widget, pg.PlotWidget):
+                widget_data_items = self._plot_item_data.get(widget.getPlotItem(), [])
+            else:
+                widget_data_items = []
+            model.widget_data_items.append(widget_data_items)
+
+    def _restore_model(self, model: BaseTopModel) -> None:
+        super()._restore_model(model)
+        raise NotImplementedError
 
     def render_value(self, data_name: str, value: float) -> str:
         """Float-to-string conversion for a value. Optionally override this to provide smarter precision."""

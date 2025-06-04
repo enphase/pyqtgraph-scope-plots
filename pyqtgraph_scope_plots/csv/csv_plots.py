@@ -16,6 +16,7 @@ import bisect
 import itertools
 import os.path
 import time
+import yaml
 from functools import partial
 from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable, Sequence, cast, Set, Iterable
 
@@ -27,7 +28,9 @@ from PySide6 import QtWidgets
 from PySide6.QtCore import QKeyCombination, QTimer
 from PySide6.QtGui import QAction, QColor, Qt
 from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QVBoxLayout, QInputDialog, QToolButton
+from pydantic._internal._model_construction import ModelMetaclass
 
+from ..save_restore_model import HasSaveRestoreModel, BaseTopModel
 from ..animation_plot_table_widget import AnimationPlotsTableWidget
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
@@ -39,7 +42,7 @@ from ..transforms_signal_table import TransformsSignalsTable
 from ..util import int_color
 
 
-class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget):
+class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, HasSaveRestoreModel):
     """Example app-level widget that loads CSV files into the plotter"""
 
     WATCH_INTERVAL_MS = 333  # polls the filesystem metadata for changes this frequently
@@ -111,6 +114,21 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget):
         self._watch_timer = QTimer()
         self._watch_timer.setInterval(self.WATCH_INTERVAL_MS)
         self._watch_timer.timeout.connect(self._check_watch)
+
+    def _get_model_bases(
+        self, data_bases: List[ModelMetaclass], misc_bases: List[ModelMetaclass]
+    ) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
+        data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
+        data_bases, misc_bases = self._plots._get_model_bases(data_bases, misc_bases)
+        return data_bases, misc_bases
+
+    def _save_model(self, model: BaseTopModel) -> None:
+        super()._save_model(model)
+        self._plots._save_model(model)
+
+    def _restore_model(self, model: BaseTopModel) -> None:
+        super()._restore_model(model)
+        self._plots._restore_model(model)
 
     def _transform_data(
         self,
@@ -234,6 +252,10 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget):
         button_menu.addAction(animation_action)
         button_visuals.setMenu(button_menu)
 
+        save_state_action = QAction("Save State", button_menu)
+        save_state_action.triggered.connect(self._on_save_state)
+        button_menu.addAction(save_state_action)
+
         layout = QVBoxLayout()
         layout.addWidget(button_load)
         layout.addWidget(button_refresh)
@@ -352,3 +374,13 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget):
         self._csv_data_items = csv_data_items_dict
 
         return self
+
+    def _on_save_state(self):
+        filename, _ = QFileDialog.getSaveFileName(None, "Save state", filter="YAML files (*.yml)")
+        if not filename:  # nothing selected, user canceled
+            return
+        model = self._create_skeleton_model(self._table._data_items.keys())
+        self._save_model(model)
+        model_str = yaml.dump(model.model_dump())
+        with open(filename, "w") as f:
+            f.write(model_str)

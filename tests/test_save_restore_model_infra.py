@@ -1,4 +1,4 @@
-from typing import Optional, Type, List, Tuple
+from typing import Optional, List, Tuple
 
 from pydantic import BaseModel
 from pydantic._internal._model_construction import ModelMetaclass

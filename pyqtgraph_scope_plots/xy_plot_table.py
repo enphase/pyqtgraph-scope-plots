@@ -17,11 +17,13 @@ from typing import Any, List, Tuple, Mapping, Optional
 import numpy as np
 import pyqtgraph as pg
 from PySide6 import QtGui
-from PySide6.QtGui import QAction, QColor
+from PySide6.QtCore import QSize
+from PySide6.QtGui import QAction, QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent
 from PySide6.QtWidgets import QMenu, QTableWidgetItem, QMessageBox
 from numpy import typing as npt
 
-from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable
+from .multi_plot_widget import DragTargetOverlay
+from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable, DraggableSignalsTable
 from .transforms_signal_table import TransformsSignalsTable
 
 
@@ -34,9 +36,13 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
         self._xys: List[Tuple[str, str]] = []
         self._region = (-float("inf"), float("inf"))
 
+        self._drag_overlays: List[DragTargetOverlay] = []
+        self.setAcceptDrops(True)
+
     def add_xy(self, x_name: str, y_name: str) -> None:
-        self._xys.append((x_name, y_name))
-        self._update()
+        if (x_name, y_name) not in self._xys:
+            self._xys.append((x_name, y_name))
+            self._update()
 
     def set_range(self, region: Tuple[float, float]) -> None:
         self._region = region
@@ -60,36 +66,85 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
             data = transformed_data
 
         for x_name, y_name in self._xys:
-            x_xs, x_ys = data.get(x_name, (None, None))
-            y_xs, y_ys = data.get(y_name, (None, None))
-            if x_xs is None or x_ys is None or y_xs is None or y_ys is None:
+            x_ts, x_ys = data.get(x_name, (None, None))
+            y_ts, y_ys = data.get(y_name, (None, None))
+            if x_ts is None or x_ys is None or y_ts is None or y_ys is None:
                 continue
-            x_lo, x_hi = HasRegionSignalsTable._indices_of_region(x_xs, self._region)
-            y_lo, y_hi = HasRegionSignalsTable._indices_of_region(y_xs, self._region)
-            if x_lo is None or x_hi is None or y_lo is None or y_hi is None or x_hi - x_lo < 2:
+
+            # truncate to smaller series, if needed
+            region_lo = max(self._region[0], x_ts[0], y_ts[0])
+            region_hi = min(self._region[1], x_ts[-1], y_ts[-1])
+
+            xt_lo, xt_hi = HasRegionSignalsTable._indices_of_region(x_ts, (region_lo, region_hi))
+            yt_lo, yt_hi = HasRegionSignalsTable._indices_of_region(y_ts, (region_lo, region_hi))
+            if xt_lo is None or xt_hi is None or yt_lo is None or yt_hi is None or xt_hi - xt_lo < 2:
                 continue  # empty plot
-            if not np.array_equal(x_xs[x_lo:x_hi], y_xs[x_lo:x_hi]):
+
+            if not np.array_equal(x_ts[xt_lo:xt_hi], y_ts[yt_lo:yt_hi]):
                 print(f"X/Y indices of {x_name}, {y_name} do not match")
                 continue
 
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
             y_color = self._parent._data_items.get(y_name, QColor("white"))
-            fade_segments = min(self.FADE_SEGMENTS, x_hi - x_lo)
-            last_segment_end = x_lo
+            fade_segments = min(
+                self.FADE_SEGMENTS, xt_hi - xt_lo
+            )  # keep track of the x time indices, apply offset for y time indices
+            last_segment_end = xt_lo
             for i in range(fade_segments):
-                this_end = int(i / (fade_segments - 1) * (x_hi - x_lo)) + x_lo
+                this_end = int(i / (fade_segments - 1) * (xt_hi - xt_lo)) + xt_lo
                 curve = pg.PlotCurveItem(
-                    x=x_ys[last_segment_end : this_end + 1], y=y_ys[last_segment_end : this_end + 1]
+                    x=x_ys[last_segment_end:this_end],
+                    y=y_ys[last_segment_end + yt_lo - xt_lo : this_end + yt_lo - xt_lo],
                 )
-                last_segment_end = this_end
+                # make sure segments are continuous since this_end is exclusive,
+                # but only as far as the beginning of this segment
+                last_segment_end = max(last_segment_end, this_end - 1)
 
                 segment_color = QColor(y_color)
                 segment_color.setAlpha(int(i / (fade_segments - 1) * 255))
                 curve.setPen(color=segment_color, width=1)
                 self.addItem(curve)
 
+    def dragEnterEvent(self, event: QDragMoveEvent) -> None:
+        if not event.mimeData().data(DraggableSignalsTable.DRAG_MIME_TYPE):  # check for right type
+            return
+        overlay = DragTargetOverlay(self)
+        overlay.resize(QSize(self.width(), self.height()))
+        overlay.setVisible(True)
+        self._drag_overlays.append(overlay)
+        event.accept()
 
-class XyTable(ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTable):
+    def _clear_drag_overlays(self) -> None:
+        for drag_overlay in self._drag_overlays:
+            drag_overlay.deleteLater()
+        self._drag_overlays = []
+
+    def dragMoveEvent(self, event: QDragMoveEvent) -> None:
+        event.accept()
+
+    def dragLeaveEvent(self, event: QDragLeaveEvent) -> None:
+        self._clear_drag_overlays()
+
+    def dropEvent(self, event: QDropEvent) -> None:
+        self._clear_drag_overlays()
+
+        data = event.mimeData().data(DraggableSignalsTable.DRAG_MIME_TYPE)
+        if not data:
+            return
+        drag_data_names = bytes(data.data()).decode("utf-8").split("\0")
+        if len(drag_data_names) != 2:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Select two items for X-Y plotting, got {drag_data_names}",
+                QMessageBox.StandardButton.Ok,
+            )
+            return
+        self.add_xy(drag_data_names[0], drag_data_names[1])
+        event.accept()
+
+
+class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTable):
     """Mixin into SignalsTable that adds the option to open an XY plot in a separate window."""
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -97,15 +152,6 @@ class XyTable(ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTabl
         self._xy_action = QAction("Create X-Y Plot", self)
         self._xy_action.triggered.connect(self._on_xy)
         self._xy_plots: List[XyPlotWidget] = []
-
-        self._ordered_selects: List[QTableWidgetItem] = []
-        self.itemSelectionChanged.connect(self._on_select_changed)
-
-    def _on_select_changed(self) -> None:
-        # since selectedItems is not ordered by selection, keep an internal order by tracking changes
-        new_selects = [item for item in self.selectedItems() if item not in self._ordered_selects]
-        self._ordered_selects = [item for item in self._ordered_selects if item in self.selectedItems()]
-        self._ordered_selects.extend(new_selects)
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)

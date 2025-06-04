@@ -20,7 +20,7 @@ classifiers = [
 ]
 license = "Apache-2.0"
 dependencies = [
-    "PySide6~=6.6",
+    "PySide6~=6.6,!=6.9.1",  # unit tests fail on 6.9.1
     "pyqtgraph~=0.13",
     "pillow>=9.0",
     "pandas~=2.0",

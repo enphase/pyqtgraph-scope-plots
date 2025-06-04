@@ -368,27 +368,35 @@ class ColorPickerSignalsTable(ContextMenuSignalsTable):
 
 
 class DraggableSignalsTable(SignalsTable):
-    """Mixin into SignalsTable that allows rows to be dragged and dropped into a DroppableMultiPlotWidget."""
+    """Mixin into SignalsTable that allows rows to be dragged and dropped into a DroppableMultiPlotWidget.
+    Rows are presented in selection order."""
 
     DRAG_MIME_TYPE = "application/x.plots.dataname"
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
+        self._ordered_selects: List[QTableWidgetItem] = []
+        self.itemSelectionChanged.connect(self._on_select_changed)
+
+    def _on_select_changed(self) -> None:
+        # since selectedItems is not ordered by selection, keep an internal order by tracking changes
+        new_selects = [item for item in self.selectedItems() if item not in self._ordered_selects]
+        self._ordered_selects = [item for item in self._ordered_selects if item in self.selectedItems()]
+        self._ordered_selects.extend(new_selects)
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
         if e.buttons() == Qt.MouseButton.LeftButton:
-            drag_source_item = self.currentItem()
-            if drag_source_item is None:
+            if not self._ordered_selects:
                 return
-            if drag_source_item.row() > len(self._data_items):  # shouldn't happen
-                return
-            item_name = list(self._data_items.keys())[drag_source_item.row()]
+            data_names = list(self._data_items.keys())
+            item_names = [data_names[item.row()] for item in self._ordered_selects]
+
             drag = QDrag(self)
             mime = QMimeData()
-            mime.setData(self.DRAG_MIME_TYPE, item_name.encode("utf-8"))
+            mime.setData(self.DRAG_MIME_TYPE, "\0".join(item_names).encode("utf-8"))
             drag.setMimeData(mime)
 
-            drag_label = QLabel(item_name)
+            drag_label = QLabel(", ".join(item_names))
             pixmap = QPixmap(drag_label.size())
             drag_label.render(pixmap)
             drag.setPixmap(pixmap)

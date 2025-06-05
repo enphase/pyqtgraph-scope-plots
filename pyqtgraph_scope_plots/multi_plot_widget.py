@@ -14,7 +14,7 @@
 
 from enum import Enum
 from functools import partial
-from typing import Dict, Tuple, List, Optional, Any, Callable, Union, Mapping, cast
+from typing import Dict, Tuple, List, Optional, Any, Callable, Union, Mapping, cast, Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -46,10 +46,12 @@ class EnumWaveformInteractivePlot(
 
 class PlotWidgetModel(BaseModel):
     data_items: List[str] = []  # window index -> list of data items
+    y_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
 
 
 class MultiPlotStateModel(BaseTopModel):
     plot_widgets: Optional[List[PlotWidgetModel]] = None  # window index -> list of data items
+    x_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
 
 
 class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
@@ -102,15 +104,23 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
         model.plot_widgets = []
         for i in range(self.count()):
             widget = self.widget(i)
-            if isinstance(widget, pg.PlotWidget):
-                widget_data_items = [
-                    data_item
-                    for data_item in self._plot_item_data.get(widget.getPlotItem(), [])
-                    if data_item is not None
-                ]
+            if not isinstance(widget, pg.PlotWidget):  # ignored
+                continue
+            widget_model = PlotWidgetModel()
+            widget_model.data_items = [
+                data_item for data_item in self._plot_item_data.get(widget.getPlotItem(), []) if data_item is not None
+            ]
+            widget_viewbox = cast(pg.PlotItem, widget.getPlotItem()).getViewBox()
+            if widget_viewbox.autoRangeEnabled()[1]:
+                widget_model.y_range = "auto"
             else:
-                widget_data_items = []
-            model.plot_widgets.append(PlotWidgetModel(data_items=widget_data_items))
+                widget_model.y_range = tuple(widget_viewbox.viewRange()[1])
+            model.plot_widgets.append(widget_model)
+
+        if self._anchor_x_plot_item.getViewBox().autoRangeEnabled()[0]:
+            model.x_range = "auto"
+        else:
+            model.x_range = tuple(self._anchor_x_plot_item.getViewBox().viewRange()[0])
 
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)

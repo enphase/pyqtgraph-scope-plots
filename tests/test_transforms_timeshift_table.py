@@ -23,7 +23,7 @@ from PySide6.QtWidgets import QInputDialog
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.timeshift_signals_table import TimeshiftSignalsTable, TimeshiftDataStateModel
-from pyqtgraph_scope_plots.transforms_signal_table import TransformsSignalsTable
+from pyqtgraph_scope_plots.transforms_signal_table import TransformsSignalsTable, TransformsDataStateModel
 from pyqtgraph_scope_plots.util import not_none
 from .test_util import context_menu, menu_action_by_name
 
@@ -73,58 +73,42 @@ def test_transform_empty(qtbot: QtBot, transforms_table: TransformsSignalsTable)
 
 def test_transform_x(qtbot: QtBot, transforms_table: TransformsSignalsTable) -> None:
     """Tests transforms that only reference x"""
-    target = transforms_table.visualItemRect(
-        not_none(transforms_table.item(0, transforms_table.COL_TRANSFORM))
-    ).center()
-    with mock.patch.object(QInputDialog, "getText") as mock_input:
-        mock_input.return_value = ("x + 1", True)
-        menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
-        qtbot.waitUntil(lambda: transforms_table.apply_transform("0", DATA).tolist() == [1.01, 2, 2, 1])
+    transforms_table.set_transform(["0"], "x + 1")
+    qtbot.waitUntil(lambda: transforms_table.apply_transform("0", DATA).tolist() == [1.01, 2, 2, 1])
 
-    target = transforms_table.visualItemRect(
-        not_none(transforms_table.item(1, transforms_table.COL_TRANSFORM))
-    ).center()
-    with mock.patch.object(QInputDialog, "getText") as mock_input:
-        mock_input.return_value = ("x * 2", True)
-        menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
-        qtbot.waitUntil(lambda: transforms_table.apply_transform("1", DATA).tolist() == [1, 0.5, 1])
-        assert transforms_table.apply_transform("0", DATA).tolist() == [1.01, 2, 2, 1]  # should not affect 0
+    transforms_table.set_transform(["1"], "x * 2")
+    qtbot.waitUntil(lambda: transforms_table.apply_transform("1", DATA).tolist() == [1, 0.5, 1])
+    assert transforms_table.apply_transform("0", DATA).tolist() == [1.01, 2, 2, 1]  # should not affect 0
 
-    target = transforms_table.visualItemRect(
-        not_none(transforms_table.item(0, transforms_table.COL_TRANSFORM))
-    ).center()
-    with mock.patch.object(QInputDialog, "getText") as mock_input:
-        mock_input.return_value = ("", True)  # test no transform
-        menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
-        qtbot.waitUntil(lambda: transforms_table.apply_transform("0", DATA).tolist() == [0.01, 1, 1, 0])
-        assert transforms_table.apply_transform("1", DATA).tolist() == [1, 0.5, 1]
+    transforms_table.set_transform(["0"], "")
+    qtbot.waitUntil(lambda: transforms_table.apply_transform("0", DATA).tolist() == [0.01, 1, 1, 0])
+    assert transforms_table.apply_transform("1", DATA).tolist() == [1, 0.5, 1]
 
 
 def test_transform_multiple(qtbot: QtBot, transforms_table: TransformsSignalsTable) -> None:
     """Tests transforms that reference other data objects"""
+    transforms_table.set_transform(["1"], "x + data['2']")
+    qtbot.waitUntil(lambda: transforms_table.apply_transform("1", DATA).tolist() == [1.2, 0.85, 1])
+
+    transforms_table.set_transform(["1"], "x + data['0']")  # allow getting with longer data
+    qtbot.waitUntil(lambda: transforms_table.apply_transform("1", DATA).tolist() == [0.51, 1.25, 0.5])
+
+    transforms_table.set_transform(["0"], "x + data.get('1', 0)")  # test .get with missing values
+    qtbot.waitUntil(lambda: transforms_table.apply_transform("0", DATA).tolist() == [0.51, 1, 1.25, 0.5])
+
+
+def test_transform_ui(qtbot: QtBot, transforms_table: TransformsSignalsTable) -> None:
+    """Basic test of transforms driven from the UI"""
     target = transforms_table.visualItemRect(
         not_none(transforms_table.item(1, transforms_table.COL_TRANSFORM))
     ).center()
-    with mock.patch.object(QInputDialog, "getText") as mock_input:
-        mock_input.return_value = ("x + data['2']", True)
-        menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
-        qtbot.waitUntil(lambda: transforms_table.apply_transform("1", DATA).tolist() == [1.2, 0.85, 1])
-
     with mock.patch.object(QInputDialog, "getText") as mock_input:  # allow getting with longer data
         mock_input.return_value = ("x + data['0']", True)
         menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
         qtbot.waitUntil(lambda: transforms_table.apply_transform("1", DATA).tolist() == [0.51, 1.25, 0.5])
 
-    target = transforms_table.visualItemRect(
-        not_none(transforms_table.item(0, transforms_table.COL_TRANSFORM))
-    ).center()
-    with mock.patch.object(QInputDialog, "getText") as mock_input:  # test .get with missing values
-        mock_input.return_value = ("x + data.get('1', 0)", True)
-        menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
-        qtbot.waitUntil(lambda: transforms_table.apply_transform("0", DATA).tolist() == [0.51, 1, 1.25, 0.5])
 
-
-def test_transform_syntaxerror(qtbot: QtBot, transforms_table: TransformsSignalsTable) -> None:
+def test_transform_ui_syntaxerror(qtbot: QtBot, transforms_table: TransformsSignalsTable) -> None:
     """Tests that syntax errors repeatedly prompt"""
     target = transforms_table.visualItemRect(
         not_none(transforms_table.item(0, transforms_table.COL_TRANSFORM))
@@ -143,7 +127,7 @@ def test_transform_syntaxerror(qtbot: QtBot, transforms_table: TransformsSignals
         qtbot.waitUntil(lambda: transforms_table.apply_transform("0", DATA).tolist() == [1, 1, 1, 1])
 
 
-def test_transform_error_ui(qtbot: QtBot, transforms_table: TransformsSignalsTable) -> None:
+def test_transform_ui_error(qtbot: QtBot, transforms_table: TransformsSignalsTable) -> None:
     target = transforms_table.visualItemRect(
         not_none(transforms_table.item(0, transforms_table.COL_TRANSFORM))
     ).center()
@@ -164,6 +148,33 @@ def test_transform_error_ui(qtbot: QtBot, transforms_table: TransformsSignalsTab
         menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
         qtbot.waitUntil(lambda: isinstance(transforms_table.apply_transform("0", DATA), Exception))  # must evaluate
         qtbot.waitUntil(lambda: "TypeError" in transforms_table.item(0, transforms_table.COL_TRANSFORM).text())
+
+
+def test_transform_save(qtbot: QtBot, transforms_table: TransformsSignalsTable) -> None:
+    assert cast(TransformsDataStateModel, transforms_table._dump_model(["0", "1"]).data["0"]).transform == ""
+    assert cast(TransformsDataStateModel, transforms_table._dump_model(["0", "1"]).data["1"]).transform == ""
+
+    transforms_table.set_transform(["1"], "x + data['0']")  # allow getting with longer data
+    qtbot.waitUntil(
+        lambda: cast(TransformsDataStateModel, transforms_table._dump_model(["0", "1"]).data["1"]).transform
+        == "x + data['0']"
+    )
+    assert (
+        cast(TransformsDataStateModel, transforms_table._dump_model(["0", "1"]).data["0"]).transform == ""
+    )  # unchanged
+
+
+def test_transform_load(qtbot: QtBot, transforms_table: TransformsSignalsTable) -> None:
+    """Tests transforms that only reference x"""
+    model = transforms_table._dump_model(["0"])
+
+    cast(TransformsDataStateModel, model.data["0"]).transform = "x + 1"
+    transforms_table._load_model(model)
+    qtbot.waitUntil(lambda: transforms_table.apply_transform("0", DATA).tolist() == [1.01, 2, 2, 1])
+
+    cast(TransformsDataStateModel, model.data["0"]).transform = ""
+    transforms_table._load_model(model)
+    qtbot.waitUntil(lambda: transforms_table.apply_transform("0", DATA).tolist() == [0.01, 1, 1, 0])
 
 
 def test_timeshift(qtbot: QtBot, timeshifts_table: TimeshiftSignalsTable) -> None:

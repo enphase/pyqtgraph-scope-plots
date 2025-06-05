@@ -13,7 +13,7 @@
 #    limitations under the License.
 
 import numbers
-from typing import Dict, Tuple, List, Any, Mapping, Union
+from typing import Dict, Tuple, List, Any, Mapping, Union, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -21,16 +21,22 @@ import simpleeval
 from PySide6.QtGui import QColor, QAction
 from PySide6.QtWidgets import QTableWidgetItem, QMenu, QInputDialog, QLineEdit
 
+from .save_restore_model import DataTopModel, HasSaveLoadConfig, BaseTopModel
 from .cache_dict import IdentityCacheDict
 from .signals_table import ContextMenuSignalsTable
 from .util import not_none
 
 
-class TransformsSignalsTable(ContextMenuSignalsTable):
+class TransformsDataStateModel(DataTopModel):
+    transform: str = ""
+
+
+class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
     """Mixin into SignalsTable that adds a UI for the user to specify a transform using a subset of Python code.
     This parses the user input and provides a get_transform."""
 
     COL_TRANSFORM = -1
+    DATA_MODEL_BASES = [TransformsDataStateModel]
 
     class AllDataDict:
         """Takes in multiple series of (xs, ys) and returns the value at exactly the current x.
@@ -82,6 +88,21 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
         self._cached_results = IdentityCacheDict[
             npt.NDArray[np.float64], npt.NDArray[np.float64]
         ]()  # src data -> output data
+
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
+        for data_name, data_model in model.data.items():
+            assert isinstance(data_model, TransformsDataStateModel)
+            transform, _ = self._transforms.get(data_name, (None, None))
+            if transform is not None:
+                data_model.transform = transform
+
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
+        for data_name, data_model in model.data.items():
+            assert isinstance(data_model, TransformsDataStateModel)
+            # TODO improve robustness to SyntaxError
+            self.set_transform([data_name], data_model.transform)
 
     def apply_transform(
         self,
@@ -166,25 +187,34 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
             if not ok:
                 return
             if not text:
-                parsed = None
-                break
+                self.set_transform(selected_data_names, "")
+                return
             else:
                 try:
-                    parsed = self._simpleeval.parse(text)
-                    break
+                    self.set_transform(selected_data_names, text)
+                    return
                 except SyntaxError as e:
                     err_msg = f"\n\n{e.__class__.__name__}: {e}"
 
-        for data_name in selected_data_names:
-            if not text:
+    def set_transform(self, data_names: List[str], transform_expr: str) -> None:
+        """Sets the transform on a particular data and applies it.
+        Raises SyntaxError (from simpleeval) on a parsing failure. Does not do any other processing / checks."""
+        if len(transform_expr) > 0:
+            parsed = self._simpleeval.parse(transform_expr)
+        else:
+            parsed = None
+
+        for data_name in data_names:
+            if parsed is None:
                 if data_name in self._transforms:
                     del self._transforms[data_name]
             else:
-                self._transforms[data_name] = (text, parsed)
-        for item in self.selectedItems():
-            not_none(self.item(item.row(), self.COL_TRANSFORM)).setText(text)
-            not_none(self.item(item.row(), self.COL_TRANSFORM)).setToolTip(text)
-        self.sigTransformChanged.emit(selected_data_names)
+                self._transforms[data_name] = (transform_expr, parsed)
+
+            for item in self.selectedItems():
+                not_none(self.item(item.row(), self.COL_TRANSFORM)).setText(transform_expr)
+                not_none(self.item(item.row(), self.COL_TRANSFORM)).setToolTip(transform_expr)
+        self.sigTransformChanged.emit(data_names)
 
     def set_data_items(self, new_data_items: List[Tuple[str, QColor]]) -> None:
         super().set_data_items(new_data_items)

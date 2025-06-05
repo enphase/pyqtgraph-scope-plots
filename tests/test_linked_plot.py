@@ -64,6 +64,31 @@ def test_region_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_model([])).region == 1.0)
 
 
+def test_region_restore(qtbot: QtBot, plot: PlotsTableWidget) -> None:
+    model = cast(LinkedMultiPlotStateModel, plot._plots._dump_model([]))
+
+    model.region = (0.1, 1.5)
+    plot._plots._restore_model(model)
+    qtbot.waitUntil(lambda: not_none(plot_item(plot, 1).cursor_range).getRegion() == (0.1, 1.5))
+    for i in range(3):
+        assert not_none(plot_item(plot, i).cursor_range).getRegion() == (0.1, 1.5)
+        assert plot_item(plot, i).cursor is None
+
+    model.region = 1.0
+    plot._plots._restore_model(model)
+    qtbot.waitUntil(lambda: not_none(plot_item(plot, 0).cursor).x() == 1.0)
+    for i in range(3):
+        assert plot_item(plot, i).cursor_range is None
+        assert not_none(plot_item(plot, i).cursor).x() == 1.0
+
+    model.region = None
+    plot._plots._restore_model(model)
+    qtbot.waitUntil(lambda: plot_item(plot, 1).cursor is None)
+    for i in range(3):
+        assert plot_item(plot, i).cursor is None
+        assert plot_item(plot, i).cursor_range is None
+
+
 def test_linked_pois(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     for i in range(3):
         assert not plot_item(plot, i).pois  # verify initial state

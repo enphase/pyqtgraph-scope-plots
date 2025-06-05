@@ -29,7 +29,7 @@ class BaseTopModel(BaseModel):
     # note, fields dynamically set by HasSaveRestoreModel._get_model_bases
 
 
-class HasSaveRestoreModel:
+class HasSaveLoadConfig:
     """Mixin class to table and multiplotwidget that defines functionality
     to save the GUI state to a Pydantic model and by extension JSON.
 
@@ -42,26 +42,41 @@ class HasSaveRestoreModel:
     a load function for model (including the data).
     """
 
-    def _get_model_bases(
-        self, data_bases: List[ModelMetaclass], misc_bases: List[ModelMetaclass]
-    ) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
+    TOP_MODEL_BASES: List[ModelMetaclass] = []  # defined in subclasses
+    DATA_MODEL_BASES: List[ModelMetaclass] = []
+
+    @classmethod
+    def _get_model_bases(cls) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
         """Returns the (data bases, misc bases) of this. Typically implemented as a concat of the incoming types.
+        Inspects each subclasses' TOP_MODEL_BASES and DATA_MODEL_BASES, so no implementation is required
+        if all the HasSaveLoadConfig are mixins into the top-level class.
 
-        IMPLEMENT ME."""
-        return data_bases, misc_bases
+        Optionally override this if composition is used, for example saving / restore state of children."""
+        top_model_bases = []
+        data_model_bases = []
+        for base in cls.__mro__:
+            if issubclass(base, HasSaveLoadConfig) and "TOP_MODEL_BASES" in base.__dict__:
+                top_model_bases.extend(base.TOP_MODEL_BASES)
+            if issubclass(base, HasSaveLoadConfig) and "DATA_MODEL_BASES" in base.__dict__:
+                data_model_bases.extend(base.DATA_MODEL_BASES)
+        return data_model_bases, top_model_bases
 
-    def _create_skeleton_model_type(self) -> Tuple[Type[DataTopModel], Type[BaseTopModel]]:
-        data_bases, model_bases = self._get_model_bases([DataTopModel], [BaseTopModel])
+    @classmethod
+    def _create_skeleton_model_type(cls) -> Tuple[Type[DataTopModel], Type[BaseTopModel]]:
+        data_bases, model_bases = cls._get_model_bases()
+        data_bases.append(DataTopModel)
+        model_bases.append(BaseTopModel)
         data_model_cls = pydantic.create_model("DataModel", __base__=tuple(data_bases))  # type: ignore
         top_model_cls = pydantic.create_model(
             "TopModel", __base__=tuple(model_bases), data=(Dict[str, data_model_cls], ...)  # type: ignore
         )
         return data_model_cls, top_model_cls
 
-    def _create_skeleton_model(self, data_names: Iterable[str]) -> BaseTopModel:
+    @classmethod
+    def _create_skeleton_model(cls, data_names: Iterable[str]) -> BaseTopModel:
         """Returns an empty model of the correct type (containing all _get_model_bases)
         that can be passed into _save_model."""
-        data_model_cls, top_model_cls = self._create_skeleton_model_type()
+        data_model_cls, top_model_cls = cls._create_skeleton_model_type()
         top_model = top_model_cls(data={data_name: data_model_cls() for data_name in data_names})
         return top_model
 
@@ -78,7 +93,7 @@ class HasSaveRestoreModel:
         IMPLEMENT ME."""
         pass
 
-    def _restore_model(self, model: BaseTopModel) -> None:
+    def _load_model(self, model: BaseTopModel) -> None:
         """Restores data from the top-level model.
 
         It is guaranteed that by the time the subclasses of this have the load called, the data_items

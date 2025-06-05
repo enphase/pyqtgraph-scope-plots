@@ -27,7 +27,7 @@ from pydantic._internal._model_construction import ModelMetaclass
 from .enum_waveform_plotitem import EnumWaveformPlot
 from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot
 from .signals_table import DraggableSignalsTable
-from .save_restore_model import HasSaveRestoreModel, BaseTopModel
+from .save_restore_model import HasSaveLoadConfig, BaseTopModel
 
 
 class InteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot):
@@ -48,7 +48,7 @@ class MultiPlotStateModel(BaseTopModel):
     widget_data_items: List[List[str]] = []  # window index -> list of data items
 
 
-class MultiPlotWidget(HasSaveRestoreModel, QSplitter):
+class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
     """A splitter that can contain multiple (vertically stacked) plots with linked x-axis"""
 
     class PlotType(Enum):
@@ -65,6 +65,8 @@ class MultiPlotWidget(HasSaveRestoreModel, QSplitter):
     sigPoiChanged = Signal(object)  # List[float] as current POIs
     sigDragCursorChanged = Signal(float)  # x-position
     sigDragCursorCleared = Signal()
+
+    TOP_MODEL_BASES = [MultiPlotStateModel]
 
     def __init__(
         self,
@@ -90,12 +92,6 @@ class MultiPlotWidget(HasSaveRestoreModel, QSplitter):
         self._data_name_to_plot_item: Dict[Optional[str], pg.PlotItem] = {None: default_plot_item}
         self._anchor_x_plot_item: pg.PlotItem = default_plot_item  # PlotItem that everyone's x-axis is linked to
 
-    def _get_model_bases(
-        self, data_bases: List[ModelMetaclass], misc_bases: List[ModelMetaclass]
-    ) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
-        data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
-        return data_bases, [MultiPlotStateModel] + misc_bases
-
     def _write_model(self, model: BaseTopModel) -> None:
         super()._write_model(model)
         assert isinstance(model, MultiPlotStateModel)
@@ -112,8 +108,8 @@ class MultiPlotWidget(HasSaveRestoreModel, QSplitter):
                 widget_data_items = []
             model.widget_data_items.append(widget_data_items)
 
-    def _restore_model(self, model: BaseTopModel) -> None:
-        super()._restore_model(model)
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
 
         # remove all existing plots
         self._plot_item_data = {}
@@ -334,8 +330,10 @@ class LinkedMultiPlotStateModel(BaseTopModel):
     pois: List[float] = []
 
 
-class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveRestoreModel):
+class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
     """Mixin into the MultiPlotWidget that links PointsOfInterestPlot, RegionPlot, and LiveCursorPlot"""
+
+    TOP_MODEL_BASES = [LinkedMultiPlotStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._last_hover: Optional[float] = None  # must be init'd before the first plot is created in __init__
@@ -344,20 +342,14 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveRestoreModel):
         self._last_drag_cursor: Optional[float] = None
         super().__init__(*args, **kwargs)
 
-    def _get_model_bases(
-        self, data_bases: List[ModelMetaclass], misc_bases: List[ModelMetaclass]
-    ) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
-        data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
-        return data_bases, [LinkedMultiPlotStateModel] + misc_bases
-
     def _write_model(self, model: BaseTopModel) -> None:
         super()._write_model(model)
         assert isinstance(model, LinkedMultiPlotStateModel)
         model.region = self._last_region
         model.pois = self._last_pois
 
-    def _restore_model(self, model: BaseTopModel) -> None:
-        super()._restore_model(model)
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
         assert isinstance(model, LinkedMultiPlotStateModel)
         self._on_region_change(None, model.region)
         self._on_poi_change(None, model.pois)

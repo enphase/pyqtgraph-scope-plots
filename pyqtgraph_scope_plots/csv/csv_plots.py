@@ -30,7 +30,7 @@ from PySide6.QtGui import QAction, QColor, Qt
 from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QVBoxLayout, QInputDialog, QToolButton
 from pydantic._internal._model_construction import ModelMetaclass
 
-from ..save_restore_model import HasSaveRestoreModel, BaseTopModel
+from ..save_restore_model import HasSaveLoadConfig, BaseTopModel
 from ..animation_plot_table_widget import AnimationPlotsTableWidget
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
@@ -53,7 +53,7 @@ def construct_python_tuple(loader: TupleSafeLoader, node: Any) -> Tuple[Any, ...
 TupleSafeLoader.add_constructor("tag:yaml.org,2002:python/tuple", construct_python_tuple)
 
 
-class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, HasSaveRestoreModel):
+class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, HasSaveLoadConfig):
     """Example app-level widget that loads CSV files into the plotter"""
 
     WATCH_INTERVAL_MS = 333  # polls the filesystem metadata for changes this frequently
@@ -126,23 +126,22 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._watch_timer.setInterval(self.WATCH_INTERVAL_MS)
         self._watch_timer.timeout.connect(self._check_watch)
 
-    def _get_model_bases(
-        self, data_bases: List[ModelMetaclass], misc_bases: List[ModelMetaclass]
-    ) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
-        data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
-        data_bases, misc_bases = self._plots._get_model_bases(data_bases, misc_bases)
-        data_bases, misc_bases = self._table._get_model_bases(data_bases, misc_bases)
-        return data_bases, misc_bases
+    @classmethod
+    def _get_model_bases(cls) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
+        data_bases, misc_bases = super()._get_model_bases()
+        plots_data_bases, plots_misc_bases = cls.Plots._get_model_bases()
+        table_data_bases, table_misc_bases = cls.Plots._get_model_bases()
+        return table_data_bases + plots_data_bases + data_bases, table_misc_bases + plots_misc_bases + misc_bases
 
     def _write_model(self, model: BaseTopModel) -> None:
         super()._write_model(model)
         self._plots._write_model(model)
         self._table._write_model(model)
 
-    def _restore_model(self, model: BaseTopModel) -> None:
-        super()._restore_model(model)
-        self._plots._restore_model(model)
-        self._table._restore_model(model)
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
+        self._plots._load_model(model)
+        self._table._load_model(model)
 
     def _transform_data(
         self,
@@ -266,12 +265,12 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         button_menu.addAction(animation_action)
         button_visuals.setMenu(button_menu)
 
-        save_state_action = QAction("Save State", button_menu)
-        save_state_action.triggered.connect(self._on_save_state)
-        button_menu.addAction(save_state_action)
-        load_state_action = QAction("Load State", button_menu)
-        load_state_action.triggered.connect(self._on_load_state)
-        button_menu.addAction(load_state_action)
+        save_config_action = QAction("Save Config", button_menu)
+        save_config_action.triggered.connect(self._on_save_config)
+        button_menu.addAction(save_config_action)
+        load_config_action = QAction("Load Config", button_menu)
+        load_config_action.triggered.connect(self._on_load_config)
+        button_menu.addAction(load_config_action)
 
         layout = QVBoxLayout()
         layout.addWidget(button_load)
@@ -392,19 +391,19 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
         return self
 
-    def _on_save_state(self) -> None:
-        filename, _ = QFileDialog.getSaveFileName(None, "Save state", filter="YAML files (*.yml)")
+    def _on_save_config(self) -> None:
+        filename, _ = QFileDialog.getSaveFileName(None, "Save config", filter="YAML files (*.yml)")
         if not filename:  # nothing selected, user canceled
             return
         with open(filename, "w") as f:
             f.write(yaml.dump(self._dump_model(self._table._data_items.keys()).model_dump()))
 
-    def _on_load_state(self) -> None:
-        filename, _ = QFileDialog.getOpenFileName(None, "Load state", filter="YAML files (*.yml)")
+    def _on_load_config(self) -> None:
+        filename, _ = QFileDialog.getOpenFileName(None, "Load config", filter="YAML files (*.yml)")
         if not filename:  # nothing selected, user canceled
             return
         with open(filename, "r") as f:
             _, top_model_cls = self._create_skeleton_model_type()
             model = top_model_cls(**yaml.load(f, Loader=TupleSafeLoader))
 
-        self._restore_model(model)
+        self._load_model(model)

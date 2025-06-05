@@ -36,4 +36,4 @@ from .xy_plot_table import XyTable
 
 from .time_axis import TimeAxisItem
 
-from .save_restore_model import HasSaveRestoreModel, DataTopModel, BaseTopModel
+from .save_restore_model import HasSaveLoadConfig, DataTopModel, BaseTopModel

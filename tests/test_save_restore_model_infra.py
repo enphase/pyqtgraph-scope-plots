@@ -3,7 +3,7 @@ from typing import Optional, List, Tuple
 from pydantic import BaseModel
 from pydantic._internal._model_construction import ModelMetaclass
 
-from pyqtgraph_scope_plots.save_restore_model import DataTopModel, BaseTopModel, HasSaveRestoreModel
+from pyqtgraph_scope_plots.save_restore_model import DataTopModel, BaseTopModel, HasSaveLoadConfig
 
 
 class DataModelSub1(DataTopModel):
@@ -26,12 +26,9 @@ class BaseModelSub2(BaseTopModel):
     inner: InnerModel = InnerModel()
 
 
-class SaveRestoreSub(HasSaveRestoreModel):
-    def _get_model_bases(
-        self, data_bases: List[ModelMetaclass], misc_bases: List[ModelMetaclass]
-    ) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
-        data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
-        return [DataModelSub1, DataModelSub2] + data_bases, [BaseModelSub1, BaseModelSub2] + misc_bases
+class SaveRestoreSub(HasSaveLoadConfig):
+    TOP_MODEL_BASES = [BaseModelSub1, BaseModelSub2]
+    DATA_MODEL_BASES = [DataModelSub1, DataModelSub2]
 
     def _write_model(self, model: BaseTopModel) -> None:
         super()._write_model(model)
@@ -44,8 +41,8 @@ class SaveRestoreSub(HasSaveRestoreModel):
         model.base_field1 = 2.0
         model.inner.a_field = "a"
 
-    def _restore_model(self, model: BaseTopModel) -> None:
-        super()._restore_model(model)
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
 
 
 def test_save_model() -> None:

@@ -215,18 +215,18 @@ def test_plot_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 def test_plot_restore(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     model = cast(MultiPlotStateModel, plot._plots._dump_model([]))
     model.widget_data_items = [["0", "1", "2"]]
-    plot._plots._restore_model(model)
+    plot._plots._load_model(model)
     qtbot.waitUntil(lambda: plot._plots.count() == 1)
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 3
 
     model.widget_data_items = [["0"], ["2"]]
-    plot._plots._restore_model(model)
+    plot._plots._load_model(model)
     qtbot.waitUntil(lambda: plot._plots.count() == 2)
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 1
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(1)).getPlotItem()).listDataItems()) == 1
 
     model.widget_data_items = []  # test empty case
-    plot._plots._restore_model(model)
+    plot._plots._load_model(model)
     qtbot.waitUntil(lambda: plot._plots.count() == 1)  # should leave the empty widget intact
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 0
 

@@ -25,7 +25,7 @@ from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
 from PySide6.QtWidgets import QTableWidgetItem, QTableWidget, QHeaderView, QMenu, QLabel, QColorDialog
 from pydantic._internal._model_construction import ModelMetaclass
 
-from .save_restore_model import HasSaveRestoreModel, DataTopModel, BaseTopModel
+from .save_restore_model import HasSaveLoadConfig, DataTopModel, BaseTopModel
 from .cache_dict import IdentityCacheDict
 from .util import not_none
 
@@ -345,22 +345,18 @@ class ColorPickerDataStateModel(DataTopModel):
     color: Optional[Tuple[int, int, int]] = None  # R, G, B
 
 
-class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveRestoreModel):
+class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
     """Mixin into SignalsTable that adds a context menu item for the user to change the color.
     This gets sent as a signal, and an upper must handle plumbing the colors through.
     """
+
+    DATA_MODEL_BASES = [ColorPickerDataStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._colors: Dict[str, QColor] = {}  # only for save state
         self._set_color_action = QAction("Set Color", self)
         self._set_color_action.triggered.connect(self._on_set_color)
-
-    def _get_model_bases(
-        self, data_bases: List[ModelMetaclass], misc_bases: List[ModelMetaclass]
-    ) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
-        data_bases, misc_bases = super()._get_model_bases(data_bases, misc_bases)
-        return [ColorPickerDataStateModel] + data_bases, misc_bases
 
     def _write_model(self, model: BaseTopModel) -> None:
         super()._write_model(model)
@@ -371,8 +367,8 @@ class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveRestoreModel):
                 continue
             data_model.color = (color.red(), color.green(), color.blue())
 
-    def _restore_model(self, model: BaseTopModel) -> None:
-        super()._restore_model(model)
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
         data_name_colors = []
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, ColorPickerDataStateModel)

@@ -172,13 +172,11 @@ class XyTable(
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)
 
-        # remove all existing plots
-        for xy_plot in self._xy_plots:
+        for xy_plot in self._xy_plots:  # remove all existing plots
             xy_plot.close()
 
-        # create plots from model
         assert isinstance(model, XyTableStateModel)
-        for xy_data_items in model.xy_data_items:
+        for xy_data_items in model.xy_data_items:  # create plots from model
             xy_plot = self.create_xy()
             for xy_data_item in xy_data_items:
                 xy_plot.add_xy(*xy_data_item)

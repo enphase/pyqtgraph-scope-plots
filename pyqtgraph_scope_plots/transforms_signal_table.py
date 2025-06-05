@@ -93,9 +93,8 @@ class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
         super()._write_model(model)
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, TransformsDataStateModel)
-            transform, _ = self._transforms.get(data_name, (None, None))
-            if transform is not None:
-                data_model.transform = transform
+            transform, _ = self._transforms.get(data_name, ("", None))
+            data_model.transform = transform
 
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)

@@ -53,9 +53,8 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
         super()._write_model(model)
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, TimeshiftDataStateModel)
-            timeshift = self._timeshifts.get(data_name, None)
-            if timeshift is not None:
-                data_model.timeshift = timeshift
+            timeshift = self._timeshifts.get(data_name, 0)
+            data_model.timeshift = timeshift
 
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)

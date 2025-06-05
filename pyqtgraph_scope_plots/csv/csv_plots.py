@@ -179,7 +179,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         elif index < 0:
             index = 0
         if len(data_x) and data_x[index] >= view_left and data_x[index] <= view_right:  # point in view
-            handle_pos: float = float(data_x[index])  # cast from numpy.float64
+            handle_pos = float(data_x[index])  # cast from numpy float
         else:  # no points in view
             handle_pos = view_center
 

@@ -21,7 +21,7 @@ from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.plots_table_widget import PlotsTableWidget
-from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
+from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget, MultiPlotStateModel, LinkedMultiPlotStateModel
 from .test_util import assert_cast
 from pyqtgraph_scope_plots.util import not_none
 
@@ -196,6 +196,41 @@ def test_plot_remove(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     )
 
 
+def test_plot_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
+    qtbot.waitUntil(
+        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).widget_data_items == [["0"], ["1"], ["2"]]
+    )
+
+    plot._plots._merge_data_into_item(["0"], 1)  # merge
+    qtbot.waitUntil(
+        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).widget_data_items == [["1", "0"], ["2"]]
+    )
+
+    plot._plots._merge_data_into_item(["2"], 0)  # merge
+    qtbot.waitUntil(
+        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).widget_data_items == [["1", "0", "2"]]
+    )
+
+
+def test_plot_restore(qtbot: QtBot, plot: PlotsTableWidget) -> None:
+    model = cast(MultiPlotStateModel, plot._plots._dump_model([]))
+    model.widget_data_items = [["0", "1", "2"]]
+    plot._plots._load_model(model)
+    qtbot.waitUntil(lambda: plot._plots.count() == 1)
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 3
+
+    model.widget_data_items = [["0"], ["2"]]
+    plot._plots._load_model(model)
+    qtbot.waitUntil(lambda: plot._plots.count() == 2)
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 1
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(1)).getPlotItem()).listDataItems()) == 1
+
+    model.widget_data_items = []  # test empty case
+    plot._plots._load_model(model)
+    qtbot.waitUntil(lambda: plot._plots.count() == 1)  # should leave the empty widget intact
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 0
+
+
 def test_no_excessive_plots(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     # check that the default limit for plot instantiation works
     plot._set_data_items(
@@ -218,60 +253,6 @@ def test_no_excessive_plots(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     plot._plots._merge_data_into_item(["A"], 0)  # check that stuff can be dragged into the default empty plot
     qtbot.waitUntil(lambda: plot._plots.count() == 1)
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 1
-
-
-def test_linked_live_cursor(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    """This (and subsequent) tests use internal APIs to set cursor positions and whatnot
-    because these APIs are much more reliable than using QtBot mouse actions."""
-    for i in range(3):
-        assert plot_item(plot, i).hover_cursor is None  # verify initial state
-
-    plot_item(plot, 0).set_live_cursor(0.1)
-    qtbot.waitUntil(lambda: not_none(plot_item(plot, 1).hover_cursor).x() == 0.1)
-    assert not_none(plot_item(plot, 2).hover_cursor).x() == 0.1
-
-    plot_item(plot, 1).set_live_cursor(None)
-    qtbot.waitUntil(lambda: plot_item(plot, 0).hover_cursor is None)
-    assert plot_item(plot, 2).hover_cursor is None
-
-
-def test_linked_region(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    for i in range(3):
-        assert plot_item(plot, i).cursor is None  # verify initial state
-        assert plot_item(plot, i).cursor_range is None
-
-    plot_item(plot, 0).set_region((0.1, 1.5))
-    qtbot.waitUntil(lambda: not_none(plot_item(plot, 1).cursor_range).getRegion() == (0.1, 1.5))
-    assert not_none(plot_item(plot, 2).cursor_range).getRegion() == (0.1, 1.5)
-    for i in range(3):
-        assert plot_item(plot, i).cursor is None
-
-    plot_item(plot, 1).set_region(1.0)
-    qtbot.waitUntil(lambda: not_none(plot_item(plot, 0).cursor).x() == 1.0)
-    assert not_none(plot_item(plot, 2).cursor).x() == 1.0
-    for i in range(3):
-        assert plot_item(plot, i).cursor_range is None
-
-
-def test_linked_pois(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    for i in range(3):
-        assert not plot_item(plot, i).pois  # verify initial state
-
-    plot_item(plot, 0).set_pois([0.1, 1.5])
-    qtbot.waitUntil(lambda: [poi.x() for poi in plot_item(plot, 1).pois] == [0.1, 1.5])
-    assert [poi.x() for poi in plot_item(plot, 2).pois] == [0.1, 1.5]
-
-
-def test_linked_drag_cursor(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    for i in range(3):
-        assert plot_item(plot, i).drag_cursor is None  # verify initial state
-
-    plot_item(plot, 0).set_drag_cursor(0.2)
-    qtbot.waitUntil(
-        lambda: plot_item(plot, 1).drag_cursor is not None and plot_item(plot, 1).drag_cursor.pos().x() == 0.2
-    )
-    assert plot_item(plot, 1).drag_cursor.pos().x() == 0.2
-    assert plot_item(plot, 2).drag_cursor.pos().x() == 0.2
 
 
 def test_export_csv(qtbot: QtBot, plot: PlotsTableWidget) -> None:

@@ -26,6 +26,7 @@ from PySide6.QtWidgets import QWidget, QSplitter
 from .enum_waveform_plotitem import EnumWaveformPlot
 from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot
 from .signals_table import DraggableSignalsTable
+from .save_restore_model import HasSaveLoadConfig, BaseTopModel
 
 
 class InteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot):
@@ -42,7 +43,11 @@ class EnumWaveformInteractivePlot(
     POI_ANCHOR = (0, 0.5)
 
 
-class MultiPlotWidget(QSplitter):
+class MultiPlotStateModel(BaseTopModel):
+    widget_data_items: List[List[str]] = []  # window index -> list of data items
+
+
+class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
     """A splitter that can contain multiple (vertically stacked) plots with linked x-axis"""
 
     class PlotType(Enum):
@@ -59,6 +64,8 @@ class MultiPlotWidget(QSplitter):
     sigPoiChanged = Signal(object)  # List[float] as current POIs
     sigDragCursorChanged = Signal(float)  # x-position
     sigDragCursorCleared = Signal()
+
+    TOP_MODEL_BASES = [MultiPlotStateModel]
 
     def __init__(
         self,
@@ -83,6 +90,47 @@ class MultiPlotWidget(QSplitter):
         # re-derived when _plot_item_data updated
         self._data_name_to_plot_item: Dict[Optional[str], pg.PlotItem] = {None: default_plot_item}
         self._anchor_x_plot_item: pg.PlotItem = default_plot_item  # PlotItem that everyone's x-axis is linked to
+
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
+        assert isinstance(model, MultiPlotStateModel)
+        model.widget_data_items = []
+        for i in range(self.count()):
+            widget = self.widget(i)
+            if isinstance(widget, pg.PlotWidget):
+                widget_data_items = [
+                    data_item
+                    for data_item in self._plot_item_data.get(widget.getPlotItem(), [])
+                    if data_item is not None
+                ]
+            else:
+                widget_data_items = []
+            model.widget_data_items.append(widget_data_items)
+
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
+
+        # remove all existing plots
+        self._plot_item_data = {}
+        self._clean_plot_widgets()
+
+        # create plots from model
+        assert isinstance(model, MultiPlotStateModel)
+        for widget_data_items in model.widget_data_items:
+            if len(widget_data_items) <= 0:  # skip empty plots
+                continue
+            color, plot_type = self._data_items.get(widget_data_items[0], (None, None))
+            if plot_type is None:
+                continue
+            add_plot_item = self._init_plot_item(self._create_plot_item(plot_type))
+            plot_widget = pg.PlotWidget(plotItem=add_plot_item)
+            self.addWidget(plot_widget)
+            self._plot_item_data[add_plot_item] = widget_data_items  # type: ignore
+
+        self._check_create_default_plot()
+        self._update_plots_x_axis()
+        self._update_data_name_to_plot_item()
+        self._update_plots()  # TODO can be removed and dedup'd
 
     def render_value(self, data_name: str, value: float) -> str:
         """Float-to-string conversion for a value. Optionally override this to provide smarter precision."""
@@ -276,8 +324,15 @@ class MultiPlotWidget(QSplitter):
                 plot_item.enableAutoRange(axis="y", enable=enable)
 
 
-class LinkedMultiPlotWidget(MultiPlotWidget):
+class LinkedMultiPlotStateModel(BaseTopModel):
+    region: Optional[Union[float, Tuple[float, float]]] = None
+    pois: List[float] = []
+
+
+class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
     """Mixin into the MultiPlotWidget that links PointsOfInterestPlot, RegionPlot, and LiveCursorPlot"""
+
+    TOP_MODEL_BASES = [LinkedMultiPlotStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._last_hover: Optional[float] = None  # must be init'd before the first plot is created in __init__
@@ -285,6 +340,18 @@ class LinkedMultiPlotWidget(MultiPlotWidget):
         self._last_pois: List[float] = []
         self._last_drag_cursor: Optional[float] = None
         super().__init__(*args, **kwargs)
+
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
+        assert isinstance(model, LinkedMultiPlotStateModel)
+        model.region = self._last_region
+        model.pois = self._last_pois
+
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
+        assert isinstance(model, LinkedMultiPlotStateModel)
+        self._on_region_change(None, model.region)
+        self._on_poi_change(None, model.pois)
 
     def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
         """Called after _create_plot_item, does any post-creation init. Returns the same plot_item."""

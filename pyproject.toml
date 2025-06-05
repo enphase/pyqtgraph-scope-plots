@@ -25,7 +25,9 @@ dependencies = [
     "pillow>=9.0",
     "pandas~=2.0",
     "numpy>=1.19",
-    "simpleeval==1.0.3",
+    "pydantic>=2.0",
+    "simpleeval>=1.0",
+    "PyYAML>=6.0",
 ]
 
 [project.urls]
@@ -37,6 +39,7 @@ dev = [
     "black~=23.3",
     "isort~=5.9.2",
     "flake8~=3.9.2",
+    "types-PyYAML",
     "pytest~=6.2.4",
     "pytest-qt~=4.4",
     "pytest-cov~=6.1.1",
@@ -53,7 +56,10 @@ dev = [
 profile = "black"
 
 [tool.mypy]
-python_version = "3.8"
+plugins = [
+    "pydantic.mypy"
+]
+python_version = "3.9"  # pydantic uses 3.9 syntax internally
 check_untyped_defs = true
 disallow_incomplete_defs = true
 disallow_untyped_defs = true

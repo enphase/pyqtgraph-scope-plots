@@ -16,6 +16,7 @@ import bisect
 import itertools
 import os.path
 import time
+import yaml
 from functools import partial
 from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable, Sequence, cast, Set, Iterable
 
@@ -27,7 +28,9 @@ from PySide6 import QtWidgets
 from PySide6.QtCore import QKeyCombination, QTimer
 from PySide6.QtGui import QAction, QColor, Qt
 from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QVBoxLayout, QInputDialog, QToolButton
+from pydantic._internal._model_construction import ModelMetaclass
 
+from ..save_restore_model import HasSaveLoadConfig, BaseTopModel
 from ..animation_plot_table_widget import AnimationPlotsTableWidget
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
@@ -39,7 +42,18 @@ from ..transforms_signal_table import TransformsSignalsTable
 from ..util import int_color
 
 
-class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget):
+class TupleSafeLoader(yaml.SafeLoader):
+    pass
+
+
+def construct_python_tuple(loader: TupleSafeLoader, node: Any) -> Tuple[Any, ...]:
+    return tuple(loader.construct_sequence(node))
+
+
+TupleSafeLoader.add_constructor("tag:yaml.org,2002:python/tuple", construct_python_tuple)
+
+
+class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, HasSaveLoadConfig):
     """Example app-level widget that loads CSV files into the plotter"""
 
     WATCH_INTERVAL_MS = 333  # polls the filesystem metadata for changes this frequently
@@ -111,6 +125,23 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget):
         self._watch_timer = QTimer()
         self._watch_timer.setInterval(self.WATCH_INTERVAL_MS)
         self._watch_timer.timeout.connect(self._check_watch)
+
+    @classmethod
+    def _get_model_bases(cls) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
+        data_bases, misc_bases = super()._get_model_bases()
+        plots_data_bases, plots_misc_bases = cls.Plots._get_model_bases()
+        table_data_bases, table_misc_bases = cls.CsvSignalsTable._get_model_bases()
+        return table_data_bases + plots_data_bases + data_bases, table_misc_bases + plots_misc_bases + misc_bases
+
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
+        self._plots._write_model(model)
+        self._table._write_model(model)
+
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
+        self._plots._load_model(model)
+        self._table._load_model(model)
 
     def _transform_data(
         self,
@@ -234,6 +265,13 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget):
         button_menu.addAction(animation_action)
         button_visuals.setMenu(button_menu)
 
+        save_config_action = QAction("Save Config", button_menu)
+        save_config_action.triggered.connect(self._on_save_config)
+        button_menu.addAction(save_config_action)
+        load_config_action = QAction("Load Config", button_menu)
+        load_config_action.triggered.connect(self._on_load_config)
+        button_menu.addAction(load_config_action)
+
         layout = QVBoxLayout()
         layout.addWidget(button_load)
         layout.addWidget(button_refresh)
@@ -352,3 +390,20 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget):
         self._csv_data_items = csv_data_items_dict
 
         return self
+
+    def _on_save_config(self) -> None:
+        filename, _ = QFileDialog.getSaveFileName(None, "Save config", filter="YAML files (*.yml)")
+        if not filename:  # nothing selected, user canceled
+            return
+        with open(filename, "w") as f:
+            f.write(yaml.dump(self._dump_model(self._table._data_items.keys()).model_dump(), sort_keys=False))
+
+    def _on_load_config(self) -> None:
+        filename, _ = QFileDialog.getOpenFileName(None, "Load config", filter="YAML files (*.yml)")
+        if not filename:  # nothing selected, user canceled
+            return
+        with open(filename, "r") as f:
+            _, top_model_cls = self._create_skeleton_model_type()
+            model = top_model_cls(**yaml.load(f, Loader=TupleSafeLoader))
+
+        self._load_model(model)

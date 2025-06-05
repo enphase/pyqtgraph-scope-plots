@@ -19,9 +19,10 @@ import pyqtgraph as pg
 from PySide6 import QtGui
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QAction, QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent
-from PySide6.QtWidgets import QMenu, QTableWidgetItem, QMessageBox
+from PySide6.QtWidgets import QMenu, QMessageBox
 from numpy import typing as npt
 
+from .save_restore_model import HasSaveLoadConfig, BaseTopModel
 from .multi_plot_widget import DragTargetOverlay
 from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable, DraggableSignalsTable
 from .transforms_signal_table import TransformsSignalsTable
@@ -144,14 +145,41 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
         event.accept()
 
 
-class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTable):
+class XyTableStateModel(BaseTopModel):
+    xy_data_items: List[List[Tuple[str, str]]] = []  # window index -> list of (x, y) data items
+
+
+class XyTable(
+    DraggableSignalsTable, ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTable, HasSaveLoadConfig
+):
     """Mixin into SignalsTable that adds the option to open an XY plot in a separate window."""
+
+    TOP_MODEL_BASES = [XyTableStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._xy_action = QAction("Create X-Y Plot", self)
-        self._xy_action.triggered.connect(self._on_xy)
+        self._xy_action.triggered.connect(self._on_create_xy)
         self._xy_plots: List[XyPlotWidget] = []
+
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
+        assert isinstance(model, XyTableStateModel)
+        model.xy_data_items = []
+        for xy_plot in self._xy_plots:
+            model.xy_data_items.append(xy_plot._xys)
+
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
+
+        for xy_plot in self._xy_plots:  # remove all existing plots
+            xy_plot.close()
+
+        assert isinstance(model, XyTableStateModel)
+        for xy_data_items in model.xy_data_items:  # create plots from model
+            xy_plot = self.create_xy()
+            for xy_data_item in xy_data_items:
+                xy_plot.add_xy(*xy_data_item)
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)
@@ -172,7 +200,7 @@ class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasRegionSignalsTa
         for xy_plot in self._xy_plots:
             xy_plot.set_range(self._range)
 
-    def _on_xy(self) -> Optional[XyPlotWidget]:
+    def _on_create_xy(self) -> Optional[XyPlotWidget]:
         """Creates an XY plot with the selected signal(s) and returns the new plot."""
         data = [self.item(item.row(), self.COL_NAME).text() for item in self._ordered_selects]
         if len(data) != 2:
@@ -180,11 +208,16 @@ class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasRegionSignalsTa
                 self, "Error", f"Select two items for X-Y plotting, got {data}", QMessageBox.StandardButton.Ok
             )
             return None
+        xy_plot = self.create_xy()
+        xy_plot.add_xy(data[0], data[1])
+        return xy_plot
+
+    def create_xy(self) -> XyPlotWidget:
+        """Creates and opens an empty XY plot widget."""
         xy_plot = XyPlotWidget(self)
         xy_plot.show()
         xy_plot.set_range(self._range)
         self._xy_plots.append(xy_plot)  # need an active reference to prevent GC'ing
-        xy_plot.add_xy(data[0], data[1])
         return xy_plot
 
     def _on_closed_xy(self, closed: XyPlotWidget) -> None:

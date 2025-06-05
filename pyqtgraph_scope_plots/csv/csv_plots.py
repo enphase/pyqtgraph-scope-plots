@@ -46,7 +46,7 @@ class TupleSafeLoader(yaml.SafeLoader):
     pass
 
 
-def construct_python_tuple(loader, node):
+def construct_python_tuple(loader: TupleSafeLoader, node: Any) -> Tuple[Any, ...]:
     return tuple(loader.construct_sequence(node))
 
 

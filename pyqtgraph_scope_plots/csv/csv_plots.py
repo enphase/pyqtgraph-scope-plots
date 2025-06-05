@@ -130,7 +130,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
     def _get_model_bases(cls) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
         data_bases, misc_bases = super()._get_model_bases()
         plots_data_bases, plots_misc_bases = cls.Plots._get_model_bases()
-        table_data_bases, table_misc_bases = cls.Plots._get_model_bases()
+        table_data_bases, table_misc_bases = cls.CsvSignalsTable._get_model_bases()
         return table_data_bases + plots_data_bases + data_bases, table_misc_bases + plots_misc_bases + misc_bases
 
     def _write_model(self, model: BaseTopModel) -> None:
@@ -396,7 +396,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         if not filename:  # nothing selected, user canceled
             return
         with open(filename, "w") as f:
-            f.write(yaml.dump(self._dump_model(self._table._data_items.keys()).model_dump()))
+            f.write(yaml.dump(self._dump_model(self._table._data_items.keys()).model_dump(), sort_keys=False))
 
     def _on_load_config(self) -> None:
         filename, _ = QFileDialog.getOpenFileName(None, "Load config", filter="YAML files (*.yml)")

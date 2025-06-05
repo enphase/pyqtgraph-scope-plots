@@ -75,7 +75,7 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
         super().set_data_items(new_data_items)
         for row, (name, color) in enumerate(self._data_items.items()):
             timeshift = self._timeshifts.get(name)
-            if timeshift is not None:
+            if timeshift is not None and timeshift != 0:
                 not_none(self.item(row, self.COL_TIMESHIFT)).setText(str(timeshift))
             else:
                 not_none(self.item(row, self.COL_TIMESHIFT)).setText("")

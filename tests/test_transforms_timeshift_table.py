@@ -193,7 +193,7 @@ def test_timeshift(qtbot: QtBot, timeshifts_table: TimeshiftSignalsTable) -> Non
 
 def test_timeshift_save(qtbot: QtBot, timeshifts_table: TimeshiftSignalsTable) -> None:
     qtbot.waitUntil(lambda: cast(TimeshiftDataStateModel, timeshifts_table._dump_model(["0"]).data["0"]).timeshift == 0)
-    timeshifts_table.set_timeshift(["0"], -0.5)  # test negative and noninteger
+    timeshifts_table.set_timeshift(["0"], -0.5)
     qtbot.waitUntil(
         lambda: cast(TimeshiftDataStateModel, timeshifts_table._dump_model(["0"]).data["0"]).timeshift == -0.5
     )

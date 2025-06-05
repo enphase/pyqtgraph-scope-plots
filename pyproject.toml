@@ -67,7 +67,7 @@ strict = true
 
 [[tool.mypy.overrides]]
 module = ["pydantic.*"]
-follow_imports = "silent"
+ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = ["pyqtgraph.*", "simpleeval.*", "pytestqt.*"]

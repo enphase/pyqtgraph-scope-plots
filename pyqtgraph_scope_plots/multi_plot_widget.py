@@ -141,7 +141,14 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
             add_plot_item = self._init_plot_item(self._create_plot_item(plot_type))
             plot_widget = pg.PlotWidget(plotItem=add_plot_item)
             self.addWidget(plot_widget)
-            self._plot_item_data[add_plot_item] = plot_widget_model.data_items
+            self._plot_item_data[add_plot_item] = plot_widget_model.data_items  # type: ignore
+
+            widget_viewbox = cast(pg.PlotItem, plot_widget.getPlotItem()).getViewBox()
+            if model.x_range is not None and model.x_range != "auto":
+                widget_viewbox.setXRange(model.x_range[0], model.x_range[1], 0)
+            if plot_widget_model.y_range is not None and plot_widget_model.y_range != "auto":
+                widget_viewbox.setYRange(plot_widget_model.y_range[0], plot_widget_model.y_range[1], 0)
+            widget_viewbox.enableAutoRange(x=model.x_range == "auto", y=plot_widget_model.y_range == "auto")
 
         self._check_create_default_plot()
         self._update_plots_x_axis()
@@ -368,8 +375,9 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
         if model.region is not None:
             region = model.region
             if region == ():  # convert empty model format to internal region format
-                region = None
-            self._on_region_change(None, region)
+                self._on_region_change(None, None)
+            else:
+                self._on_region_change(None, region)  # type: ignore
         if model.pois is not None:
             self._on_poi_change(None, model.pois)
 

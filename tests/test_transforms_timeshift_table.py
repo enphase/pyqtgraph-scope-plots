@@ -182,8 +182,13 @@ def test_timeshift(qtbot: QtBot, timeshifts_table: TimeshiftSignalsTable) -> Non
     qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [0.0, 0.1, 1.0, 2.0])
     timeshifts_table.set_timeshift(["0"], 1)
     qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [1.0, 1.1, 2.0, 3.0])
+    assert timeshifts_table.item(0, timeshifts_table.COL_TIMESHIFT).text() == "1"
     timeshifts_table.set_timeshift(["0"], -0.5)  # test negative and noninteger
     qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [-0.5, -0.4, 0.5, 1.5])
+    assert timeshifts_table.item(0, timeshifts_table.COL_TIMESHIFT).text() == "-0.5"
+    timeshifts_table.set_timeshift(["0"], 0)  # revert to empty
+    qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [0.0, 0.1, 1.0, 2.0])
+    assert timeshifts_table.item(0, timeshifts_table.COL_TIMESHIFT).text() == ""
 
 
 def test_timeshift_save(qtbot: QtBot, timeshifts_table: TimeshiftSignalsTable) -> None:

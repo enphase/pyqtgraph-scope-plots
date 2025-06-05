@@ -104,7 +104,11 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
         index_by_data_name = {data_name: i for i, data_name in enumerate(self._data_items.keys())}
         for data_name in data_names:
             self._timeshifts[data_name] = timeshift
-            not_none(self.item(index_by_data_name[data_name], self.COL_TIMESHIFT)).setText(str(timeshift))
+            if timeshift == 0:
+                timeshift_str = ""
+            else:
+                timeshift_str = str(timeshift)
+            not_none(self.item(index_by_data_name[data_name], self.COL_TIMESHIFT)).setText(timeshift_str)
         self.sigTimeshiftChanged.emit(data_names)
 
     def apply_timeshifts(

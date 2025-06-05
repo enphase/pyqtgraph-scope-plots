@@ -148,7 +148,9 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
                 widget_viewbox.setXRange(model.x_range[0], model.x_range[1], 0)
             if plot_widget_model.y_range is not None and plot_widget_model.y_range != "auto":
                 widget_viewbox.setYRange(plot_widget_model.y_range[0], plot_widget_model.y_range[1], 0)
-            widget_viewbox.enableAutoRange(x=model.x_range == "auto", y=plot_widget_model.y_range == "auto")
+            widget_viewbox.enableAutoRange(
+                x=model.x_range == "auto" or None, y=plot_widget_model.y_range == "auto" or None
+            )
 
         self._check_create_default_plot()
         self._update_plots_x_axis()

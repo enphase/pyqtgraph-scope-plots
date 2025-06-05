@@ -101,7 +101,7 @@ class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, TransformsDataStateModel)
             # TODO improve robustness to SyntaxError
-            self.set_transform([data_name], data_model.transform)
+            self.set_transform([data_name], data_model.transform, update=False)
 
     def apply_transform(
         self,
@@ -195,7 +195,7 @@ class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
                 except SyntaxError as e:
                     err_msg = f"\n\n{e.__class__.__name__}: {e}"
 
-    def set_transform(self, data_names: List[str], transform_expr: str) -> None:
+    def set_transform(self, data_names: List[str], transform_expr: str, update: bool = True) -> None:
         """Sets the transform on a particular data and applies it.
         Raises SyntaxError (from simpleeval) on a parsing failure. Does not do any other processing / checks."""
         if len(transform_expr) > 0:
@@ -213,7 +213,8 @@ class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
             for item in self.selectedItems():
                 not_none(self.item(item.row(), self.COL_TRANSFORM)).setText(transform_expr)
                 not_none(self.item(item.row(), self.COL_TRANSFORM)).setToolTip(transform_expr)
-        self.sigTransformChanged.emit(data_names)
+        if update:
+            self.sigTransformChanged.emit(data_names)
 
     def set_data_items(self, new_data_items: List[Tuple[str, QColor]]) -> None:
         super().set_data_items(new_data_items)

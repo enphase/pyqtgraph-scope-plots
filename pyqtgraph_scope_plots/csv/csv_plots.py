@@ -135,13 +135,13 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
     def _write_model(self, model: BaseTopModel) -> None:
         super()._write_model(model)
-        self._plots._write_model(model)
         self._table._write_model(model)
+        self._plots._write_model(model)
 
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)
-        self._plots._load_model(model)
         self._table._load_model(model)
+        self._plots._load_model(model)
 
     def _transform_data(
         self,
@@ -407,3 +407,4 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             model = top_model_cls(**yaml.load(f, Loader=TupleSafeLoader))
 
         self._load_model(model)
+        self._set_data(self._data)  # bulk update everything

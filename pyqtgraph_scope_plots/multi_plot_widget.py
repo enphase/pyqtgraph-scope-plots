@@ -130,7 +130,6 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
         self._check_create_default_plot()
         self._update_plots_x_axis()
         self._update_data_name_to_plot_item()
-        self._update_plots()  # TODO can be removed and dedup'd
 
     def render_value(self, data_name: str, value: float) -> str:
         """Float-to-string conversion for a value. Optionally override this to provide smarter precision."""

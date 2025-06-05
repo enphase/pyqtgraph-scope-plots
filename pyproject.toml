@@ -59,7 +59,7 @@ profile = "black"
 plugins = [
     "pydantic.mypy"
 ]
-python_version = "3.8"
+python_version = "3.9"  # pydantic uses 3.9 syntax internally
 check_untyped_defs = true
 disallow_incomplete_defs = true
 disallow_untyped_defs = true

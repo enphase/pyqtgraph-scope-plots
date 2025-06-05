@@ -22,6 +22,7 @@ import pyqtgraph as pg
 from PySide6.QtCore import QSignalBlocker, QPoint, QSize, Signal
 from PySide6.QtGui import QColor, Qt, QDropEvent, QDragLeaveEvent, QPainter, QBrush, QDragMoveEvent, QPaintEvent
 from PySide6.QtWidgets import QWidget, QSplitter
+from pydantic import BaseModel
 
 from .enum_waveform_plotitem import EnumWaveformPlot
 from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot
@@ -43,8 +44,12 @@ class EnumWaveformInteractivePlot(
     POI_ANCHOR = (0, 0.5)
 
 
+class PlotWidgetModel(BaseModel):
+    data_items: List[str] = []  # window index -> list of data items
+
+
 class MultiPlotStateModel(BaseTopModel):
-    widget_data_items: List[List[str]] = []  # window index -> list of data items
+    plot_widgets: List[PlotWidgetModel] = []  # window index -> list of data items
 
 
 class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
@@ -94,7 +99,7 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
     def _write_model(self, model: BaseTopModel) -> None:
         super()._write_model(model)
         assert isinstance(model, MultiPlotStateModel)
-        model.widget_data_items = []
+        model.plot_widgets = []
         for i in range(self.count()):
             widget = self.widget(i)
             if isinstance(widget, pg.PlotWidget):
@@ -105,7 +110,7 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
                 ]
             else:
                 widget_data_items = []
-            model.widget_data_items.append(widget_data_items)
+            model.plot_widgets.append(PlotWidgetModel(data_items=widget_data_items))
 
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)
@@ -116,16 +121,16 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
 
         # create plots from model
         assert isinstance(model, MultiPlotStateModel)
-        for widget_data_items in model.widget_data_items:
-            if len(widget_data_items) <= 0:  # skip empty plots
+        for plot_widget_model in model.plot_widgets:
+            if len(plot_widget_model.data_items) <= 0:  # skip empty plots
                 continue
-            color, plot_type = self._data_items.get(widget_data_items[0], (None, None))
+            color, plot_type = self._data_items.get(plot_widget_model.data_items[0], (None, None))
             if plot_type is None:
                 continue
             add_plot_item = self._init_plot_item(self._create_plot_item(plot_type))
             plot_widget = pg.PlotWidget(plotItem=add_plot_item)
             self.addWidget(plot_widget)
-            self._plot_item_data[add_plot_item] = widget_data_items  # type: ignore
+            self._plot_item_data[add_plot_item] = plot_widget_model.data_items
 
         self._check_create_default_plot()
         self._update_plots_x_axis()

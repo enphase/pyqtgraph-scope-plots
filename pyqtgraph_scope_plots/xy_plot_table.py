@@ -21,6 +21,7 @@ from PySide6.QtCore import QSize
 from PySide6.QtGui import QAction, QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent
 from PySide6.QtWidgets import QMenu, QMessageBox
 from numpy import typing as npt
+from pydantic import BaseModel
 
 from .save_restore_model import HasSaveLoadConfig, BaseTopModel
 from .multi_plot_widget import DragTargetOverlay
@@ -145,8 +146,12 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
         event.accept()
 
 
+class XyWindowModel(BaseModel):
+    xy_data_items: List[Tuple[str, str]] = []  # list of (x, y) data items
+
+
 class XyTableStateModel(BaseTopModel):
-    xy_data_items: List[List[Tuple[str, str]]] = []  # window index -> list of (x, y) data items
+    xy_windows: List[XyWindowModel] = []
 
 
 class XyTable(
@@ -165,9 +170,9 @@ class XyTable(
     def _write_model(self, model: BaseTopModel) -> None:
         super()._write_model(model)
         assert isinstance(model, XyTableStateModel)
-        model.xy_data_items = []
+        model.xy_windows = []
         for xy_plot in self._xy_plots:
-            model.xy_data_items.append(xy_plot._xys)
+            model.xy_windows.append(XyWindowModel(xy_data_items=xy_plot._xys))
 
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)
@@ -176,9 +181,9 @@ class XyTable(
             xy_plot.close()
 
         assert isinstance(model, XyTableStateModel)
-        for xy_data_items in model.xy_data_items:  # create plots from model
+        for xy_window_model in model.xy_windows:  # create plots from model
             xy_plot = self.create_xy()
-            for xy_data_item in xy_data_items:
+            for xy_data_item in xy_window_model.xy_data_items:
                 xy_plot.add_xy(*xy_data_item)
 
     def _populate_context_menu(self, menu: QMenu) -> None:

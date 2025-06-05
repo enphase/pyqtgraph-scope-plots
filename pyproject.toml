@@ -66,10 +66,6 @@ disallow_untyped_defs = true
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["pydantic.*"]
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = ["pyqtgraph.*", "simpleeval.*", "pytestqt.*"]
 ignore_missing_imports = true
 

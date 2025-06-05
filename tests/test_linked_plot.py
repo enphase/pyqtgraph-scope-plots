@@ -98,6 +98,25 @@ def test_linked_pois(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     assert [poi.x() for poi in plot_item(plot, 2).pois] == [0.1, 1.5]
 
 
+def test_pois_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
+    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_model([])).pois == [])
+
+    plot_item(plot, 0).set_pois([0.1, 1.5])
+    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_model([])).pois == [0.1, 1.5])
+
+
+def test_pois_restore(qtbot: QtBot, plot: PlotsTableWidget) -> None:
+    model = cast(LinkedMultiPlotStateModel, plot._plots._dump_model([]))
+
+    model.pois = [0.1, 1.5]
+    plot._plots._restore_model(model)
+    qtbot.waitUntil(lambda: [poi.x() for poi in plot_item(plot, 1).pois] == [0.1, 1.5])
+
+    model.pois = []
+    plot._plots._restore_model(model)
+    qtbot.waitUntil(lambda: [poi.x() for poi in plot_item(plot, 1).pois] == [])
+
+
 def test_linked_drag_cursor(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     for i in range(3):
         assert plot_item(plot, i).drag_cursor is None  # verify initial state

@@ -29,7 +29,7 @@ class TimeAxisItem(DeltaAxisItem):
         out = []
         for value in values:
             try:
-                tick_value = datetime.fromtimestamp(value).strftime("%I:%M:%S.%f"[:-3])
+                tick_value = datetime.fromtimestamp(value).strftime("%x %X")
             except (OSError, OverflowError):
                 tick_value = "🦆"
             out.append(tick_value)

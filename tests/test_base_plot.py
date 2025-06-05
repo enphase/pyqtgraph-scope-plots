@@ -197,17 +197,23 @@ def test_plot_remove(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 
 
 def test_plot_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    qtbot.waitUntil(lambda: plot._plots._dump_model([]).widget_data_items == [["0"], ["1"], ["2"]])
+    qtbot.waitUntil(
+        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).widget_data_items == [["0"], ["1"], ["2"]]
+    )
 
     plot._plots._merge_data_into_item(["0"], 1)  # merge
-    qtbot.waitUntil(lambda: plot._plots._dump_model([]).widget_data_items == [["1", "0"], ["2"]])
+    qtbot.waitUntil(
+        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).widget_data_items == [["1", "0"], ["2"]]
+    )
 
     plot._plots._merge_data_into_item(["2"], 0)  # merge
-    qtbot.waitUntil(lambda: plot._plots._dump_model([]).widget_data_items == [["1", "0", "2"]])
+    qtbot.waitUntil(
+        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).widget_data_items == [["1", "0", "2"]]
+    )
 
 
 def test_plot_restore(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    model = plot._plots._dump_model([])
+    model = cast(MultiPlotStateModel, plot._plots._dump_model([]))
     model.widget_data_items = [["0", "1", "2"]]
     plot._plots._restore_model(model)
     qtbot.waitUntil(lambda: plot._plots.count() == 1)

@@ -11,9 +11,11 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
+from typing import cast
 
 from pytestqt.qtbot import QtBot
 
+from pyqtgraph_scope_plots.multi_plot_widget import LinkedMultiPlotStateModel
 from pyqtgraph_scope_plots.plots_table_widget import PlotsTableWidget
 from pyqtgraph_scope_plots.util import not_none
 from .test_base_plot import plot_item, plot
@@ -53,13 +55,13 @@ def test_linked_region(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 
 
 def test_region_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    qtbot.waitUntil(lambda: plot._plots._dump_model([]).region is None)
+    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_model([])).region is None)
 
     plot_item(plot, 0).set_region((0.1, 1.5))
-    qtbot.waitUntil(lambda: plot._plots._dump_model([]).region == (0.1, 1.5))
+    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_model([])).region == (0.1, 1.5))
 
     plot_item(plot, 1).set_region(1.0)
-    qtbot.waitUntil(lambda: plot._plots._dump_model([]).region == 1.0)
+    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_model([])).region == 1.0)
 
 
 def test_linked_pois(qtbot: QtBot, plot: PlotsTableWidget) -> None:

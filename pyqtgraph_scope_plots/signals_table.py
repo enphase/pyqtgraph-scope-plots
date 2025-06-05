@@ -373,12 +373,12 @@ class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveRestoreModel):
 
     def _restore_model(self, model: BaseTopModel) -> None:
         super()._restore_model(model)
-        assert isinstance(model, ColorPickerDataStateModel)
-        data_name_colors = [
-            (data_name, QColor(data_model.color[0], data_model.color[1], data_model.color[2]))
-            for data_name, data_model in model.data.items()
-            if data_model.color is not None
-        ]
+        data_name_colors = []
+        for data_name, data_model in model.data.items():
+            assert isinstance(data_model, ColorPickerDataStateModel)
+            if data_model.color is None:
+                continue
+            data_name_colors.append((data_name, QColor(data_model.color[0], data_model.color[1], data_model.color[2])))
         self.sigColorChanged.emit(data_name_colors)
 
     def _populate_context_menu(self, menu: QMenu) -> None:

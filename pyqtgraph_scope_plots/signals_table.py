@@ -23,10 +23,9 @@ import numpy.typing as npt
 from PySide6.QtCore import QMimeData, QPoint, Signal, QObject, QThread
 from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
 from PySide6.QtWidgets import QTableWidgetItem, QTableWidget, QHeaderView, QMenu, QLabel, QColorDialog
-from pydantic._internal._model_construction import ModelMetaclass
 
-from .save_restore_model import HasSaveLoadConfig, DataTopModel, BaseTopModel
 from .cache_dict import IdentityCacheDict
+from .save_restore_model import HasSaveLoadConfig, DataTopModel, BaseTopModel
 from .util import not_none
 
 
@@ -363,18 +362,18 @@ class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, ColorPickerDataStateModel)
             color = self._colors.get(data_name, None)
-            if color is None:
-                continue
-            data_model.color = (color.red(), color.green(), color.blue())
+            if color is not None:
+                data_model.color = (color.red(), color.green(), color.blue())
 
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)
         data_name_colors = []
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, ColorPickerDataStateModel)
-            if data_model.color is None:
-                continue
-            data_name_colors.append((data_name, QColor(data_model.color[0], data_model.color[1], data_model.color[2])))
+            if data_model.color is not None:
+                data_name_colors.append(
+                    (data_name, QColor(data_model.color[0], data_model.color[1], data_model.color[2]))
+                )
         self.sigColorChanged.emit(data_name_colors)
 
     def _populate_context_menu(self, menu: QMenu) -> None:

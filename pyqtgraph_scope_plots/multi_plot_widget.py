@@ -22,7 +22,6 @@ import pyqtgraph as pg
 from PySide6.QtCore import QSignalBlocker, QPoint, QSize, Signal
 from PySide6.QtGui import QColor, Qt, QDropEvent, QDragLeaveEvent, QPainter, QBrush, QDragMoveEvent, QPaintEvent
 from PySide6.QtWidgets import QWidget, QSplitter
-from pydantic._internal._model_construction import ModelMetaclass
 
 from .enum_waveform_plotitem import EnumWaveformPlot
 from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot

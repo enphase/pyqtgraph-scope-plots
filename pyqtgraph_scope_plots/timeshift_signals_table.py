@@ -12,25 +12,31 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import Dict, List, Any, Mapping, Tuple
+from typing import Dict, List, Any, Mapping, Tuple, Optional
 
 import numpy as np
 import numpy.typing as npt
 from PySide6.QtGui import QAction, QColor
 from PySide6.QtWidgets import QTableWidgetItem, QMenu
 
+from .save_restore_model import DataTopModel, HasSaveLoadConfig, BaseTopModel
 from .util import not_none
 from .cache_dict import IdentityCacheDict
 from .signals_table import ContextMenuSignalsTable
 
 
-class TimeshiftSignalsTable(ContextMenuSignalsTable):
+class TimeshiftDataStateModel(DataTopModel):
+    timeshift: float = 0
+
+
+class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
     """Mixin into SignalsTable that adds a UI to time-shift a signal.
     This acts as the data store and transformer to apply the time-shift, but the actual
     values are set externally (by a function call, typically from the top-level coordinator
     that gets its data from the user dragging a plot line)."""
 
     COL_TIMESHIFT = -1
+    DATA_MODEL_BASES = [TimeshiftDataStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -42,6 +48,20 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable):
         self._cached_results = IdentityCacheDict[
             npt.NDArray[np.float64], npt.NDArray[np.float64]
         ]()  # src x-values -> output x-values
+
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
+        for data_name, data_model in model.data.items():
+            assert isinstance(data_model, TimeshiftDataStateModel)
+            timeshift = self._timeshifts.get(data_name, None)
+            if timeshift is not None:
+                data_model.timeshift = timeshift
+
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
+        for data_name, data_model in model.data.items():
+            assert isinstance(data_model, TimeshiftDataStateModel)
+            self.set_timeshift([data_name], data_model.timeshift)
 
     def _post_cols(self) -> int:
         self.COL_TIMESHIFT = super()._post_cols()

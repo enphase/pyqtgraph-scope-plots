@@ -47,7 +47,7 @@ class HasSaveLoadConfig:
 
     @classmethod
     def _get_model_bases(cls) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
-        """Returns the (data bases, misc bases) of this. Typically implemented as a concat of the incoming types.
+        """Returns the (data bases, misc bases) of this class.
         Inspects each subclasses' TOP_MODEL_BASES and DATA_MODEL_BASES, so no implementation is required
         if all the HasSaveLoadConfig are mixins into the top-level class.
 

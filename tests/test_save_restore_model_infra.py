@@ -1,7 +1,6 @@
-from typing import Optional, List, Tuple
+from typing import Optional
 
 from pydantic import BaseModel
-from pydantic._internal._model_construction import ModelMetaclass
 
 from pyqtgraph_scope_plots.save_restore_model import DataTopModel, BaseTopModel, HasSaveLoadConfig
 

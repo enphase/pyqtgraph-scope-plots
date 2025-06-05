@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, cast
 from unittest import mock
 
 import numpy as np
@@ -22,7 +22,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QInputDialog
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.timeshift_signals_table import TimeshiftSignalsTable
+from pyqtgraph_scope_plots.timeshift_signals_table import TimeshiftSignalsTable, TimeshiftDataStateModel
 from pyqtgraph_scope_plots.transforms_signal_table import TransformsSignalsTable
 from pyqtgraph_scope_plots.util import not_none
 from .test_util import context_menu, menu_action_by_name
@@ -173,3 +173,22 @@ def test_timeshift(qtbot: QtBot, timeshifts_table: TimeshiftSignalsTable) -> Non
     qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [1.0, 1.1, 2.0, 3.0])
     timeshifts_table.set_timeshift(["0"], -0.5)  # test negative and noninteger
     qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [-0.5, -0.4, 0.5, 1.5])
+
+
+def test_timeshift_save(qtbot: QtBot, timeshifts_table: TimeshiftSignalsTable) -> None:
+    qtbot.waitUntil(lambda: cast(TimeshiftDataStateModel, timeshifts_table._dump_model(["0"]).data["0"]).timeshift == 0)
+    timeshifts_table.set_timeshift(["0"], -0.5)  # test negative and noninteger
+    qtbot.waitUntil(
+        lambda: cast(TimeshiftDataStateModel, timeshifts_table._dump_model(["0"]).data["0"]).timeshift == -0.5
+    )
+
+
+def test_timeshift_load(qtbot: QtBot, timeshifts_table: TimeshiftSignalsTable) -> None:
+    model = timeshifts_table._dump_model(["0"])
+    cast(TimeshiftDataStateModel, model.data["0"]).timeshift = -0.5
+    timeshifts_table._load_model(model)
+    qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [-0.5, -0.4, 0.5, 1.5])
+
+    cast(TimeshiftDataStateModel, model.data["0"]).timeshift = 0
+    timeshifts_table._load_model(model)
+    qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [0.0, 0.1, 1.0, 2.0])

@@ -151,7 +151,7 @@ class XyWindowModel(BaseModel):
 
 
 class XyTableStateModel(BaseTopModel):
-    xy_windows: List[XyWindowModel] = []
+    xy_windows: Optional[List[XyWindowModel]] = None
 
 
 class XyTable(
@@ -176,11 +176,11 @@ class XyTable(
 
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)
-
+        assert isinstance(model, XyTableStateModel)
+        if model.xy_windows is None:
+            return
         for xy_plot in self._xy_plots:  # remove all existing plots
             xy_plot.close()
-
-        assert isinstance(model, XyTableStateModel)
         for xy_window_model in model.xy_windows:  # create plots from model
             xy_plot = self.create_xy()
             for xy_data_item in xy_window_model.xy_data_items:

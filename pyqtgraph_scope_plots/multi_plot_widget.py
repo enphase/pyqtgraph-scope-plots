@@ -49,7 +49,7 @@ class PlotWidgetModel(BaseModel):
 
 
 class MultiPlotStateModel(BaseTopModel):
-    plot_widgets: List[PlotWidgetModel] = []  # window index -> list of data items
+    plot_widgets: Optional[List[PlotWidgetModel]] = None  # window index -> list of data items
 
 
 class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
@@ -115,13 +115,14 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)
 
-        # remove all existing plots
-        self._plot_item_data = {}
+        assert isinstance(model, MultiPlotStateModel)
+        if model.plot_widgets is None:
+            return
+
+        self._plot_item_data = {}  # remove all existing plots
         self._clean_plot_widgets()
 
-        # create plots from model
-        assert isinstance(model, MultiPlotStateModel)
-        for plot_widget_model in model.plot_widgets:
+        for plot_widget_model in model.plot_widgets:  # create plots from model
             if len(plot_widget_model.data_items) <= 0:  # skip empty plots
                 continue
             color, plot_type = self._data_items.get(plot_widget_model.data_items[0], (None, None))
@@ -329,8 +330,8 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
 
 
 class LinkedMultiPlotStateModel(BaseTopModel):
-    region: Optional[Union[float, Tuple[float, float]]] = None
-    pois: List[float] = []
+    region: Optional[Union[Tuple[()], float, Tuple[float, float]]] = None
+    pois: Optional[List[float]] = None
 
 
 class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
@@ -354,8 +355,13 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)
         assert isinstance(model, LinkedMultiPlotStateModel)
-        self._on_region_change(None, model.region)
-        self._on_poi_change(None, model.pois)
+        if model.region is not None:
+            region = model.region
+            if region == ():  # convert empty model format to internal region format
+                region = None
+            self._on_region_change(None, region)
+        if model.pois is not None:
+            self._on_poi_change(None, model.pois)
 
     def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
         """Called after _create_plot_item, does any post-creation init. Returns the same plot_item."""

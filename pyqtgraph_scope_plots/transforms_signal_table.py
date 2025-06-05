@@ -197,7 +197,8 @@ class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
 
     def set_transform(self, data_names: List[str], transform_expr: str, update: bool = True) -> None:
         """Sets the transform on a particular data and applies it.
-        Raises SyntaxError (from simpleeval) on a parsing failure. Does not do any other processing / checks."""
+        Raises SyntaxError (from simpleeval) on a parsing failure. Does not do any other processing / checks.
+        Optionally, updating can be disabled for performance, for example to batch-update after a bunch of ops."""
         if len(transform_expr) > 0:
             parsed = self._simpleeval.parse(transform_expr)
         else:

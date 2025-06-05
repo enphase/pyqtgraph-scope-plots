@@ -12,17 +12,17 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import Dict, List, Any, Mapping, Tuple, Optional
+from typing import Dict, List, Any, Mapping, Tuple
 
 import numpy as np
 import numpy.typing as npt
 from PySide6.QtGui import QAction, QColor
 from PySide6.QtWidgets import QTableWidgetItem, QMenu
 
-from .save_restore_model import DataTopModel, HasSaveLoadConfig, BaseTopModel
-from .util import not_none
 from .cache_dict import IdentityCacheDict
+from .save_restore_model import DataTopModel, HasSaveLoadConfig, BaseTopModel
 from .signals_table import ContextMenuSignalsTable
+from .util import not_none
 
 
 class TimeshiftDataStateModel(DataTopModel):
@@ -99,7 +99,8 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
         self.sigTimeshiftHandle.emit(selected_data_names, initial_timeshift)
 
     def set_timeshift(self, data_names: List[str], timeshift: float, update: bool = True) -> None:
-        """Called externally (eg, by handle drag) to set the timeshift for the specified data names."""
+        """Called externally (eg, by handle drag) to set the timeshift for the specified data names.
+        Optionally, updating can be disabled for performance, for example to batch-update after a bunch of ops."""
         index_by_data_name = {data_name: i for i, data_name in enumerate(self._data_items.keys())}
         for data_name in data_names:
             self._timeshifts[data_name] = timeshift

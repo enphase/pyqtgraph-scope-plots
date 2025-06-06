@@ -80,7 +80,7 @@ def test_save_model_csvs(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     assert model.csv_files == [os.path.join("data", "test_csv_viewer_data.csv")]  # relpath
 
     # test saving in abspath mode
-    model = plot._do_save_config("/config.yml")
+    model = plot._do_save_config("/lol/config.yml")
     assert model.csv_files == [
         os.path.abspath(os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv"))
     ]

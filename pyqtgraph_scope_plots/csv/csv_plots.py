@@ -340,12 +340,18 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             self._load_csv(files_to_load, colnames=data_items_to_load, append=True)
 
     def _load_csv(
-        self, csv_filepaths: List[str], append: bool = False, colnames: Optional[Iterable[str]] = None
+        self,
+        csv_filepaths: List[str],
+        append: bool = False,
+        colnames: Optional[Iterable[str]] = None,
+        update: bool = True,
     ) -> "CsvLoaderPlotsTableWidget":
         """Loads CSV files into the current window.
         If append is true, preserves the existing data / metadata.
         If colnames is not None, reads the specified column names from the file. These must already be in the dataset.
         Items in colnames but not in the file are read as an empty table
+
+        If update is disabled, only sets the self._data internal variable to allow for a later bulk update
         """
         # prepare data structures
         data_type_dict: Dict[str, MultiPlotWidget.PlotType] = {}  # col header -> plot type IF NOT Default
@@ -401,7 +407,10 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         if colnames is None:  # colnames not None means update only
             data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(data_type_dict.items())]
             self._set_data_items(data_items)
-        self._set_data(data_dict)
+        if update:
+            self._set_data(data_dict)
+        else:
+            self._data = data_dict
         self._csv_data_items = csv_data_items_dict
 
         return self
@@ -470,7 +479,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
                     f"Some CSV files not found: {', '.join(missing_csv_files)}",
                     QMessageBox.StandardButton.Ok,
                 )
-            self._load_csv(found_csv_files)
+            self._load_csv(found_csv_files, update=False)
 
         data = self._data
         self._set_data({})  # blank the data while updates happen, for performance

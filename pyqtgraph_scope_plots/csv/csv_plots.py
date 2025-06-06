@@ -27,7 +27,16 @@ import pyqtgraph as pg
 from PySide6 import QtWidgets
 from PySide6.QtCore import QKeyCombination, QTimer
 from PySide6.QtGui import QAction, QColor, Qt
-from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QVBoxLayout, QInputDialog, QToolButton
+from PySide6.QtWidgets import (
+    QWidget,
+    QPushButton,
+    QFileDialog,
+    QMenu,
+    QVBoxLayout,
+    QInputDialog,
+    QToolButton,
+    QMessageBox,
+)
 from pydantic._internal._model_construction import ModelMetaclass
 
 from ..save_restore_model import HasSaveLoadConfig, BaseTopModel
@@ -53,8 +62,14 @@ def construct_python_tuple(loader: TupleSafeLoader, node: Any) -> Tuple[Any, ...
 TupleSafeLoader.add_constructor("tag:yaml.org,2002:python/tuple", construct_python_tuple)
 
 
+class CsvLoaderStateModel(BaseTopModel):
+    csv_files: Optional[List[str]] = None  # all loaded CSV files, as relpath or abspath
+
+
 class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, HasSaveLoadConfig):
     """Example app-level widget that loads CSV files into the plotter"""
+
+    TOP_MODEL_BASES = [CsvLoaderStateModel]
 
     WATCH_INTERVAL_MS = 333  # polls the filesystem metadata for changes this frequently
 
@@ -395,8 +410,24 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         filename, _ = QFileDialog.getSaveFileName(None, "Save config", filter="YAML files (*.yml)")
         if not filename:  # nothing selected, user canceled
             return
+        model = self._dump_model(self._table._data_items.keys())
+        assert isinstance(model, CsvLoaderStateModel)
+
+        # this is a bit of a hack, CSV names should be in _write_model
+        # but we need access to the filename to determine if writing relpath or abspath
+        csvs_commonpath = os.path.commonpath(self._csv_data_items.keys())
+
+        config_dir = os.path.dirname(filename)
+        all_commonpath = os.path.commonpath([csvs_commonpath, config_dir])
+        if os.path.abspath(config_dir) == os.path.abspath(all_commonpath):  # save as relpath, configs above CSVs
+            model.csv_files = [
+                os.path.relpath(csv_filename, config_dir) for csv_filename in self._csv_data_items.keys()
+            ]
+        else:  # save as abspath, would need .. access to get CSVs
+            model.csv_files = [os.path.abspath(csv_filename) for csv_filename in self._csv_data_items.keys()]
+
         with open(filename, "w") as f:
-            f.write(yaml.dump(self._dump_model(self._table._data_items.keys()).model_dump(), sort_keys=False))
+            f.write(yaml.dump(model.model_dump(), sort_keys=False))
 
     def _on_load_config(self) -> None:
         filename, _ = QFileDialog.getOpenFileName(None, "Load config", filter="YAML files (*.yml)")
@@ -405,6 +436,26 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         with open(filename, "r") as f:
             _, top_model_cls = self._create_skeleton_model_type()
             model = top_model_cls(**yaml.load(f, Loader=TupleSafeLoader))
+
+        assert isinstance(model, CsvLoaderStateModel)
+        if model.csv_files is not None:
+            missing_csv_files = []
+            found_csv_files = []
+            for csv_file in model.csv_files:
+                if not os.path.isabs(csv_file):  # append yml path to relpaths
+                    csv_file = os.path.join(os.path.dirname(filename), csv_file)
+                if os.path.exists(csv_file):
+                    found_csv_files.append(csv_file)
+                else:
+                    missing_csv_files.append(csv_file)
+            if missing_csv_files:
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Some CSV files not found: {', '.join(missing_csv_files)}",
+                    QMessageBox.StandardButton.Ok,
+                )
+            self._load_csv(found_csv_files)
 
         data = self._data
         self._set_data({})  # blank the data while updates happen, for performance

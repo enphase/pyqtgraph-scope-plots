@@ -83,7 +83,7 @@ def test_region_restore(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 
     model.region = None  # no change
     plot._plots._load_model(model)
-    qtbot.wait(10)
+    qtbot.wait(10)  # wait for potential unwanted behavior to propagate
     for i in range(3):
         assert not_none(plot_item(plot, i).cursor).x() == 1.0
 

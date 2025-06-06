@@ -102,6 +102,8 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
         super()._write_model(model)
         assert isinstance(model, MultiPlotStateModel)
         model.plot_widgets = []
+        x_viewbox: Optional[pg.ViewBox] = None
+
         for i in range(self.count()):
             widget = self.widget(i)
             if not isinstance(widget, pg.PlotWidget):  # ignored
@@ -117,10 +119,14 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
                 widget_model.y_range = tuple(widget_viewbox.viewRange()[1])
             model.plot_widgets.append(widget_model)
 
-        if self._anchor_x_plot_item.getViewBox().autoRangeEnabled()[0]:
-            model.x_range = "auto"
-        else:
-            model.x_range = tuple(self._anchor_x_plot_item.getViewBox().viewRange()[0])
+            if x_viewbox is None:
+                x_viewbox = widget_viewbox
+
+        if x_viewbox is not None:
+            if x_viewbox.autoRangeEnabled()[0]:
+                model.x_range = "auto"
+            else:
+                model.x_range = tuple(x_viewbox.viewRange()[0])
 
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)

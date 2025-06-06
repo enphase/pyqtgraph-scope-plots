@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import Any, List, Tuple, Mapping, Optional
+from typing import Any, List, Tuple, Mapping, Optional, Literal, Union, cast
 
 import numpy as np
 import pyqtgraph as pg
@@ -148,6 +148,8 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
 
 class XyWindowModel(BaseModel):
     xy_data_items: List[Tuple[str, str]] = []  # list of (x, y) data items
+    x_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
+    y_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
 
 
 class XyTableStateModel(BaseTopModel):
@@ -172,7 +174,17 @@ class XyTable(
         assert isinstance(model, XyTableStateModel)
         model.xy_windows = []
         for xy_plot in self._xy_plots:
-            model.xy_windows.append(XyWindowModel(xy_data_items=xy_plot._xys))
+            xy_window_model = XyWindowModel(xy_data_items=xy_plot._xys)
+            viewbox = cast(pg.PlotItem, xy_plot.getPlotItem()).getViewBox()
+            if viewbox.autoRangeEnabled()[0]:
+                xy_window_model.x_range = "auto"
+            else:
+                xy_window_model.x_range = tuple(viewbox.viewRange()[0])
+            if viewbox.autoRangeEnabled()[1]:
+                xy_window_model.y_range = "auto"
+            else:
+                xy_window_model.y_range = tuple(viewbox.viewRange()[1])
+            model.xy_windows.append(xy_window_model)
 
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)
@@ -185,6 +197,15 @@ class XyTable(
             xy_plot = self.create_xy()
             for xy_data_item in xy_window_model.xy_data_items:
                 xy_plot.add_xy(*xy_data_item)
+            viewbox = cast(pg.PlotItem, xy_plot.getPlotItem()).getViewBox()
+            if xy_window_model.x_range is not None and xy_window_model.x_range != "auto":
+                viewbox.setXRange(xy_window_model.x_range[0], xy_window_model.x_range[1], 0)
+            if xy_window_model.y_range is not None and xy_window_model.y_range != "auto":
+                viewbox.setYRange(xy_window_model.y_range[0], xy_window_model.y_range[1], 0)
+            if xy_window_model.x_range == "auto" or xy_window_model.y_range == "auto":
+                viewbox.enableAutoRange(
+                    x=xy_window_model.x_range == "auto" or None, y=xy_window_model.y_range == "auto" or None
+                )
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)

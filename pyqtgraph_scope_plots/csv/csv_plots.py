@@ -406,30 +406,40 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
         return self
 
-    def _on_save_config(self) -> None:
+    def _on_save_config(self) -> Optional[CsvLoaderStateModel]:
         filename, _ = QFileDialog.getSaveFileName(None, "Save config", filter="YAML files (*.yml)")
         if not filename:  # nothing selected, user canceled
-            return
+            return None
+        model = self._do_save_config(filename)
+        with open(filename, "w") as f:
+            f.write(yaml.dump(model.model_dump(), sort_keys=False))
+
+    def _do_save_config(self, filename: str) -> CsvLoaderStateModel:
         model = self._dump_model(self._table._data_items.keys())
         assert isinstance(model, CsvLoaderStateModel)
 
-        # this is a bit of a hack, CSV names should be in _write_model
-        # but we need access to the filename to determine if writing relpath or abspath
-        csvs_commonpath = os.path.commonpath(self._csv_data_items.keys())
+        if len(self._csv_data_items) == 0:
+            model.csv_files = []
+        else:
+            # this is a bit of a hack, CSV names should be in _write_model
+            # but we need access to the filename to determine if writing relpath or abspath
+            csvs_commonpath = os.path.commonpath(self._csv_data_items.keys())
 
-        config_dir = os.path.dirname(filename)
-        all_commonpath = os.path.commonpath([csvs_commonpath, config_dir])
-        # TODO there should be some indication to the user about whether it's saving
-        # in relpath or abspath mode, probably in the file dialog, and an explanation of why it matters
-        if os.path.abspath(config_dir) == os.path.abspath(all_commonpath):  # save as relpath, configs above CSVs
-            model.csv_files = [
-                os.path.relpath(csv_filename, config_dir) for csv_filename in self._csv_data_items.keys()
-            ]
-        else:  # save as abspath, would need .. access to get CSVs
-            model.csv_files = [os.path.abspath(csv_filename) for csv_filename in self._csv_data_items.keys()]
+            config_dir = os.path.dirname(filename)
+            try:
+                all_commonpath = os.path.commonpath([csvs_commonpath, config_dir])
+            except ValueError:
+                all_commonpath = ""  # eg, paths not on same drive
+            # TODO there should be some indication to the user about whether it's saving
+            # in relpath or abspath mode, probably in the file dialog, and an explanation of why it matters
+            if os.path.abspath(config_dir) == os.path.abspath(all_commonpath):  # save as relpath, configs above CSVs
+                model.csv_files = [
+                    os.path.relpath(csv_filename, config_dir) for csv_filename in self._csv_data_items.keys()
+                ]
+            else:  # save as abspath, would need .. access to get CSVs
+                model.csv_files = [os.path.abspath(csv_filename) for csv_filename in self._csv_data_items.keys()]
 
-        with open(filename, "w") as f:
-            f.write(yaml.dump(model.model_dump(), sort_keys=False))
+        return model
 
     def _on_load_config(self) -> None:
         filename, _ = QFileDialog.getOpenFileName(None, "Load config", filter="YAML files (*.yml)")
@@ -440,6 +450,9 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             model = top_model_cls(**yaml.load(f, Loader=TupleSafeLoader))
 
         assert isinstance(model, CsvLoaderStateModel)
+        self._do_load_config(filename, model)
+
+    def _do_load_config(self, filename: str, model: CsvLoaderStateModel):
         if model.csv_files is not None:
             missing_csv_files = []
             found_csv_files = []

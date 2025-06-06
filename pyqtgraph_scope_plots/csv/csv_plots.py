@@ -419,6 +419,8 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
         config_dir = os.path.dirname(filename)
         all_commonpath = os.path.commonpath([csvs_commonpath, config_dir])
+        # TODO there should be some indication to the user about whether it's saving
+        # in relpath or abspath mode, probably in the file dialog, and an explanation of why it matters
         if os.path.abspath(config_dir) == os.path.abspath(all_commonpath):  # save as relpath, configs above CSVs
             model.csv_files = [
                 os.path.relpath(csv_filename, config_dir) for csv_filename in self._csv_data_items.keys()

@@ -139,7 +139,7 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
         self._clean_plot_widgets()
 
         for plot_widget_model in model.plot_widgets:  # create plots from model
-            if len(plot_widget_model.data_items) <= 0:  # skip empty plots
+            if len(plot_widget_model.data_items) < 1:  # skip empty plots
                 continue
             color, plot_type = self._data_items.get(plot_widget_model.data_items[0], (None, None))
             if plot_type is None:

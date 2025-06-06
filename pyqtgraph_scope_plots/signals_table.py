@@ -341,7 +341,7 @@ class DeleteableSignalsTable(ContextMenuSignalsTable):
 
 
 class ColorPickerDataStateModel(DataTopModel):
-    color: Optional[str] = None  # QColor name, including hex formats
+    color: Optional[str] = None  # QColor name, e.g., '#ffea70' or 'red'
 
 
 class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):

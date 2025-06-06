@@ -14,6 +14,7 @@
 from typing import cast
 
 import pytest
+import pyqtgraph as pg
 from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
@@ -80,7 +81,7 @@ def test_xy_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     xy_plot.add_xy("1", "0")
     qtbot.waitUntil(
         lambda: cast(XyTableStateModel, plot._table._dump_model([])).xy_windows
-        == [XyWindowModel(xy_data_items=[("0", "1"), ("1", "0")])]
+        == [XyWindowModel(xy_data_items=[("0", "1"), ("1", "0")], x_range="auto", y_range="auto")]
     )
 
 

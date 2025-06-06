@@ -40,6 +40,15 @@ class HasSaveLoadConfig:
     Each subclass of this (typically a mixin into table or multiplotwidget) defines BaseModel
     mixins into both data and misc, a save function for model (including the data), and
     a load function for model (including the data).
+
+    Requirements for models:
+    - models must be instantiable with no arguments, fields should have default values
+
+    Recommended conventions for models and save/restore:
+    - all fields should be saved with concrete values.
+    - fields should be Optional[], where a None means to ignore the field (preserve current value) during loading.
+      - this allows users to delete fields from generated files.
+    - where a None is a concrete value, use something else, e.g., empty tuple.
     """
 
     TOP_MODEL_BASES: List[ModelMetaclass] = []  # defined in subclasses

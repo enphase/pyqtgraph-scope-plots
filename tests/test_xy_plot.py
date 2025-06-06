@@ -14,12 +14,13 @@
 from typing import cast
 
 import pytest
+import pyqtgraph as pg
 from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.plots_table_widget import PlotsTableWidget
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
-from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel
+from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel, XyWindowModel
 
 
 @pytest.fixture()
@@ -79,14 +80,15 @@ def test_xy_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     xy_plot.add_xy("0", "1")
     xy_plot.add_xy("1", "0")
     qtbot.waitUntil(
-        lambda: cast(XyTableStateModel, plot._table._dump_model([])).xy_data_items == [[("0", "1"), ("1", "0")]]
+        lambda: cast(XyTableStateModel, plot._table._dump_model([])).xy_windows
+        == [XyWindowModel(xy_data_items=[("0", "1"), ("1", "0")], x_range="auto", y_range="auto")]
     )
 
 
 def test_xy_load(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     model = cast(XyTableStateModel, plot._table._dump_model([]))
 
-    model.xy_data_items = [[("1", "0")]]
+    model.xy_windows = [XyWindowModel(xy_data_items=[("1", "0")])]
     plot._table._load_model(model)
     qtbot.waitUntil(lambda: len(plot._table._xy_plots) == 1)
     assert plot._table._xy_plots[0]._xys == [("1", "0")]

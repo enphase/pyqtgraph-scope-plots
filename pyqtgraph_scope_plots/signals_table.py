@@ -341,7 +341,7 @@ class DeleteableSignalsTable(ContextMenuSignalsTable):
 
 
 class ColorPickerDataStateModel(DataTopModel):
-    color: Optional[Tuple[int, int, int]] = None  # R, G, B
+    color: Optional[str] = None  # QColor name, e.g., '#ffea70' or 'red'
 
 
 class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
@@ -363,7 +363,7 @@ class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
             assert isinstance(data_model, ColorPickerDataStateModel)
             color = self._colors.get(data_name, None)
             if color is not None:
-                data_model.color = (color.red(), color.green(), color.blue())
+                data_model.color = color.name()
 
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)
@@ -371,9 +371,7 @@ class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, ColorPickerDataStateModel)
             if data_model.color is not None:
-                data_name_colors.append(
-                    (data_name, QColor(data_model.color[0], data_model.color[1], data_model.color[2]))
-                )
+                data_name_colors.append((data_name, QColor(data_model.color)))
         self.sigColorChanged.emit(data_name_colors)
 
     def _populate_context_menu(self, menu: QMenu) -> None:

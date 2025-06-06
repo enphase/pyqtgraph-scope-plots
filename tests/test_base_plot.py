@@ -21,7 +21,12 @@ from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.plots_table_widget import PlotsTableWidget
-from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget, MultiPlotStateModel, LinkedMultiPlotStateModel
+from pyqtgraph_scope_plots.multi_plot_widget import (
+    MultiPlotWidget,
+    MultiPlotStateModel,
+    LinkedMultiPlotStateModel,
+    PlotWidgetModel,
+)
 from .test_util import assert_cast
 from pyqtgraph_scope_plots.util import not_none
 
@@ -198,40 +203,72 @@ def test_plot_remove(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 
 def test_plot_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     qtbot.waitUntil(
-        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).widget_data_items == [["0"], ["1"], ["2"]]
+        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).plot_widgets
+        == [
+            PlotWidgetModel(data_items=["0"], y_range="auto"),
+            PlotWidgetModel(data_items=["1"], y_range="auto"),
+            PlotWidgetModel(data_items=["2"], y_range="auto"),
+        ]
     )
 
     plot._plots._merge_data_into_item(["0"], 1)  # merge
     qtbot.waitUntil(
-        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).widget_data_items == [["1", "0"], ["2"]]
+        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).plot_widgets
+        == [PlotWidgetModel(data_items=["1", "0"], y_range="auto"), PlotWidgetModel(data_items=["2"], y_range="auto")]
     )
 
     plot._plots._merge_data_into_item(["2"], 0)  # merge
     qtbot.waitUntil(
-        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).widget_data_items == [["1", "0", "2"]]
+        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).plot_widgets
+        == [PlotWidgetModel(data_items=["1", "0", "2"], y_range="auto")]
     )
 
 
 def test_plot_restore(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     model = cast(MultiPlotStateModel, plot._plots._dump_model([]))
-    model.widget_data_items = [["0", "1", "2"]]
+    model.plot_widgets = [PlotWidgetModel(data_items=["0", "1", "2"])]
     plot._plots._load_model(model)
     plot._plots.set_data(plot._plots._data)  # bulk update that happens at top level
     qtbot.waitUntil(lambda: plot._plots.count() == 1)
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 3
 
-    model.widget_data_items = [["0"], ["2"]]
+    model.plot_widgets = [PlotWidgetModel(data_items=["0"]), PlotWidgetModel(data_items=["2"])]
     plot._plots._load_model(model)
     plot._plots.set_data(plot._plots._data)  # bulk update that happens at top level
     qtbot.waitUntil(lambda: plot._plots.count() == 2)
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 1
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(1)).getPlotItem()).listDataItems()) == 1
 
-    model.widget_data_items = []  # test empty case
+    model.plot_widgets = []  # test empty case
     plot._plots._load_model(model)
     plot._plots.set_data(plot._plots._data)  # bulk update that happens at top level
     qtbot.waitUntil(lambda: plot._plots.count() == 1)  # should leave the empty widget intact
     assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 0
+
+
+def test_plot_restore_range(qtbot: QtBot, plot: PlotsTableWidget) -> None:
+    model = cast(MultiPlotStateModel, plot._plots._dump_model([]))
+    model.plot_widgets = [PlotWidgetModel(data_items=["0"])]
+    model.x_range = (-10, 42)
+    plot._plots._load_model(model)
+    qtbot.waitUntil(
+        lambda: cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).getViewBox().viewRange()[0]
+        == [-10, 42]
+    )
+    assert (
+        not cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem())
+        .getViewBox()
+        .autoRangeEnabled()[0]
+    )
+
+    model.x_range = "auto"
+    plot._plots._load_model(model)
+    qtbot.waitUntil(
+        lambda: cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem())
+        .getViewBox()
+        .autoRangeEnabled()[0]
+        == True
+    )
 
 
 def test_no_excessive_plots(qtbot: QtBot, plot: PlotsTableWidget) -> None:

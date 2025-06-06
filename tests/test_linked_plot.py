@@ -81,12 +81,18 @@ def test_region_restore(qtbot: QtBot, plot: PlotsTableWidget) -> None:
         assert plot_item(plot, i).cursor_range is None
         assert not_none(plot_item(plot, i).cursor).x() == 1.0
 
-    model.region = None
+    model.region = None  # no change
     plot._plots._load_model(model)
-    qtbot.waitUntil(lambda: plot_item(plot, 1).cursor is None)
+    qtbot.wait(10)  # wait for potential unwanted behavior to propagate
     for i in range(3):
-        assert plot_item(plot, i).cursor is None
+        assert not_none(plot_item(plot, i).cursor).x() == 1.0
+
+    model.region = ()
+    plot._plots._load_model(model)
+    qtbot.waitUntil(lambda: not_none(plot_item(plot, 0).cursor).x() == 1.0)
+    for i in range(3):
         assert plot_item(plot, i).cursor_range is None
+        assert not_none(plot_item(plot, i).cursor).x() == 1.0
 
 
 def test_linked_pois(qtbot: QtBot, plot: PlotsTableWidget) -> None:

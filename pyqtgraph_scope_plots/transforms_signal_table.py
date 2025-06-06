@@ -28,7 +28,7 @@ from .util import not_none
 
 
 class TransformsDataStateModel(DataTopModel):
-    transform: str = ""
+    transform: Optional[str] = None
 
 
 class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
@@ -101,7 +101,8 @@ class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, TransformsDataStateModel)
             # TODO improve robustness to SyntaxError
-            self.set_transform([data_name], data_model.transform, update=False)
+            if data_model.transform is not None:
+                self.set_transform([data_name], data_model.transform, update=False)
 
     def apply_transform(
         self,

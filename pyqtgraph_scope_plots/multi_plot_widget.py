@@ -14,7 +14,7 @@
 
 from enum import Enum
 from functools import partial
-from typing import Dict, Tuple, List, Optional, Any, Callable, Union, Mapping, cast
+from typing import Dict, Tuple, List, Optional, Any, Callable, Union, Mapping, cast, Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -22,6 +22,7 @@ import pyqtgraph as pg
 from PySide6.QtCore import QSignalBlocker, QPoint, QSize, Signal
 from PySide6.QtGui import QColor, Qt, QDropEvent, QDragLeaveEvent, QPainter, QBrush, QDragMoveEvent, QPaintEvent
 from PySide6.QtWidgets import QWidget, QSplitter
+from pydantic import BaseModel
 
 from .enum_waveform_plotitem import EnumWaveformPlot
 from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot
@@ -43,8 +44,14 @@ class EnumWaveformInteractivePlot(
     POI_ANCHOR = (0, 0.5)
 
 
+class PlotWidgetModel(BaseModel):
+    data_items: List[str] = []  # window index -> list of data items
+    y_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
+
+
 class MultiPlotStateModel(BaseTopModel):
-    widget_data_items: List[List[str]] = []  # window index -> list of data items
+    plot_widgets: Optional[List[PlotWidgetModel]] = None  # window index -> list of data items
+    x_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
 
 
 class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
@@ -94,38 +101,63 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
     def _write_model(self, model: BaseTopModel) -> None:
         super()._write_model(model)
         assert isinstance(model, MultiPlotStateModel)
-        model.widget_data_items = []
+        model.plot_widgets = []
+        x_viewbox: Optional[pg.ViewBox] = None
+
         for i in range(self.count()):
             widget = self.widget(i)
-            if isinstance(widget, pg.PlotWidget):
-                widget_data_items = [
-                    data_item
-                    for data_item in self._plot_item_data.get(widget.getPlotItem(), [])
-                    if data_item is not None
-                ]
+            if not isinstance(widget, pg.PlotWidget):  # ignored
+                continue
+            widget_model = PlotWidgetModel()
+            widget_model.data_items = [
+                data_item for data_item in self._plot_item_data.get(widget.getPlotItem(), []) if data_item is not None
+            ]
+            widget_viewbox = cast(pg.PlotItem, widget.getPlotItem()).getViewBox()
+            if widget_viewbox.autoRangeEnabled()[1]:
+                widget_model.y_range = "auto"
             else:
-                widget_data_items = []
-            model.widget_data_items.append(widget_data_items)
+                widget_model.y_range = tuple(widget_viewbox.viewRange()[1])
+            model.plot_widgets.append(widget_model)
+
+            if x_viewbox is None:
+                x_viewbox = widget_viewbox
+
+        if x_viewbox is not None:
+            if x_viewbox.autoRangeEnabled()[0]:
+                model.x_range = "auto"
+            else:
+                model.x_range = tuple(x_viewbox.viewRange()[0])
 
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)
 
-        # remove all existing plots
-        self._plot_item_data = {}
+        assert isinstance(model, MultiPlotStateModel)
+        if model.plot_widgets is None:
+            return
+
+        self._plot_item_data = {}  # remove all existing plots
         self._clean_plot_widgets()
 
-        # create plots from model
-        assert isinstance(model, MultiPlotStateModel)
-        for widget_data_items in model.widget_data_items:
-            if len(widget_data_items) <= 0:  # skip empty plots
+        for plot_widget_model in model.plot_widgets:  # create plots from model
+            if len(plot_widget_model.data_items) < 1:  # skip empty plots
                 continue
-            color, plot_type = self._data_items.get(widget_data_items[0], (None, None))
+            color, plot_type = self._data_items.get(plot_widget_model.data_items[0], (None, None))
             if plot_type is None:
                 continue
             add_plot_item = self._init_plot_item(self._create_plot_item(plot_type))
             plot_widget = pg.PlotWidget(plotItem=add_plot_item)
             self.addWidget(plot_widget)
-            self._plot_item_data[add_plot_item] = widget_data_items  # type: ignore
+            self._plot_item_data[add_plot_item] = plot_widget_model.data_items  # type: ignore
+
+            widget_viewbox = cast(pg.PlotItem, plot_widget.getPlotItem()).getViewBox()
+            if model.x_range is not None and model.x_range != "auto":
+                widget_viewbox.setXRange(model.x_range[0], model.x_range[1], 0)
+            if plot_widget_model.y_range is not None and plot_widget_model.y_range != "auto":
+                widget_viewbox.setYRange(plot_widget_model.y_range[0], plot_widget_model.y_range[1], 0)
+            if model.x_range == "auto" or plot_widget_model.y_range == "auto":
+                widget_viewbox.enableAutoRange(
+                    x=model.x_range == "auto" or None, y=plot_widget_model.y_range == "auto" or None
+                )
 
         self._check_create_default_plot()
         self._update_plots_x_axis()
@@ -324,8 +356,8 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
 
 
 class LinkedMultiPlotStateModel(BaseTopModel):
-    region: Optional[Union[float, Tuple[float, float]]] = None
-    pois: List[float] = []
+    region: Optional[Union[Tuple[()], float, Tuple[float, float]]] = None
+    pois: Optional[List[float]] = None
 
 
 class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
@@ -349,8 +381,14 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)
         assert isinstance(model, LinkedMultiPlotStateModel)
-        self._on_region_change(None, model.region)
-        self._on_poi_change(None, model.pois)
+        if model.region is not None:
+            region = model.region
+            if region == ():  # convert empty model format to internal region format
+                self._on_region_change(None, None)
+            else:
+                self._on_region_change(None, region)  # type: ignore
+        if model.pois is not None:
+            self._on_poi_change(None, model.pois)
 
     def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
         """Called after _create_plot_item, does any post-creation init. Returns the same plot_item."""

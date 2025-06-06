@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import Dict, List, Any, Mapping, Tuple
+from typing import Dict, List, Any, Mapping, Tuple, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -26,7 +26,7 @@ from .util import not_none
 
 
 class TimeshiftDataStateModel(DataTopModel):
-    timeshift: float = 0
+    timeshift: Optional[float] = None
 
 
 class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
@@ -60,7 +60,8 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
         super()._load_model(model)
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, TimeshiftDataStateModel)
-            self.set_timeshift([data_name], data_model.timeshift, update=False)
+            if data_model.timeshift is not None:
+                self.set_timeshift([data_name], data_model.timeshift, update=False)
 
     def _post_cols(self) -> int:
         self.COL_TIMESHIFT = super()._post_cols()

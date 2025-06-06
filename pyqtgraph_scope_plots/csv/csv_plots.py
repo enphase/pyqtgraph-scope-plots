@@ -415,10 +415,10 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
         return self
 
-    def _on_save_config(self) -> Optional[CsvLoaderStateModel]:
+    def _on_save_config(self) -> None:
         filename, _ = QFileDialog.getSaveFileName(None, "Save config", filter="YAML files (*.yml)")
         if not filename:  # nothing selected, user canceled
-            return None
+            return
         model = self._do_save_config(filename)
         with open(filename, "w") as f:
             f.write(yaml.dump(model.model_dump(), sort_keys=False))
@@ -437,11 +437,12 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             config_dir = os.path.dirname(filename)
             try:
                 all_commonpath = os.path.commonpath([csvs_commonpath, config_dir])
-            except ValueError:
-                all_commonpath = ""  # eg, paths not on same drive
+            except ValueError:  # eg, paths not on same drive
+                all_commonpath = None
             # TODO there should be some indication to the user about whether it's saving
             # in relpath or abspath mode, probably in the file dialog, and an explanation of why it matters
-            if os.path.abspath(config_dir) == os.path.abspath(all_commonpath):  # save as relpath, configs above CSVs
+            if all_commonpath is not None and os.path.abspath(config_dir) == os.path.abspath(all_commonpath):
+                # save as relpath, configs above CSVs
                 model.csv_files = [
                     os.path.relpath(csv_filename, config_dir) for csv_filename in self._csv_data_items.keys()
                 ]
@@ -461,7 +462,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         assert isinstance(model, CsvLoaderStateModel)
         self._do_load_config(filename, model)
 
-    def _do_load_config(self, filename: str, model: CsvLoaderStateModel):
+    def _do_load_config(self, filename: str, model: CsvLoaderStateModel) -> None:
         if model.csv_files is not None:
             missing_csv_files = []
             found_csv_files = []

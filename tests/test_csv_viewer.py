@@ -97,9 +97,13 @@ def test_load_model_csvs_relpath(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) 
     with mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csv") as mock_load_csv:
         model.csv_files = [os.path.join("data", "test_csv_viewer_data.csv")]  # relpath
         plot._do_load_config(os.path.join(os.path.dirname(__file__), "config.yml"), model)
-        mock_load_csv.assert_called_with([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")])
+        mock_load_csv.assert_called_with(
+            [os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")], update=False
+        )
 
     with mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csv") as mock_load_csv:
         model.csv_files = [os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")]  # abspath
         plot._do_load_config(os.path.join(os.path.dirname(__file__), "config.yml"), model)
-        mock_load_csv.assert_called_with([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")])
+        mock_load_csv.assert_called_with(
+            [os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")], update=False
+        )

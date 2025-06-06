@@ -27,7 +27,16 @@ import pyqtgraph as pg
 from PySide6 import QtWidgets
 from PySide6.QtCore import QKeyCombination, QTimer
 from PySide6.QtGui import QAction, QColor, Qt
-from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QMenu, QVBoxLayout, QInputDialog, QToolButton
+from PySide6.QtWidgets import (
+    QWidget,
+    QPushButton,
+    QFileDialog,
+    QMenu,
+    QVBoxLayout,
+    QInputDialog,
+    QToolButton,
+    QMessageBox,
+)
 from pydantic._internal._model_construction import ModelMetaclass
 
 from ..save_restore_model import HasSaveLoadConfig, BaseTopModel
@@ -53,8 +62,14 @@ def construct_python_tuple(loader: TupleSafeLoader, node: Any) -> Tuple[Any, ...
 TupleSafeLoader.add_constructor("tag:yaml.org,2002:python/tuple", construct_python_tuple)
 
 
+class CsvLoaderStateModel(BaseTopModel):
+    csv_files: Optional[List[str]] = None  # all loaded CSV files, as relpath or abspath
+
+
 class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, HasSaveLoadConfig):
     """Example app-level widget that loads CSV files into the plotter"""
+
+    TOP_MODEL_BASES = [CsvLoaderStateModel]
 
     WATCH_INTERVAL_MS = 333  # polls the filesystem metadata for changes this frequently
 
@@ -325,12 +340,18 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             self._load_csv(files_to_load, colnames=data_items_to_load, append=True)
 
     def _load_csv(
-        self, csv_filepaths: List[str], append: bool = False, colnames: Optional[Iterable[str]] = None
+        self,
+        csv_filepaths: List[str],
+        append: bool = False,
+        colnames: Optional[Iterable[str]] = None,
+        update: bool = True,
     ) -> "CsvLoaderPlotsTableWidget":
         """Loads CSV files into the current window.
         If append is true, preserves the existing data / metadata.
         If colnames is not None, reads the specified column names from the file. These must already be in the dataset.
         Items in colnames but not in the file are read as an empty table
+
+        If update is disabled, only sets the self._data internal variable to allow for a later bulk update
         """
         # prepare data structures
         data_type_dict: Dict[str, MultiPlotWidget.PlotType] = {}  # col header -> plot type IF NOT Default
@@ -386,7 +407,10 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         if colnames is None:  # colnames not None means update only
             data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(data_type_dict.items())]
             self._set_data_items(data_items)
-        self._set_data(data_dict)
+        if update:
+            self._set_data(data_dict)
+        else:
+            self._data = data_dict
         self._csv_data_items = csv_data_items_dict
 
         return self
@@ -395,8 +419,37 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         filename, _ = QFileDialog.getSaveFileName(None, "Save config", filter="YAML files (*.yml)")
         if not filename:  # nothing selected, user canceled
             return
+        model = self._do_save_config(filename)
         with open(filename, "w") as f:
-            f.write(yaml.dump(self._dump_model(self._table._data_items.keys()).model_dump(), sort_keys=False))
+            f.write(yaml.dump(model.model_dump(), sort_keys=False))
+
+    def _do_save_config(self, filename: str) -> CsvLoaderStateModel:
+        model = self._dump_model(self._table._data_items.keys())
+        assert isinstance(model, CsvLoaderStateModel)
+
+        if len(self._csv_data_items) == 0:
+            model.csv_files = []
+        else:
+            # this is a bit of a hack, CSV names should be in _write_model
+            # but we need access to the filename to determine if writing relpath or abspath
+            csvs_commonpath = os.path.commonpath(self._csv_data_items.keys())
+
+            config_dir = os.path.dirname(filename)
+            try:
+                all_commonpath = os.path.commonpath([csvs_commonpath, config_dir])
+            except ValueError:  # eg, paths not on same drive
+                all_commonpath = None
+            # TODO there should be some indication to the user about whether it's saving
+            # in relpath or abspath mode, probably in the file dialog, and an explanation of why it matters
+            if all_commonpath is not None and os.path.abspath(config_dir) == os.path.abspath(all_commonpath):
+                # save as relpath, configs above CSVs
+                model.csv_files = [
+                    os.path.relpath(csv_filename, config_dir) for csv_filename in self._csv_data_items.keys()
+                ]
+            else:  # save as abspath, would need .. access to get CSVs
+                model.csv_files = [os.path.abspath(csv_filename) for csv_filename in self._csv_data_items.keys()]
+
+        return model
 
     def _on_load_config(self) -> None:
         filename, _ = QFileDialog.getOpenFileName(None, "Load config", filter="YAML files (*.yml)")
@@ -405,6 +458,29 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         with open(filename, "r") as f:
             _, top_model_cls = self._create_skeleton_model_type()
             model = top_model_cls(**yaml.load(f, Loader=TupleSafeLoader))
+
+        assert isinstance(model, CsvLoaderStateModel)
+        self._do_load_config(filename, model)
+
+    def _do_load_config(self, filename: str, model: CsvLoaderStateModel) -> None:
+        if model.csv_files is not None:
+            missing_csv_files = []
+            found_csv_files = []
+            for csv_file in model.csv_files:
+                if not os.path.isabs(csv_file):  # append yml path to relpaths
+                    csv_file = os.path.join(os.path.dirname(filename), csv_file)
+                if os.path.exists(csv_file):
+                    found_csv_files.append(csv_file)
+                else:
+                    missing_csv_files.append(csv_file)
+            if missing_csv_files:
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Some CSV files not found: {', '.join(missing_csv_files)}",
+                    QMessageBox.StandardButton.Ok,
+                )
+            self._load_csv(found_csv_files, update=False)
 
         data = self._data
         self._set_data({})  # blank the data while updates happen, for performance

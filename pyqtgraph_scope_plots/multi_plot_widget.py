@@ -136,7 +136,6 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
             return
 
         self._plot_item_data = {}  # remove all existing plots
-        self._clean_plot_widgets()
 
         for plot_widget_model in model.plot_widgets:  # create plots from model
             if len(plot_widget_model.data_items) < 1:  # skip empty plots
@@ -159,6 +158,7 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
                     x=model.x_range == "auto" or None, y=plot_widget_model.y_range == "auto" or None
                 )
 
+        self._clean_plot_widgets()
         self._check_create_default_plot()
         self._update_plots_x_axis()
         self._update_data_name_to_plot_item()

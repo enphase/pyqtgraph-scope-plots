@@ -66,3 +66,18 @@ def test_watch_stability(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
         mock_getmtime.return_value = mock_getmtime.return_value + 10  # reset the counter
         plot._watch_timer.timeout.emit()
         qtbot.waitUntil(lambda: mock_load_csv.called)  # check the load happens
+
+
+def test_save_model_csvs(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
+    # test saving in relpath mode
+
+    # test saving in abspath mode
+    pass
+
+
+def test_load_model_csvs(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
+    # test saving in relpath mode
+
+    # test saving in abspath mode
+    pass
+    # TODO measure impact of double-set_data and optionally optimize

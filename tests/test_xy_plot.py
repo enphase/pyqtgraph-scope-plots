@@ -76,6 +76,10 @@ def test_correlated_indices() -> None:
         (0, 3),
     )
 
+    # test excess offset
+    assert XyPlotWidget._get_correlated_indices(np.array([0, 11, 20, 30]), np.array([0, 10, 20, 30]), 0, 20) is None
+    assert XyPlotWidget._get_correlated_indices(np.array([0, 20, 30]), np.array([0, 10, 20, 30]), 0, 20) is None
+
 
 def test_xy_create_ui(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     # test that xy creation doesn't error out and follows the user order

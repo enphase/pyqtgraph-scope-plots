@@ -109,7 +109,7 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
             indices = self._get_correlated_indices(x_ts, y_ts, region_lo, region_hi)
             if indices is None:
                 print(f"X/Y indices of {x_name}, {y_name} empty or do not match")
-                return
+                continue
             (xt_lo, xt_hi), (yt_lo, yt_hi) = indices
 
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments

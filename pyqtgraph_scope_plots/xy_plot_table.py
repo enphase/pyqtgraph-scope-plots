@@ -53,6 +53,36 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self._parent._on_closed_xy(self)
 
+    @staticmethod
+    def _get_correlated_indices(
+        x_ts: npt.NDArray[np.float64], y_ts: npt.NDArray[np.float64], start: float, end: float
+    ) -> Optional[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        """Find the indices containing start and end for x_ts and y_ts, if they are correlated
+        (evaluate to approximate the same values, and of the same size)"""
+        xt_lo, xt_hi = HasRegionSignalsTable._indices_of_region(x_ts, (start, end))
+        yt_lo, yt_hi = HasRegionSignalsTable._indices_of_region(y_ts, (start, end))
+        if xt_lo is None or xt_hi is None or yt_lo is None or yt_hi is None or xt_hi - xt_lo < 2:
+            return None
+
+        # correct for floating point imprecision in indices
+        if (xt_hi - xt_lo) == (yt_hi - yt_lo) + 1:  # delete an extra x-point
+            if abs(y_ts[yt_lo] - x_ts[xt_lo]) > abs(y_ts[yt_hi - 1] - x_ts[xt_hi - 1]):  # larger delta on low point
+                xt_lo = xt_lo + 1
+            else:
+                xt_hi = xt_hi - 1
+        elif (xt_hi - xt_lo) + 1 == (yt_hi - yt_lo):  # delete an extra y-point
+            if abs(y_ts[yt_lo] - x_ts[xt_lo]) > abs(y_ts[yt_hi - 1] - x_ts[xt_hi - 1]):  # larger delta on low point
+                yt_lo = yt_lo + 1
+            else:
+                yt_hi = yt_hi - 1
+        if (xt_hi - xt_lo) != (yt_hi - yt_lo):
+            return None
+        x_indices = x_ts[xt_lo:xt_hi]
+        y_indices = y_ts[yt_lo:yt_hi]
+        if max(abs(y_indices - x_indices)) > (y_indices[1] - y_indices[0]) / 1000:
+            return None
+        return (xt_lo, xt_hi), (yt_lo, yt_hi)
+
     def _update(self) -> None:
         for data_item in self.listDataItems():  # clear existing
             self.removeItem(data_item)
@@ -76,31 +106,11 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
             # truncate to smaller series, if needed
             region_lo = max(self._region[0], x_ts[0], y_ts[0])
             region_hi = min(self._region[1], x_ts[-1], y_ts[-1])
-
-            xt_lo, xt_hi = HasRegionSignalsTable._indices_of_region(x_ts, (region_lo, region_hi))
-            yt_lo, yt_hi = HasRegionSignalsTable._indices_of_region(y_ts, (region_lo, region_hi))
-            if xt_lo is None or xt_hi is None or yt_lo is None or yt_hi is None or xt_hi - xt_lo < 2:
-                continue  # empty plot
-
-            # correct for floating point imprecision in indices
-            if (xt_hi - xt_lo) == (yt_hi - yt_lo) + 1:  # delete an extra x-point
-                if abs(y_ts[yt_lo] - x_ts[xt_lo]) > abs(y_ts[yt_hi - 1] - x_ts[xt_hi - 1]):  # larger delta on low point
-                    xt_lo = xt_lo + 1
-                else:
-                    xt_hi = xt_hi - 1
-            elif (xt_hi - xt_lo) + 1 == (yt_hi - yt_lo):  # delete an extra y-point
-                if abs(y_ts[yt_lo] - x_ts[xt_lo]) > abs(y_ts[yt_hi - 1] - x_ts[xt_hi - 1]):  # larger delta on low point
-                    yt_lo = yt_lo + 1
-                else:
-                    yt_hi = yt_hi - 1
-            if (xt_hi - xt_lo) != (yt_hi - yt_lo):
-                print(f"X/Y indices of {x_name}, {y_name} do not have same length")
-                continue
-            x_indices = x_ts[xt_lo:xt_hi]
-            y_indices = y_ts[yt_lo:yt_hi]
-            if max(abs(y_indices - x_indices)) > (y_indices[1] - y_indices[0]) / 1000:
+            indices = self._get_correlated_indices(x_ts, y_ts, region_lo, region_hi)
+            if indices is None:
                 print(f"X/Y indices of {x_name}, {y_name} do not match")
-                continue
+                return
+            (xt_lo, xt_hi), (yt_lo, yt_hi) = indices
 
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
             y_color = self._parent._data_items.get(y_name, QColor("white"))

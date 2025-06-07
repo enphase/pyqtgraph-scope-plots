@@ -13,14 +13,14 @@
 #    limitations under the License.
 from typing import cast
 
+import numpy as np
 import pytest
-import pyqtgraph as pg
 from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.plots_table_widget import PlotsTableWidget
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
-from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel, XyWindowModel
+from pyqtgraph_scope_plots.xy_plot_table import XyPlotWidget, XyTableStateModel, XyWindowModel
 
 
 @pytest.fixture()
@@ -46,6 +46,39 @@ def plot(qtbot: QtBot) -> PlotsTableWidget:
     plot.show()
     qtbot.waitExposed(plot)
     return plot
+
+
+def test_correlated_indices() -> None:
+    assert XyPlotWidget._get_correlated_indices(np.array([0, 1, 2, 3]), np.array([0, 1, 2, 3]), 0, 2) == (
+        (0, 3),
+        (0, 3),
+    )
+    assert XyPlotWidget._get_correlated_indices(np.array([0, 10, 20, 30]), np.array([0, 10, 20, 30]), 0, 20) == (
+        (0, 3),
+        (0, 3),
+    )
+
+    # test different alignments
+    assert XyPlotWidget._get_correlated_indices(np.array([-10, 0, 10, 20, 30]), np.array([0, 10, 20, 30]), 0, 20) == (
+        (1, 4),
+        (0, 3),
+    )
+    assert XyPlotWidget._get_correlated_indices(np.array([0, 10, 20, 30]), np.array([-10, 0, 10, 20, 30]), 0, 20) == (
+        (0, 3),
+        (1, 4),
+    )
+
+    # test tiny offset
+    assert XyPlotWidget._get_correlated_indices(
+        np.array([0, 10 + 1e-5, 20 - 1e-5, 30]), np.array([0, 10, 20, 30]), 0, 20
+    ) == (
+        (0, 3),
+        (0, 3),
+    )
+
+    # test excess offset
+    assert XyPlotWidget._get_correlated_indices(np.array([0, 11, 20, 30]), np.array([0, 10, 20, 30]), 0, 20) is None
+    assert XyPlotWidget._get_correlated_indices(np.array([0, 20, 30]), np.array([0, 10, 20, 30]), 0, 20) is None
 
 
 def test_xy_create_ui(qtbot: QtBot, plot: PlotsTableWidget) -> None:

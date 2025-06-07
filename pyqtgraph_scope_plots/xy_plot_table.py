@@ -108,7 +108,7 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
             region_hi = min(self._region[1], x_ts[-1], y_ts[-1])
             indices = self._get_correlated_indices(x_ts, y_ts, region_lo, region_hi)
             if indices is None:
-                print(f"X/Y indices of {x_name}, {y_name} do not match")
+                print(f"X/Y indices of {x_name}, {y_name} empty or do not match")
                 return
             (xt_lo, xt_hi), (yt_lo, yt_hi) = indices
 

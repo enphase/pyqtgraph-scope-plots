@@ -12,16 +12,18 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import Any, List, Tuple, Mapping, Optional
+from typing import Any, List, Tuple, Mapping, Optional, Literal, Union, cast
 
 import numpy as np
 import pyqtgraph as pg
 from PySide6 import QtGui
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QAction, QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent
-from PySide6.QtWidgets import QMenu, QTableWidgetItem, QMessageBox
+from PySide6.QtWidgets import QMenu, QMessageBox
 from numpy import typing as npt
+from pydantic import BaseModel
 
+from .save_restore_model import HasSaveLoadConfig, BaseTopModel
 from .multi_plot_widget import DragTargetOverlay
 from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable, DraggableSignalsTable
 from .transforms_signal_table import TransformsSignalsTable
@@ -51,6 +53,36 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self._parent._on_closed_xy(self)
 
+    @staticmethod
+    def _get_correlated_indices(
+        x_ts: npt.NDArray[np.float64], y_ts: npt.NDArray[np.float64], start: float, end: float
+    ) -> Optional[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        """Find the indices containing start and end for x_ts and y_ts, if they are correlated
+        (evaluate to approximate the same values, and of the same size)"""
+        xt_lo, xt_hi = HasRegionSignalsTable._indices_of_region(x_ts, (start, end))
+        yt_lo, yt_hi = HasRegionSignalsTable._indices_of_region(y_ts, (start, end))
+        if xt_lo is None or xt_hi is None or yt_lo is None or yt_hi is None or xt_hi - xt_lo < 2:
+            return None
+
+        # correct for floating point imprecision in indices
+        if (xt_hi - xt_lo) == (yt_hi - yt_lo) + 1:  # delete an extra x-point
+            if abs(y_ts[yt_lo] - x_ts[xt_lo]) > abs(y_ts[yt_hi - 1] - x_ts[xt_hi - 1]):  # larger delta on low point
+                xt_lo = xt_lo + 1
+            else:
+                xt_hi = xt_hi - 1
+        elif (xt_hi - xt_lo) + 1 == (yt_hi - yt_lo):  # delete an extra y-point
+            if abs(y_ts[yt_lo] - x_ts[xt_lo]) > abs(y_ts[yt_hi - 1] - x_ts[xt_hi - 1]):  # larger delta on low point
+                yt_lo = yt_lo + 1
+            else:
+                yt_hi = yt_hi - 1
+        if (xt_hi - xt_lo) != (yt_hi - yt_lo):
+            return None
+        x_indices = x_ts[xt_lo:xt_hi]
+        y_indices = y_ts[yt_lo:yt_hi]
+        if max(abs(y_indices - x_indices)) > (y_indices[1] - y_indices[0]) / 1000:
+            return None
+        return (xt_lo, xt_hi), (yt_lo, yt_hi)
+
     def _update(self) -> None:
         for data_item in self.listDataItems():  # clear existing
             self.removeItem(data_item)
@@ -74,15 +106,11 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
             # truncate to smaller series, if needed
             region_lo = max(self._region[0], x_ts[0], y_ts[0])
             region_hi = min(self._region[1], x_ts[-1], y_ts[-1])
-
-            xt_lo, xt_hi = HasRegionSignalsTable._indices_of_region(x_ts, (region_lo, region_hi))
-            yt_lo, yt_hi = HasRegionSignalsTable._indices_of_region(y_ts, (region_lo, region_hi))
-            if xt_lo is None or xt_hi is None or yt_lo is None or yt_hi is None or xt_hi - xt_lo < 2:
-                continue  # empty plot
-
-            if not np.array_equal(x_ts[xt_lo:xt_hi], y_ts[yt_lo:yt_hi]):
-                print(f"X/Y indices of {x_name}, {y_name} do not match")
+            indices = self._get_correlated_indices(x_ts, y_ts, region_lo, region_hi)
+            if indices is None:
+                print(f"X/Y indices of {x_name}, {y_name} empty or do not match")
                 continue
+            (xt_lo, xt_hi), (yt_lo, yt_hi) = indices
 
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
             y_color = self._parent._data_items.get(y_name, QColor("white"))
@@ -144,14 +172,66 @@ class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
         event.accept()
 
 
-class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTable):
+class XyWindowModel(BaseModel):
+    xy_data_items: List[Tuple[str, str]] = []  # list of (x, y) data items
+    x_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
+    y_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
+
+
+class XyTableStateModel(BaseTopModel):
+    xy_windows: Optional[List[XyWindowModel]] = None
+
+
+class XyTable(
+    DraggableSignalsTable, ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTable, HasSaveLoadConfig
+):
     """Mixin into SignalsTable that adds the option to open an XY plot in a separate window."""
+
+    TOP_MODEL_BASES = [XyTableStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._xy_action = QAction("Create X-Y Plot", self)
-        self._xy_action.triggered.connect(self._on_xy)
+        self._xy_action.triggered.connect(self._on_create_xy)
         self._xy_plots: List[XyPlotWidget] = []
+
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
+        assert isinstance(model, XyTableStateModel)
+        model.xy_windows = []
+        for xy_plot in self._xy_plots:
+            xy_window_model = XyWindowModel(xy_data_items=xy_plot._xys)
+            viewbox = cast(pg.PlotItem, xy_plot.getPlotItem()).getViewBox()
+            if viewbox.autoRangeEnabled()[0]:
+                xy_window_model.x_range = "auto"
+            else:
+                xy_window_model.x_range = tuple(viewbox.viewRange()[0])
+            if viewbox.autoRangeEnabled()[1]:
+                xy_window_model.y_range = "auto"
+            else:
+                xy_window_model.y_range = tuple(viewbox.viewRange()[1])
+            model.xy_windows.append(xy_window_model)
+
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
+        assert isinstance(model, XyTableStateModel)
+        if model.xy_windows is None:
+            return
+        for xy_plot in self._xy_plots:  # remove all existing plots
+            xy_plot.close()
+        for xy_window_model in model.xy_windows:  # create plots from model
+            xy_plot = self.create_xy()
+            for xy_data_item in xy_window_model.xy_data_items:
+                xy_plot.add_xy(*xy_data_item)
+            viewbox = cast(pg.PlotItem, xy_plot.getPlotItem()).getViewBox()
+            if xy_window_model.x_range is not None and xy_window_model.x_range != "auto":
+                viewbox.setXRange(xy_window_model.x_range[0], xy_window_model.x_range[1], 0)
+            if xy_window_model.y_range is not None and xy_window_model.y_range != "auto":
+                viewbox.setYRange(xy_window_model.y_range[0], xy_window_model.y_range[1], 0)
+            if xy_window_model.x_range == "auto" or xy_window_model.y_range == "auto":
+                viewbox.enableAutoRange(
+                    x=xy_window_model.x_range == "auto" or None, y=xy_window_model.y_range == "auto" or None
+                )
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)
@@ -172,7 +252,7 @@ class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasRegionSignalsTa
         for xy_plot in self._xy_plots:
             xy_plot.set_range(self._range)
 
-    def _on_xy(self) -> Optional[XyPlotWidget]:
+    def _on_create_xy(self) -> Optional[XyPlotWidget]:
         """Creates an XY plot with the selected signal(s) and returns the new plot."""
         data = [self.item(item.row(), self.COL_NAME).text() for item in self._ordered_selects]
         if len(data) != 2:
@@ -180,11 +260,16 @@ class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasRegionSignalsTa
                 self, "Error", f"Select two items for X-Y plotting, got {data}", QMessageBox.StandardButton.Ok
             )
             return None
+        xy_plot = self.create_xy()
+        xy_plot.add_xy(data[0], data[1])
+        return xy_plot
+
+    def create_xy(self) -> XyPlotWidget:
+        """Creates and opens an empty XY plot widget."""
         xy_plot = XyPlotWidget(self)
         xy_plot.show()
         xy_plot.set_range(self._range)
         self._xy_plots.append(xy_plot)  # need an active reference to prevent GC'ing
-        xy_plot.add_xy(data[0], data[1])
         return xy_plot
 
     def _on_closed_xy(self, closed: XyPlotWidget) -> None:

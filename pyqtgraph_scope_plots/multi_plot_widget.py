@@ -14,7 +14,7 @@
 
 from enum import Enum
 from functools import partial
-from typing import Dict, Tuple, List, Optional, Any, Callable, Union, Mapping, cast
+from typing import Dict, Tuple, List, Optional, Any, Callable, Union, Mapping, cast, Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -22,10 +22,12 @@ import pyqtgraph as pg
 from PySide6.QtCore import QSignalBlocker, QPoint, QSize, Signal
 from PySide6.QtGui import QColor, Qt, QDropEvent, QDragLeaveEvent, QPainter, QBrush, QDragMoveEvent, QPaintEvent
 from PySide6.QtWidgets import QWidget, QSplitter
+from pydantic import BaseModel
 
 from .enum_waveform_plotitem import EnumWaveformPlot
 from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot
 from .signals_table import DraggableSignalsTable
+from .save_restore_model import HasSaveLoadConfig, BaseTopModel
 
 
 class InteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot):
@@ -42,7 +44,17 @@ class EnumWaveformInteractivePlot(
     POI_ANCHOR = (0, 0.5)
 
 
-class MultiPlotWidget(QSplitter):
+class PlotWidgetModel(BaseModel):
+    data_items: List[str] = []  # window index -> list of data items
+    y_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
+
+
+class MultiPlotStateModel(BaseTopModel):
+    plot_widgets: Optional[List[PlotWidgetModel]] = None  # window index -> list of data items
+    x_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
+
+
+class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
     """A splitter that can contain multiple (vertically stacked) plots with linked x-axis"""
 
     class PlotType(Enum):
@@ -59,6 +71,8 @@ class MultiPlotWidget(QSplitter):
     sigPoiChanged = Signal(object)  # List[float] as current POIs
     sigDragCursorChanged = Signal(float)  # x-position
     sigDragCursorCleared = Signal()
+
+    TOP_MODEL_BASES = [MultiPlotStateModel]
 
     def __init__(
         self,
@@ -83,6 +97,71 @@ class MultiPlotWidget(QSplitter):
         # re-derived when _plot_item_data updated
         self._data_name_to_plot_item: Dict[Optional[str], pg.PlotItem] = {None: default_plot_item}
         self._anchor_x_plot_item: pg.PlotItem = default_plot_item  # PlotItem that everyone's x-axis is linked to
+
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
+        assert isinstance(model, MultiPlotStateModel)
+        model.plot_widgets = []
+        x_viewbox: Optional[pg.ViewBox] = None
+
+        for i in range(self.count()):
+            widget = self.widget(i)
+            if not isinstance(widget, pg.PlotWidget):  # ignored
+                continue
+            widget_model = PlotWidgetModel()
+            widget_model.data_items = [
+                data_item for data_item in self._plot_item_data.get(widget.getPlotItem(), []) if data_item is not None
+            ]
+            widget_viewbox = cast(pg.PlotItem, widget.getPlotItem()).getViewBox()
+            if widget_viewbox.autoRangeEnabled()[1]:
+                widget_model.y_range = "auto"
+            else:
+                widget_model.y_range = tuple(widget_viewbox.viewRange()[1])
+            model.plot_widgets.append(widget_model)
+
+            if x_viewbox is None:
+                x_viewbox = widget_viewbox
+
+        if x_viewbox is not None:
+            if x_viewbox.autoRangeEnabled()[0]:
+                model.x_range = "auto"
+            else:
+                model.x_range = tuple(x_viewbox.viewRange()[0])
+
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
+
+        assert isinstance(model, MultiPlotStateModel)
+        if model.plot_widgets is None:
+            return
+
+        self._plot_item_data = {}  # remove all existing plots
+
+        for plot_widget_model in model.plot_widgets:  # create plots from model
+            if len(plot_widget_model.data_items) < 1:  # skip empty plots
+                continue
+            color, plot_type = self._data_items.get(plot_widget_model.data_items[0], (None, None))
+            if plot_type is None:
+                continue
+            add_plot_item = self._init_plot_item(self._create_plot_item(plot_type))
+            plot_widget = pg.PlotWidget(plotItem=add_plot_item)
+            self.addWidget(plot_widget)
+            self._plot_item_data[add_plot_item] = plot_widget_model.data_items  # type: ignore
+
+            widget_viewbox = cast(pg.PlotItem, plot_widget.getPlotItem()).getViewBox()
+            if model.x_range is not None and model.x_range != "auto":
+                widget_viewbox.setXRange(model.x_range[0], model.x_range[1], 0)
+            if plot_widget_model.y_range is not None and plot_widget_model.y_range != "auto":
+                widget_viewbox.setYRange(plot_widget_model.y_range[0], plot_widget_model.y_range[1], 0)
+            if model.x_range == "auto" or plot_widget_model.y_range == "auto":
+                widget_viewbox.enableAutoRange(
+                    x=model.x_range == "auto" or None, y=plot_widget_model.y_range == "auto" or None
+                )
+
+        self._clean_plot_widgets()
+        self._check_create_default_plot()
+        self._update_plots_x_axis()
+        self._update_data_name_to_plot_item()
 
     def render_value(self, data_name: str, value: float) -> str:
         """Float-to-string conversion for a value. Optionally override this to provide smarter precision."""
@@ -276,8 +355,15 @@ class MultiPlotWidget(QSplitter):
                 plot_item.enableAutoRange(axis="y", enable=enable)
 
 
-class LinkedMultiPlotWidget(MultiPlotWidget):
+class LinkedMultiPlotStateModel(BaseTopModel):
+    region: Optional[Union[Tuple[()], float, Tuple[float, float]]] = None
+    pois: Optional[List[float]] = None
+
+
+class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
     """Mixin into the MultiPlotWidget that links PointsOfInterestPlot, RegionPlot, and LiveCursorPlot"""
+
+    TOP_MODEL_BASES = [LinkedMultiPlotStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._last_hover: Optional[float] = None  # must be init'd before the first plot is created in __init__
@@ -285,6 +371,24 @@ class LinkedMultiPlotWidget(MultiPlotWidget):
         self._last_pois: List[float] = []
         self._last_drag_cursor: Optional[float] = None
         super().__init__(*args, **kwargs)
+
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
+        assert isinstance(model, LinkedMultiPlotStateModel)
+        model.region = self._last_region
+        model.pois = self._last_pois
+
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
+        assert isinstance(model, LinkedMultiPlotStateModel)
+        if model.region is not None:
+            region = model.region
+            if region == ():  # convert empty model format to internal region format
+                self._on_region_change(None, None)
+            else:
+                self._on_region_change(None, region)  # type: ignore
+        if model.pois is not None:
+            self._on_poi_change(None, model.pois)
 
     def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
         """Called after _create_plot_item, does any post-creation init. Returns the same plot_item."""

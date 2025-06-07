@@ -12,25 +12,31 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import Dict, List, Any, Mapping, Tuple
+from typing import Dict, List, Any, Mapping, Tuple, Optional
 
 import numpy as np
 import numpy.typing as npt
 from PySide6.QtGui import QAction, QColor
 from PySide6.QtWidgets import QTableWidgetItem, QMenu
 
-from .util import not_none
 from .cache_dict import IdentityCacheDict
+from .save_restore_model import DataTopModel, HasSaveLoadConfig, BaseTopModel
 from .signals_table import ContextMenuSignalsTable
+from .util import not_none
 
 
-class TimeshiftSignalsTable(ContextMenuSignalsTable):
+class TimeshiftDataStateModel(DataTopModel):
+    timeshift: Optional[float] = None
+
+
+class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
     """Mixin into SignalsTable that adds a UI to time-shift a signal.
     This acts as the data store and transformer to apply the time-shift, but the actual
     values are set externally (by a function call, typically from the top-level coordinator
     that gets its data from the user dragging a plot line)."""
 
     COL_TIMESHIFT = -1
+    DATA_MODEL_BASES = [TimeshiftDataStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -42,6 +48,20 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable):
         self._cached_results = IdentityCacheDict[
             npt.NDArray[np.float64], npt.NDArray[np.float64]
         ]()  # src x-values -> output x-values
+
+    def _write_model(self, model: BaseTopModel) -> None:
+        super()._write_model(model)
+        for data_name, data_model in model.data.items():
+            assert isinstance(data_model, TimeshiftDataStateModel)
+            timeshift = self._timeshifts.get(data_name, 0)
+            data_model.timeshift = timeshift
+
+    def _load_model(self, model: BaseTopModel) -> None:
+        super()._load_model(model)
+        for data_name, data_model in model.data.items():
+            assert isinstance(data_model, TimeshiftDataStateModel)
+            if data_model.timeshift is not None:
+                self.set_timeshift([data_name], data_model.timeshift, update=False)
 
     def _post_cols(self) -> int:
         self.COL_TIMESHIFT = super()._post_cols()
@@ -55,7 +75,7 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable):
         super().set_data_items(new_data_items)
         for row, (name, color) in enumerate(self._data_items.items()):
             timeshift = self._timeshifts.get(name)
-            if timeshift is not None:
+            if timeshift is not None and timeshift != 0:
                 not_none(self.item(row, self.COL_TIMESHIFT)).setText(str(timeshift))
             else:
                 not_none(self.item(row, self.COL_TIMESHIFT)).setText("")
@@ -79,13 +99,20 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable):
             initial_timeshift = 0
         self.sigTimeshiftHandle.emit(selected_data_names, initial_timeshift)
 
-    def set_timeshift(self, data_names: List[str], timeshift: float) -> None:
-        """Called externally (eg, by handle drag) to set the timeshift for the specified data names."""
+    def set_timeshift(self, data_names: List[str], timeshift: float, update: bool = True) -> None:
+        """Called externally (eg, by handle drag) to set the timeshift for the specified data names.
+        Optionally, updating can be disabled for performance, for example to batch-update after a bunch of ops."""
         index_by_data_name = {data_name: i for i, data_name in enumerate(self._data_items.keys())}
         for data_name in data_names:
             self._timeshifts[data_name] = timeshift
-            not_none(self.item(index_by_data_name[data_name], self.COL_TIMESHIFT)).setText(str(timeshift))
-        self.sigTimeshiftChanged.emit(data_names)
+            if timeshift == 0:
+                timeshift_str = ""
+            else:
+                timeshift_str = str(timeshift)
+            if data_name in index_by_data_name:
+                not_none(self.item(index_by_data_name[data_name], self.COL_TIMESHIFT)).setText(timeshift_str)
+        if update:
+            self.sigTimeshiftChanged.emit(data_names)
 
     def apply_timeshifts(
         self,

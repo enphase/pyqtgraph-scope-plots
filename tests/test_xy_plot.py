@@ -58,6 +58,24 @@ def test_correlated_indices() -> None:
         (0, 3),
     )
 
+    # test different alignments
+    assert XyPlotWidget._get_correlated_indices(np.array([-10, 0, 10, 20, 30]), np.array([0, 10, 20, 30]), 0, 20) == (
+        (1, 4),
+        (0, 3),
+    )
+    assert XyPlotWidget._get_correlated_indices(np.array([0, 10, 20, 30]), np.array([-10, 0, 10, 20, 30]), 0, 20) == (
+        (0, 3),
+        (1, 4),
+    )
+
+    # test tiny offset
+    assert XyPlotWidget._get_correlated_indices(
+        np.array([0, 10 + 1e-5, 20 - 1e-5, 30]), np.array([0, 10, 20, 30]), 0, 20
+    ) == (
+        (0, 3),
+        (0, 3),
+    )
+
 
 def test_xy_create_ui(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     # test that xy creation doesn't error out and follows the user order

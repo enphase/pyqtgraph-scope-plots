@@ -29,6 +29,12 @@ from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegi
 from .transforms_signal_table import TransformsSignalsTable
 
 
+class XyWindowModel(BaseModel):
+    xy_data_items: List[Tuple[str, str]] = []  # list of (x, y) data items
+    x_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
+    y_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
+
+
 class BaseXyPlot:
     """Abstract interface for a XY plot widget"""
 
@@ -43,6 +49,14 @@ class BaseXyPlot:
         """Sets the region to visualize the XY traces over"""
         ...
 
+    def _write_model(self, model: BaseModel) -> None:
+        """Writes widget state to a BaseModel. Should assert it is the right type."""
+        ...
+
+    def _load_model(self, model: BaseModel) -> None:
+        """Loads widget state from a BaseModel. Should assert it is the right type."""
+        ...
+
 
 class XyPlotWidget(pg.PlotWidget, BaseXyPlot):  # type: ignore[misc]
     FADE_SEGMENTS = 16
@@ -55,6 +69,31 @@ class XyPlotWidget(pg.PlotWidget, BaseXyPlot):  # type: ignore[misc]
 
         self._drag_overlays: List[DragTargetOverlay] = []
         self.setAcceptDrops(True)
+
+    def _write_model(self, model: BaseModel) -> None:
+        assert isinstance(model, XyWindowModel)
+        model.xy_data_items = self._xys
+        viewbox = cast(pg.PlotItem, self.getPlotItem()).getViewBox()
+        if viewbox.autoRangeEnabled()[0]:
+            model.x_range = "auto"
+        else:
+            model.x_range = tuple(viewbox.viewRange()[0])
+        if viewbox.autoRangeEnabled()[1]:
+            model.y_range = "auto"
+        else:
+            model.y_range = tuple(viewbox.viewRange()[1])
+
+    def _load_model(self, model: BaseModel) -> None:
+        assert isinstance(model, XyWindowModel)
+        for xy_data_item in model.xy_data_items:
+            self.add_xy(*xy_data_item)
+        viewbox = cast(pg.PlotItem, self.getPlotItem()).getViewBox()
+        if model.x_range is not None and model.x_range != "auto":
+            viewbox.setXRange(model.x_range[0], model.x_range[1], 0)
+        if model.y_range is not None and model.y_range != "auto":
+            viewbox.setYRange(model.y_range[0], model.y_range[1], 0)
+        if model.x_range == "auto" or model.y_range == "auto":
+            viewbox.enableAutoRange(x=model.x_range == "auto" or None, y=model.y_range == "auto" or None)
 
     def add_xy(self, x_name: str, y_name: str) -> None:
         if (x_name, y_name) not in self._xys:
@@ -187,12 +226,6 @@ class XyPlotWidget(pg.PlotWidget, BaseXyPlot):  # type: ignore[misc]
         event.accept()
 
 
-class XyWindowModel(BaseModel):
-    xy_data_items: List[Tuple[str, str]] = []  # list of (x, y) data items
-    x_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
-    y_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
-
-
 class XyTableStateModel(BaseTopModel):
     xy_windows: Optional[List[XyWindowModel]] = None
 
@@ -215,17 +248,8 @@ class XyTable(
         assert isinstance(model, XyTableStateModel)
         model.xy_windows = []
         for xy_plot in self._xy_plots:
-            xy_window_model = XyWindowModel(xy_data_items=xy_plot._xys)
-            viewbox = cast(pg.PlotItem, xy_plot.getPlotItem()).getViewBox()
-            if viewbox.autoRangeEnabled()[0]:
-                xy_window_model.x_range = "auto"
-            else:
-                xy_window_model.x_range = tuple(viewbox.viewRange()[0])
-            if viewbox.autoRangeEnabled()[1]:
-                xy_window_model.y_range = "auto"
-            else:
-                xy_window_model.y_range = tuple(viewbox.viewRange()[1])
-            model.xy_windows.append(xy_window_model)
+            model.xy_windows.append(XyWindowModel())
+            xy_plot._write_model(model.xy_windows[-1])
 
     def _load_model(self, model: BaseTopModel) -> None:
         super()._load_model(model)
@@ -237,20 +261,7 @@ class XyTable(
             xy_plot.close()
         for xy_window_model in model.xy_windows:  # create plots from model
             xy_plot = self.create_xy()
-            # TODO move load model into xywidget itself
-            assert isinstance(xy_plot, pg.PlotWidget)
-
-            for xy_data_item in xy_window_model.xy_data_items:
-                xy_plot.add_xy(*xy_data_item)
-            viewbox = cast(pg.PlotItem, xy_plot.getPlotItem()).getViewBox()
-            if xy_window_model.x_range is not None and xy_window_model.x_range != "auto":
-                viewbox.setXRange(xy_window_model.x_range[0], xy_window_model.x_range[1], 0)
-            if xy_window_model.y_range is not None and xy_window_model.y_range != "auto":
-                viewbox.setYRange(xy_window_model.y_range[0], xy_window_model.y_range[1], 0)
-            if xy_window_model.x_range == "auto" or xy_window_model.y_range == "auto":
-                viewbox.enableAutoRange(
-                    x=xy_window_model.x_range == "auto" or None, y=xy_window_model.y_range == "auto" or None
-                )
+            xy_plot._load_model(xy_window_model)
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)

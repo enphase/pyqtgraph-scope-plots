@@ -19,7 +19,7 @@ import pyqtgraph as pg
 from PySide6 import QtGui
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QAction, QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent
-from PySide6.QtWidgets import QMenu, QMessageBox
+from PySide6.QtWidgets import QMenu, QMessageBox, QWidget
 from numpy import typing as npt
 from pydantic import BaseModel
 
@@ -29,11 +29,26 @@ from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegi
 from .transforms_signal_table import TransformsSignalsTable
 
 
-class XyPlotWidget(pg.PlotWidget):  # type: ignore[misc]
-    FADE_SEGMENTS = 16
+class BaseXyPlot:
+    """Abstract interface for a XY plot widget"""
 
     def __init__(self, parent: "XyTable"):
         super().__init__()
+
+    def add_xy(self, x_name: str, y_name: str) -> None:
+        """Adds a XY plot to the widget"""
+        ...
+
+    def set_range(self, region: Tuple[float, float]) -> None:
+        """Sets the region to visualize the XY traces over"""
+        ...
+
+
+class XyPlotWidget(pg.PlotWidget, BaseXyPlot):  # type: ignore[misc]
+    FADE_SEGMENTS = 16
+
+    def __init__(self, parent: "XyTable"):
+        super().__init__(parent)
         self._parent = parent
         self._xys: List[Tuple[str, str]] = []
         self._region = (-float("inf"), float("inf"))
@@ -193,7 +208,7 @@ class XyTable(
         super().__init__(*args, **kwargs)
         self._xy_action = QAction("Create X-Y Plot", self)
         self._xy_action.triggered.connect(self._on_create_xy)
-        self._xy_plots: List[XyPlotWidget] = []
+        self._xy_plots: List[BaseXyPlot] = []
 
     def _write_model(self, model: BaseTopModel) -> None:
         super()._write_model(model)
@@ -218,9 +233,13 @@ class XyTable(
         if model.xy_windows is None:
             return
         for xy_plot in self._xy_plots:  # remove all existing plots
+            assert isinstance(xy_plot, QWidget)
             xy_plot.close()
         for xy_window_model in model.xy_windows:  # create plots from model
             xy_plot = self.create_xy()
+            # TODO move load model into xywidget itself
+            assert isinstance(xy_plot, pg.PlotWidget)
+
             for xy_data_item in xy_window_model.xy_data_items:
                 xy_plot.add_xy(*xy_data_item)
             viewbox = cast(pg.PlotItem, xy_plot.getPlotItem()).getViewBox()
@@ -252,7 +271,7 @@ class XyTable(
         for xy_plot in self._xy_plots:
             xy_plot.set_range(self._range)
 
-    def _on_create_xy(self) -> Optional[XyPlotWidget]:
+    def _on_create_xy(self) -> Optional[BaseXyPlot]:
         """Creates an XY plot with the selected signal(s) and returns the new plot."""
         data = [self.item(item.row(), self.COL_NAME).text() for item in self._ordered_selects]
         if len(data) != 2:
@@ -264,7 +283,7 @@ class XyTable(
         xy_plot.add_xy(data[0], data[1])
         return xy_plot
 
-    def create_xy(self) -> XyPlotWidget:
+    def create_xy(self) -> BaseXyPlot:
         """Creates and opens an empty XY plot widget."""
         xy_plot = XyPlotWidget(self)
         xy_plot.show()

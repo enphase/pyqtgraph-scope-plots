@@ -85,14 +85,14 @@ def test_xy_create_ui(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     # test that xy creation doesn't error out and follows the user order
     plot._table.item(1, 0).setSelected(True)
     plot._table.item(0, 0).setSelected(True)
-    xy_plot = plot._table._on_create_xy()
+    xy_plot = cast(XyPlotWidget, plot._table._on_create_xy())
     assert xy_plot is not None
     assert xy_plot._xys == [("1", "0")]
 
     plot._table.clearSelection()
     plot._table.item(0, 0).setSelected(True)
     plot._table.item(1, 0).setSelected(True)
-    xy_plot = plot._table._on_create_xy()
+    xy_plot = cast(XyPlotWidget, plot._table._on_create_xy())
     assert xy_plot is not None
     assert xy_plot._xys == [("0", "1")]
 
@@ -100,7 +100,7 @@ def test_xy_create_ui(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 
 
 def test_xy_offset(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    xy_plot = plot._table.create_xy()
+    xy_plot = cast(XyPlotWidget, plot._table.create_xy())
     xy_plot.add_xy("0", "2")
     xy_plot.add_xy("2", "0")
     assert xy_plot._xys == [("0", "2"), ("2", "0")]
@@ -109,7 +109,7 @@ def test_xy_offset(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 
 
 def test_xy_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    xy_plot = plot._table.create_xy()
+    xy_plot = cast(XyPlotWidget, plot._table.create_xy())
     xy_plot.add_xy("0", "1")
     xy_plot.add_xy("1", "0")
     qtbot.waitUntil(
@@ -124,4 +124,4 @@ def test_xy_load(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     model.xy_windows = [XyWindowModel(xy_data_items=[("1", "0")])]
     plot._table._load_model(model)
     qtbot.waitUntil(lambda: len(plot._table._xy_plots) == 1)
-    assert plot._table._xy_plots[0]._xys == [("1", "0")]
+    assert cast(XyPlotWidget, plot._table._xy_plots[0])._xys == [("1", "0")]

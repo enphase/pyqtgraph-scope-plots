@@ -56,7 +56,9 @@ class AnimationPlotsTableWidget(PlotsTableWidget):
 
         capture_windows: List[QWidget] = [self._plots]
         if isinstance(self._table, XyTable):
-            capture_windows.extend(self._table._xy_plots)
+            for widget in self._table._xy_plots:
+                assert isinstance(widget, QWidget)
+                capture_windows.append(widget)
 
         images = []
         for i in range(frames_count):

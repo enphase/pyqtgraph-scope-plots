@@ -11,6 +11,7 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
+from typing import Type
 
 from PySide6 import QtGui
 from PySide6.QtCore import Qt, Signal
@@ -60,12 +61,25 @@ class XyPlotTable(QTableWidget):
 class XyPlotSplitter(BaseXyPlot, QSplitter):
     closed = Signal()
 
+    _XY_PLOT_TYPE: Type[XyPlotWidget] = XyPlotWidget
+    _XY_PLOT_TABLE_TYPE: Type[XyPlotTable] = XyPlotTable
+
+    def _make_xy_plots(self) -> XyPlotWidget:
+        """Creates the XyPlotTable widget. self._plots is initialized by this time.
+        Optionally override to create a different XyPlotWidget object"""
+        return self._XY_PLOT_TYPE(self._plots)
+
+    def _make_xy_plot_table(self) -> XyPlotTable:
+        """Creates the XyPlotTable widget. self._plots and self._xy_plots are initialized by this time.
+        Optionally override to create a different XyPlotTable object"""
+        return self._XY_PLOT_TABLE_TYPE(self._plots, self._xy_plots)
+
     def __init__(self, plots: MultiPlotWidget):
         super().__init__(plots)
         self.setOrientation(Qt.Orientation.Vertical)
-        self._xy_plots = XyPlotWidget(plots)
+        self._xy_plots = self._make_xy_plots()
         self.addWidget(self._xy_plots)
-        self._table = XyPlotTable(plots, self._xy_plots)
+        self._table = self._make_xy_plot_table()
         self.addWidget(self._table)
 
     def add_xy(self, x_name: str, y_name: str) -> None:

@@ -12,18 +12,19 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import List, Tuple, Optional, Literal, Union, cast
+from typing import List, Tuple, Optional, Literal, Union, cast, Any, Dict, Sequence
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6.QtCore import QSize, Signal
-from PySide6.QtGui import QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent
-from PySide6.QtWidgets import QMessageBox, QWidget
+from PySide6.QtCore import QSize, Signal, QPoint
+from PySide6.QtGui import QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent, Qt
+from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidget, QTableWidgetItem, QMenu
 from numpy import typing as npt
 from pydantic import BaseModel
 
+from .save_restore_model import HasSaveLoadConfig
 from .multi_plot_widget import DragTargetOverlay, MultiPlotWidget, LinkedMultiPlotWidget
-from .signals_table import HasRegionSignalsTable, DraggableSignalsTable
+from .signals_table import HasRegionSignalsTable, DraggableSignalsTable, SignalsTable
 
 
 class XyWindowModel(BaseModel):
@@ -32,8 +33,11 @@ class XyWindowModel(BaseModel):
     y_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
 
 
-class BaseXyPlot:
+class BaseXyPlot(HasSaveLoadConfig):
     """Abstract interface for a XY plot widget"""
+
+    _MODEL_BASES = [XyWindowModel]
+    closed = Signal()
 
     def __init__(self, plots: MultiPlotWidget):
         super().__init__()
@@ -43,19 +47,11 @@ class BaseXyPlot:
         """Adds a XY plot to the widget"""
         ...
 
-    def _write_model(self, model: BaseModel) -> None:
-        """Writes widget state to a BaseModel. Should assert it is the right type."""
-        ...
-
-    def _load_model(self, model: BaseModel) -> None:
-        """Loads widget state from a BaseModel. Should assert it is the right type."""
-        ...
-
 
 class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     FADE_SEGMENTS = 16
 
-    sigXysChanged = Signal()
+    sigXyDataItemsChanged = Signal()
 
     def __init__(self, plots: MultiPlotWidget):
         super().__init__(plots)
@@ -69,6 +65,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             plots.sigCursorRangeChanged.connect(self._update)
 
     def _write_model(self, model: BaseModel) -> None:
+        super()._write_model(model)
         assert isinstance(model, XyWindowModel)
         model.xy_data_items = self._xys
         viewbox = cast(pg.PlotItem, self.getPlotItem()).getViewBox()
@@ -82,6 +79,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             model.y_range = tuple(viewbox.viewRange()[1])
 
     def _load_model(self, model: BaseModel) -> None:
+        super()._load_model(model)
         assert isinstance(model, XyWindowModel)
         for xy_data_item in model.xy_data_items:
             self.add_xy(*xy_data_item)
@@ -97,7 +95,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         if (x_name, y_name) not in self._xys:
             self._xys.append((x_name, y_name))
             self._update()
-        self.sigXysChanged.emit()
+        self.sigXyDataItemsChanged.emit()
 
     @staticmethod
     def _get_correlated_indices(
@@ -225,3 +223,56 @@ class XyDragDroppable(BaseXyPlot):
             return
         self.add_xy(drag_data_names[0], drag_data_names[1])
         event.accept()
+
+
+class XyPlotTable(QTableWidget):
+    COL_X_NAME: int = 0
+    COL_Y_NAME: int = 1
+
+    def __init__(self, plots: MultiPlotWidget, xy_plots: XyPlotWidget):
+        super().__init__()
+        self._plots = plots
+        self._xy_plots = xy_plots
+
+        self._plots.sigDataItemsUpdated.connect(self._update)
+        self._xy_plots.sigXyDataItemsChanged.connect(self._update)
+
+        self.setColumnCount(2)
+        self.setHorizontalHeaderItem(self.COL_X_NAME, QTableWidgetItem("X"))
+        self.setHorizontalHeaderItem(self.COL_Y_NAME, QTableWidgetItem("Y"))
+
+    def _update(self) -> None:
+        self.setRowCount(0)  # clear table
+        self.setRowCount(len(self._xy_plots._xys))
+        for row, (x_name, y_name) in enumerate(self._xy_plots._xys):
+            x_item = SignalsTable._create_noneditable_table_item()
+            x_item.setText(x_name)
+            x_color, _ = self._plots._data_items.get(x_name, (None, None))
+            if x_color is not None:
+                x_item.setForeground(x_color)
+            self.setItem(row, self.COL_X_NAME, x_item)
+
+            y_item = SignalsTable._create_noneditable_table_item()
+            y_item.setText(y_name)
+            y_color, _ = self._plots._data_items.get(y_name, (None, None))
+            if y_color is not None:
+                y_item.setForeground(y_color)
+            self.setItem(row, self.COL_Y_NAME, y_item)
+
+
+class ContextMenuXyPlotTable(XyPlotTable):
+    """Mixin into XyPlotTable that adds a context menu on rows."""
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._spawn_table_cell_menu)
+
+    def _spawn_table_cell_menu(self, pos: QPoint) -> None:
+        menu = QMenu(self)
+        self._populate_context_menu(menu)
+        menu.popup(self.mapToGlobal(pos))
+
+    def _populate_context_menu(self, menu: QMenu) -> None:
+        """Called when the context menu is created, to populate its items."""
+        pass

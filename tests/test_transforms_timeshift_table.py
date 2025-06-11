@@ -152,22 +152,22 @@ def test_transform_ui_error(qtbot: QtBot, transforms_table: TransformsSignalsTab
 
 
 def test_transform_save(qtbot: QtBot, transforms_table: TransformsSignalsTable) -> None:
-    assert cast(TransformsDataStateModel, transforms_table._dump_model(["0", "1"]).data["0"]).transform == ""
-    assert cast(TransformsDataStateModel, transforms_table._dump_model(["0", "1"]).data["1"]).transform == ""
+    assert cast(TransformsDataStateModel, transforms_table._dump_data_model(["0", "1"]).data["0"]).transform == ""
+    assert cast(TransformsDataStateModel, transforms_table._dump_data_model(["0", "1"]).data["1"]).transform == ""
 
     transforms_table.set_transform(["1"], "x + data['0']")  # allow getting with longer data
     qtbot.waitUntil(
-        lambda: cast(TransformsDataStateModel, transforms_table._dump_model(["0", "1"]).data["1"]).transform
+        lambda: cast(TransformsDataStateModel, transforms_table._dump_data_model(["0", "1"]).data["1"]).transform
         == "x + data['0']"
     )
     assert (
-        cast(TransformsDataStateModel, transforms_table._dump_model(["0", "1"]).data["0"]).transform == ""
+        cast(TransformsDataStateModel, transforms_table._dump_data_model(["0", "1"]).data["0"]).transform == ""
     )  # unchanged
 
 
 def test_transform_load(qtbot: QtBot, transforms_table: TransformsSignalsTable) -> None:
     """Tests transforms that only reference x"""
-    model = transforms_table._dump_model(["0"])
+    model = transforms_table._dump_data_model(["0"])
 
     cast(TransformsDataStateModel, model.data["0"]).transform = "x + 1"
     transforms_table._load_model(model)
@@ -193,15 +193,17 @@ def test_timeshift(qtbot: QtBot, timeshifts_table: TimeshiftSignalsTable) -> Non
 
 
 def test_timeshift_save(qtbot: QtBot, timeshifts_table: TimeshiftSignalsTable) -> None:
-    qtbot.waitUntil(lambda: cast(TimeshiftDataStateModel, timeshifts_table._dump_model(["0"]).data["0"]).timeshift == 0)
+    qtbot.waitUntil(
+        lambda: cast(TimeshiftDataStateModel, timeshifts_table._dump_data_model(["0"]).data["0"]).timeshift == 0
+    )
     timeshifts_table.set_timeshift(["0"], -0.5)
     qtbot.waitUntil(
-        lambda: cast(TimeshiftDataStateModel, timeshifts_table._dump_model(["0"]).data["0"]).timeshift == -0.5
+        lambda: cast(TimeshiftDataStateModel, timeshifts_table._dump_data_model(["0"]).data["0"]).timeshift == -0.5
     )
 
 
 def test_timeshift_load(qtbot: QtBot, timeshifts_table: TimeshiftSignalsTable) -> None:
-    model = timeshifts_table._dump_model(["0"])
+    model = timeshifts_table._dump_data_model(["0"])
     cast(TimeshiftDataStateModel, model.data["0"]).timeshift = -0.5
     timeshifts_table._load_model(model)
     qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [-0.5, -0.4, 0.5, 1.5])

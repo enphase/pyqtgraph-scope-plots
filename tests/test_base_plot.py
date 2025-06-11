@@ -208,7 +208,7 @@ def test_plot_remove(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 
 def test_plot_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     qtbot.waitUntil(
-        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).plot_widgets
+        lambda: cast(MultiPlotStateModel, plot._plots._dump_data_model([])).plot_widgets
         == [
             PlotWidgetModel(data_items=["0"], y_range="auto"),
             PlotWidgetModel(data_items=["1"], y_range="auto"),
@@ -218,19 +218,19 @@ def test_plot_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 
     plot._plots._merge_data_into_item(["0"], 1)  # merge
     qtbot.waitUntil(
-        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).plot_widgets
+        lambda: cast(MultiPlotStateModel, plot._plots._dump_data_model([])).plot_widgets
         == [PlotWidgetModel(data_items=["1", "0"], y_range="auto"), PlotWidgetModel(data_items=["2"], y_range="auto")]
     )
 
     plot._plots._merge_data_into_item(["2"], 0)  # merge
     qtbot.waitUntil(
-        lambda: cast(MultiPlotStateModel, plot._plots._dump_model([])).plot_widgets
+        lambda: cast(MultiPlotStateModel, plot._plots._dump_data_model([])).plot_widgets
         == [PlotWidgetModel(data_items=["1", "0", "2"], y_range="auto")]
     )
 
 
 def test_plot_restore(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    model = cast(MultiPlotStateModel, plot._plots._dump_model([]))
+    model = cast(MultiPlotStateModel, plot._plots._dump_data_model([]))
     model.plot_widgets = [PlotWidgetModel(data_items=["0", "1", "2"])]
     plot._plots._load_model(model)
     plot._plots.set_data(plot._plots._data)  # bulk update that happens at top level
@@ -252,7 +252,7 @@ def test_plot_restore(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 
 
 def test_plot_restore_range(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    model = cast(MultiPlotStateModel, plot._plots._dump_model([]))
+    model = cast(MultiPlotStateModel, plot._plots._dump_data_model([]))
     model.plot_widgets = [PlotWidgetModel(data_items=["0"])]
     model.x_range = (-10, 42)
     plot._plots._load_model(model)

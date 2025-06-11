@@ -33,6 +33,8 @@ from .timeshift_signals_table import TimeshiftSignalsTable
 from .transforms_signal_table import TransformsSignalsTable
 from .search_signals_table import SearchSignalsTable
 from .xy_plot_table import XyTable
+from .xy_plot import XyPlotWidget, XyDragDroppable, XyPlotTable
+from .xy_plot_splitter import XyPlotSplitter
 
 from .time_axis import TimeAxisItem
 

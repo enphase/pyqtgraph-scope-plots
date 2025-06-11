@@ -11,6 +11,7 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
+
 from typing import cast
 
 import numpy as np
@@ -20,7 +21,9 @@ from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.plots_table_widget import PlotsTableWidget
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
+from pyqtgraph_scope_plots.util import not_none
 from pyqtgraph_scope_plots.xy_plot import XyPlotWidget, XyWindowModel
+from pyqtgraph_scope_plots.xy_plot_refgeo import XyRefGeoModel
 from pyqtgraph_scope_plots.xy_plot_splitter import XyPlotSplitter
 from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel
 
@@ -88,7 +91,7 @@ def test_xy_create_ui(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     plot._table.item(1, 0).setSelected(True)
     plot._table.item(0, 0).setSelected(True)
     xy_plot = cast(XyPlotSplitter, plot._table._on_create_xy())
-    qtbot.waitSignal(xy_plot._xy_plots.sigXysChanged)
+    qtbot.waitSignal(xy_plot._xy_plots.sigXyDataItemsChanged)
     assert xy_plot is not None
     assert xy_plot._xy_plots._xys == [("1", "0")]
 
@@ -96,11 +99,19 @@ def test_xy_create_ui(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     plot._table.item(0, 0).setSelected(True)
     plot._table.item(1, 0).setSelected(True)
     xy_plot = cast(XyPlotSplitter, plot._table._on_create_xy())
-    qtbot.waitSignal(xy_plot._xy_plots.sigXysChanged)
+    qtbot.waitSignal(xy_plot._xy_plots.sigXyDataItemsChanged)
     assert xy_plot is not None
     assert xy_plot._xy_plots._xys == [("0", "1")]
 
     qtbot.wait(10)  # wait for rendering to happen
+
+
+def test_xy_close_cleanup(qtbot: QtBot, plot: PlotsTableWidget) -> None:
+    xy_plot = cast(XyPlotSplitter, plot._table.create_xy())
+    xy_plot.add_xy("0", "2")
+    qtbot.waitUntil(lambda: len(plot._table._xy_plots) > 0)
+    xy_plot.close()
+    qtbot.waitUntil(lambda: not plot._table._xy_plots)
 
 
 def test_xy_offset(qtbot: QtBot, plot: PlotsTableWidget) -> None:
@@ -116,16 +127,15 @@ def test_xy_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     xy_plot = plot._table.create_xy()
     xy_plot.add_xy("0", "1")
     xy_plot.add_xy("1", "0")
-    qtbot.waitUntil(
-        lambda: cast(XyTableStateModel, plot._table._dump_model([])).xy_windows
-        == [XyWindowModel(xy_data_items=[("0", "1"), ("1", "0")], x_range="auto", y_range="auto")]
-    )
+    qtbot.waitUntil(lambda: len(not_none(cast(XyTableStateModel, plot._table._dump_data_model([])).xy_windows)) == 1)
+    model = cast(XyTableStateModel, plot._table._dump_data_model([]))
+    assert not_none(model.xy_windows)[0].xy_data_items == [("0", "1"), ("1", "0")]
 
 
 def test_xy_load(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    model = cast(XyTableStateModel, plot._table._dump_model([]))
+    model = cast(XyTableStateModel, plot._table._dump_data_model([]))
 
-    model.xy_windows = [XyWindowModel(xy_data_items=[("1", "0")])]
+    model.xy_windows = [XyRefGeoModel(xy_data_items=[("1", "0")])]
     plot._table._load_model(model)
     qtbot.waitUntil(lambda: len(plot._table._xy_plots) == 1)
     assert cast(XyPlotSplitter, plot._table._xy_plots[0])._xy_plots._xys == [("1", "0")]

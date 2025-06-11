@@ -18,9 +18,10 @@ import numpy as np
 import numpy.typing as npt
 from PySide6.QtGui import QAction, QColor
 from PySide6.QtWidgets import QTableWidgetItem, QMenu
+from pydantic import BaseModel
 
 from .cache_dict import IdentityCacheDict
-from .save_restore_model import DataTopModel, HasSaveLoadConfig, BaseTopModel
+from .save_restore_model import DataTopModel, HasSaveLoadDataConfig, BaseTopModel
 from .signals_table import ContextMenuSignalsTable
 from .util import not_none
 
@@ -29,14 +30,14 @@ class TimeshiftDataStateModel(DataTopModel):
     timeshift: Optional[float] = None
 
 
-class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
+class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
     """Mixin into SignalsTable that adds a UI to time-shift a signal.
     This acts as the data store and transformer to apply the time-shift, but the actual
     values are set externally (by a function call, typically from the top-level coordinator
     that gets its data from the user dragging a plot line)."""
 
     COL_TIMESHIFT = -1
-    DATA_MODEL_BASES = [TimeshiftDataStateModel]
+    _DATA_MODEL_BASES = [TimeshiftDataStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -49,14 +50,16 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
             npt.NDArray[np.float64], npt.NDArray[np.float64]
         ]()  # src x-values -> output x-values
 
-    def _write_model(self, model: BaseTopModel) -> None:
+    def _write_model(self, model: BaseModel) -> None:
+        assert isinstance(model, BaseTopModel)
         super()._write_model(model)
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, TimeshiftDataStateModel)
             timeshift = self._timeshifts.get(data_name, 0)
             data_model.timeshift = timeshift
 
-    def _load_model(self, model: BaseTopModel) -> None:
+    def _load_model(self, model: BaseModel) -> None:
+        assert isinstance(model, BaseTopModel)
         super()._load_model(model)
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, TimeshiftDataStateModel)

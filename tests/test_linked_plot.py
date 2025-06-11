@@ -59,17 +59,17 @@ def test_linked_region(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 
 
 def test_region_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_model([])).region is None)
+    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_data_model([])).region is None)
 
     plot_item(plot, 0).set_region((0.1, 1.5))
-    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_model([])).region == (0.1, 1.5))
+    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_data_model([])).region == (0.1, 1.5))
 
     plot_item(plot, 1).set_region(1.0)
-    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_model([])).region == 1.0)
+    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_data_model([])).region == 1.0)
 
 
 def test_region_restore(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    model = cast(LinkedMultiPlotStateModel, plot._plots._dump_model([]))
+    model = cast(LinkedMultiPlotStateModel, plot._plots._dump_data_model([]))
 
     model.region = (0.1, 1.5)
     plot._plots._load_model(model)
@@ -110,14 +110,14 @@ def test_linked_pois(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 
 
 def test_pois_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_model([])).pois == [])
+    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_data_model([])).pois == [])
 
     plot_item(plot, 0).set_pois([0.1, 1.5])
-    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_model([])).pois == [0.1, 1.5])
+    qtbot.waitUntil(lambda: cast(LinkedMultiPlotStateModel, plot._plots._dump_data_model([])).pois == [0.1, 1.5])
 
 
 def test_pois_restore(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    model = cast(LinkedMultiPlotStateModel, plot._plots._dump_model([]))
+    model = cast(LinkedMultiPlotStateModel, plot._plots._dump_data_model([]))
 
     model.pois = [0.1, 1.5]
     plot._plots._load_model(model)

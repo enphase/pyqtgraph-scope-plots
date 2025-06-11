@@ -26,7 +26,7 @@ from PySide6.QtWidgets import QTableWidgetItem, QTableWidget, QHeaderView, QMenu
 
 from .cache_dict import IdentityCacheDict
 from .multi_plot_widget import MultiPlotWidget
-from .save_restore_model import HasSaveLoadConfig, DataTopModel, BaseTopModel
+from .save_restore_model import DataTopModel, BaseTopModel, HasSaveLoadDataConfig
 from .util import not_none
 
 
@@ -346,7 +346,7 @@ class ColorPickerDataStateModel(DataTopModel):
     color: Optional[str] = None  # QColor name, e.g., '#ffea70' or 'red'
 
 
-class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
+class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
     """Mixin into SignalsTable that adds a context menu item for the user to change the color.
     This gets sent as a signal, and an upper must handle plumbing the colors through.
     """

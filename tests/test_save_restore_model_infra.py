@@ -16,7 +16,12 @@ from typing import Optional, Iterable, cast, Dict
 
 from pydantic import BaseModel
 
-from pyqtgraph_scope_plots.save_restore_model import DataTopModel, BaseTopModel, HasSaveLoadConfig
+from pyqtgraph_scope_plots.save_restore_model import (
+    DataTopModel,
+    BaseTopModel,
+    HasSaveLoadConfig,
+    HasSaveLoadDataConfig,
+)
 
 
 class DataModelSub1(DataTopModel):
@@ -39,7 +44,7 @@ class BaseModelSub2(BaseTopModel):
     inner: InnerModel = InnerModel()
 
 
-class SaveRestoreSub(HasSaveLoadConfig):
+class SaveRestoreSub(HasSaveLoadDataConfig):
     _MODEL_BASES = [BaseModelSub1, BaseModelSub2]
     _DATA_MODEL_BASES = [DataModelSub1, DataModelSub2]
 
@@ -81,7 +86,7 @@ class SaveRestoreSub(HasSaveLoadConfig):
 def test_save_model() -> None:
     """Tests composition of the save model"""
     instance = SaveRestoreSub(["data1", "data2", "data3"])
-    skeleton = instance._create_skeleton_model(instance.data_field1s.keys())
+    skeleton = instance._create_skeleton_data_model(instance.data_field1s.keys())
 
     assert isinstance(skeleton, BaseModelSub1) and isinstance(skeleton, BaseModelSub2)
     assert isinstance(skeleton.data["data1"], DataModelSub1) and isinstance(skeleton.data["data1"], DataModelSub2)
@@ -106,7 +111,7 @@ def test_save_model() -> None:
 
 def test_load_model() -> None:
     instance = SaveRestoreSub(["data1", "data2", "data3"])
-    model = instance._create_skeleton_model(instance.data_field1s.keys())
+    model = instance._create_skeleton_data_model(instance.data_field1s.keys())
     cast(DataModelSub2, model.data["data3"]).field2 = "quack"
 
     instance._load_model(model)

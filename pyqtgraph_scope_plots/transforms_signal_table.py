@@ -21,8 +21,8 @@ import simpleeval
 from PySide6.QtGui import QColor, QAction
 from PySide6.QtWidgets import QTableWidgetItem, QMenu, QInputDialog, QLineEdit
 
-from .save_restore_model import DataTopModel, HasSaveLoadConfig, BaseTopModel
 from .cache_dict import IdentityCacheDict
+from .save_restore_model import DataTopModel, BaseTopModel, HasSaveLoadDataConfig
 from .signals_table import ContextMenuSignalsTable
 from .util import not_none
 
@@ -31,7 +31,7 @@ class TransformsDataStateModel(DataTopModel):
     transform: Optional[str] = None
 
 
-class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
+class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
     """Mixin into SignalsTable that adds a UI for the user to specify a transform using a subset of Python code.
     This parses the user input and provides a get_transform."""
 

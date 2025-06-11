@@ -20,7 +20,7 @@ from PySide6.QtGui import QAction, QColor
 from PySide6.QtWidgets import QTableWidgetItem, QMenu
 
 from .cache_dict import IdentityCacheDict
-from .save_restore_model import DataTopModel, HasSaveLoadConfig, BaseTopModel
+from .save_restore_model import DataTopModel, BaseTopModel, HasSaveLoadDataConfig
 from .signals_table import ContextMenuSignalsTable
 from .util import not_none
 
@@ -29,7 +29,7 @@ class TimeshiftDataStateModel(DataTopModel):
     timeshift: Optional[float] = None
 
 
-class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
+class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
     """Mixin into SignalsTable that adds a UI to time-shift a signal.
     This acts as the data store and transformer to apply the time-shift, but the actual
     values are set externally (by a function call, typically from the top-level coordinator

@@ -16,7 +16,6 @@ import bisect
 import itertools
 import os.path
 import time
-import yaml
 from functools import partial
 from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable, Sequence, cast, Set, Iterable
 
@@ -24,6 +23,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import pyqtgraph as pg
+import yaml
 from PySide6 import QtWidgets
 from PySide6.QtCore import QKeyCombination, QTimer
 from PySide6.QtGui import QAction, QColor, Qt
@@ -39,10 +39,10 @@ from PySide6.QtWidgets import (
 )
 from pydantic._internal._model_construction import ModelMetaclass
 
-from ..save_restore_model import HasSaveLoadConfig, BaseTopModel
 from ..animation_plot_table_widget import AnimationPlotsTableWidget
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
+from ..save_restore_model import BaseTopModel, HasSaveLoadDataConfig
 from ..search_signals_table import SearchSignalsTable
 from ..signals_table import ColorPickerSignalsTable, StatsSignalsTable
 from ..time_axis import TimeAxisItem
@@ -66,7 +66,7 @@ class CsvLoaderStateModel(BaseTopModel):
     csv_files: Optional[List[str]] = None  # all loaded CSV files, as relpath or abspath
 
 
-class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, HasSaveLoadConfig):
+class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, HasSaveLoadDataConfig):
     """Example app-level widget that loads CSV files into the plotter"""
 
     _MODEL_BASES = [CsvLoaderStateModel]
@@ -142,11 +142,18 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._watch_timer.timeout.connect(self._check_watch)
 
     @classmethod
-    def _get_model_bases(cls) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
-        data_bases, misc_bases = super()._get_model_bases()
-        plots_data_bases, plots_misc_bases = cls.Plots._get_model_bases()
-        table_data_bases, table_misc_bases = cls.CsvSignalsTable._get_model_bases()
-        return table_data_bases + plots_data_bases + data_bases, table_misc_bases + plots_misc_bases + misc_bases
+    def _get_model_bases(cls) -> List[ModelMetaclass]:
+        bases = super()._get_model_bases()
+        plot_bases = cls.Plots._get_model_bases()
+        table_bases = cls.CsvSignalsTable._get_model_bases()
+        return bases + plot_bases + table_bases
+
+    @classmethod
+    def _get_data_model_bases(cls) -> List[ModelMetaclass]:
+        bases = super()._get_data_model_bases()
+        plot_bases = cls.Plots._get_data_model_bases()
+        table_bases = cls.CsvSignalsTable._get_data_model_bases()
+        return bases + plot_bases + table_bases
 
     def _write_model(self, model: BaseTopModel) -> None:
         super()._write_model(model)
@@ -456,8 +463,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         if not filename:  # nothing selected, user canceled
             return
         with open(filename, "r") as f:
-            _, top_model_cls = self._create_skeleton_model_type()
-            model = top_model_cls(**yaml.load(f, Loader=TupleSafeLoader))
+            model = self._create_skeleton_model_type()(**yaml.load(f, Loader=TupleSafeLoader))
 
         assert isinstance(model, CsvLoaderStateModel)
         self._do_load_config(filename, model)

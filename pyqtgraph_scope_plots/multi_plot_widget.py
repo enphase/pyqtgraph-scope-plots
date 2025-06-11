@@ -26,7 +26,7 @@ from pydantic import BaseModel
 
 from .enum_waveform_plotitem import EnumWaveformPlot
 from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot
-from .save_restore_model import HasSaveLoadConfig, BaseTopModel
+from .save_restore_model import BaseTopModel, HasSaveLoadDataConfig
 
 
 class InteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot):
@@ -53,7 +53,7 @@ class MultiPlotStateModel(BaseTopModel):
     x_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
 
 
-class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
+class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
     """A splitter that can contain multiple (vertically stacked) plots with linked x-axis"""
 
     class PlotType(Enum):
@@ -364,7 +364,7 @@ class LinkedMultiPlotStateModel(BaseTopModel):
     pois: Optional[List[float]] = None
 
 
-class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
+class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
     """Mixin into the MultiPlotWidget that links PointsOfInterestPlot, RegionPlot, and LiveCursorPlot"""
 
     _MODEL_BASES = [LinkedMultiPlotStateModel]

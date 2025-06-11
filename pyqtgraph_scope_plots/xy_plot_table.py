@@ -17,7 +17,7 @@ from typing import Any, List, Optional, Type
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QMessageBox, QWidget
 
-from .save_restore_model import HasSaveLoadConfig, BaseTopModel
+from .save_restore_model import BaseTopModel, HasSaveLoadDataConfig
 from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable, DraggableSignalsTable
 from .xy_plot import BaseXyPlot, XyWindowModel
 from .xy_plot_splitter import XyPlotSplitter
@@ -28,7 +28,7 @@ class XyTableStateModel(BaseTopModel):
 
 
 class XyTable(
-    DraggableSignalsTable, ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTable, HasSaveLoadConfig
+    DraggableSignalsTable, ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTable, HasSaveLoadDataConfig
 ):
     """Mixin into SignalsTable that adds the option to open an XY plot in a separate window."""
 

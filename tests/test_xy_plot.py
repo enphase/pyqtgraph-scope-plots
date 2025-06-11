@@ -113,7 +113,7 @@ def test_xy_offset(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 
 
 def test_xy_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    xy_plot = cast(XyPlotWidget, plot._table.create_xy())
+    xy_plot = plot._table.create_xy()
     xy_plot.add_xy("0", "1")
     xy_plot.add_xy("1", "0")
     qtbot.waitUntil(
@@ -129,3 +129,18 @@ def test_xy_load(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     plot._table._load_model(model)
     qtbot.waitUntil(lambda: len(plot._table._xy_plots) == 1)
     assert cast(XyPlotSplitter, plot._table._xy_plots[0])._xy_plots._xys == [("1", "0")]
+
+
+def test_xy_table(qtbot: QtBot, plot: PlotsTableWidget) -> None:
+    xy_plot = cast(XyPlotSplitter, plot._table.create_xy())
+    xy_plot.add_xy("0", "1")
+    qtbot.waitUntil(lambda: xy_plot._table.rowCount() == 1)
+    assert xy_plot._table.item(0, 0).text() == "0"
+    assert xy_plot._table.item(0, 1).text() == "1"
+
+    xy_plot.add_xy("1", "0")
+    qtbot.waitUntil(lambda: xy_plot._table.rowCount() == 2)
+    assert xy_plot._table.item(0, 0).text() == "0"
+    assert xy_plot._table.item(0, 1).text() == "1"
+    assert xy_plot._table.item(1, 0).text() == "1"
+    assert xy_plot._table.item(1, 1).text() == "0"

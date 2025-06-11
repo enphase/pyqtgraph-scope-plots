@@ -43,10 +43,6 @@ class BaseXyPlot:
         """Adds a XY plot to the widget"""
         ...
 
-    def set_range(self, region: Tuple[float, float]) -> None:
-        """Sets the region to visualize the XY traces over"""
-        ...
-
     def _write_model(self, model: BaseModel) -> None:
         """Writes widget state to a BaseModel. Should assert it is the right type."""
         ...

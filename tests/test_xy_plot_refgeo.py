@@ -39,20 +39,35 @@ def splitter(qtbot: QtBot) -> XyPlotSplitter:
 
 
 def test_square_points(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
-    plot.add_ref_geometry_fn("([-1, 1, 1, -1, -1], [-1, -1, 1, 1, -1])")
+    plot.set_ref_geometry_fn("([-1, 1, 1, -1, -1], [-1, -1, 1, 1, -1])")
     qtbot.wait(10)  # wait for rendering to happen
 
 
 def test_polyline_fn(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
-    plot.add_ref_geometry_fn("polyline((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))")
+    plot.set_ref_geometry_fn("polyline((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))")
     qtbot.wait(10)  # wait for rendering to happen
 
 
 def test_table(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
-    splitter._xy_plots.add_ref_geometry_fn("([-1, 1], [-1, -1])")
-    qtbot.waitUntil(lambda: splitter._table.item(0, 0).text() == "([-1, 1], [-1, -1])")
+    splitter._xy_plots.set_ref_geometry_fn("([-1, 1], [-1, -1])")
+    qtbot.waitUntil(lambda: splitter._table.rowCount() == 1)
+    assert splitter._table.item(0, 0).text() == "([-1, 1], [-1, -1])"
+
+    splitter._xy_plots.set_ref_geometry_fn("([-1, 2], [-1, -1])")  # addition
+    qtbot.waitUntil(lambda: splitter._table.rowCount() == 2)
+    assert splitter._table.item(0, 0).text() == "([-1, 1], [-1, -1])"
+    assert splitter._table.item(1, 0).text() == "([-1, 2], [-1, -1])"
+
+    splitter._xy_plots.set_ref_geometry_fn("([-1, 0], [-1, -1])", 1)  # replacement
+    qtbot.waitUntil(lambda: splitter._table.rowCount() == 2)
+    assert splitter._table.item(0, 0).text() == "([-1, 1], [-1, -1])"
+    assert splitter._table.item(1, 0).text() == "([-1, 0], [-1, -1])"
+
+    splitter._xy_plots.set_ref_geometry_fn("", 0)  # deletion
+    qtbot.waitUntil(lambda: splitter._table.rowCount() == 1)
+    assert splitter._table.item(0, 0).text() == "([-1, 0], [-1, -1])"
 
 
 def test_table_err(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
-    splitter._xy_plots.add_ref_geometry_fn("abc")
+    splitter._xy_plots.set_ref_geometry_fn("abc")
     qtbot.waitUntil(lambda: "NameNotDefined" in splitter._table.item(0, 0).text())

@@ -43,12 +43,20 @@ class RefGeoXyPlotWidget(XyPlotWidget):
         # copy, since simpleeval internally mutates the functions dict
         self._simpleeval = simpleeval.EvalWithCompoundTypes(functions=self._SIMPLEEVAL_FNS.copy())
 
-    def add_ref_geometry_fn(self, expr_str: str) -> None:
-        """Adds a reference geometry function. Can raise SyntaxError on a parsing failure."""
+    def set_ref_geometry_fn(self, expr_str: str, index: int = -1) -> None:
+        """Sets a reference geometry function at some index. Can raise SyntaxError on a parsing failure.
+        If index == -1, adds a new function. If valid index and empty string, deletes the function."""
         if len(expr_str) == 0:
+            if index >= 0:
+                del self._refgeo_fns[index]
+                self._update()
+                self.sigXyDataItemsChanged.emit()
             return
         parsed = self._simpleeval.parse(expr_str)
-        self._refgeo_fns.append((expr_str, parsed))
+        if index >= 0:
+            self._refgeo_fns[index] = (expr_str, parsed)
+        else:
+            self._refgeo_fns.append((expr_str, parsed))
         self._update()
         self.sigXyDataItemsChanged.emit()
 
@@ -77,6 +85,11 @@ class RefGeoXyPlotWidget(XyPlotWidget):
 class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
     """Mixin into XyPlotTable that adds support for reference geometry construction"""
 
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self._row_offset_refgeo = 0
+        self.cellDoubleClicked.connect(self._on_refgeo_double_click)
+
     def _populate_context_menu(self, menu: QMenu) -> None:
         """Called when the context menu is created, to populate its items."""
         super()._populate_context_menu(menu)
@@ -87,8 +100,8 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
     def _update(self) -> None:
         super()._update()
         assert isinstance(self._xy_plots, RefGeoXyPlotWidget)
-        offset = self.rowCount()
-        self.setRowCount(offset + len(self._xy_plots._refgeo_fns))
+        self._row_offset_refgeo = self.rowCount()
+        self.setRowCount(self._row_offset_refgeo + len(self._xy_plots._refgeo_fns))
         for row, (refgeo_expr, _) in enumerate(self._xy_plots._refgeo_fns):
             item = SignalsTable._create_noneditable_table_item()
             exc: Optional[Exception] = None
@@ -98,12 +111,20 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
                 item.setText(f"{refgeo_expr}: {exc.__class__.__name__}: {exc}")
             else:
                 item.setText(refgeo_expr)
-            self.setItem(offset + row, self.COL_X_NAME, item)
-            self.setSpan(offset + row, self.COL_X_NAME, 1, 2)
+            self.setItem(self._row_offset_refgeo + row, self.COL_X_NAME, item)
+            self.setSpan(self._row_offset_refgeo + row, self.COL_X_NAME, 1, 2)
+
+    def _on_refgeo_double_click(self, row: int, col: int):
+        if row >= self._row_offset_refgeo and col == 0:
+            self._on_add_refgeo()
 
     def _on_add_refgeo(self) -> None:
         assert isinstance(self._xy_plots, RefGeoXyPlotWidget)
+        selected_refgeo_indices = [item.row() - self._row_offset_refgeo for item in self.selectedItems()]
+        selected_refgeo_indices = [index for index in selected_refgeo_indices if index >= 0]
         text = ""
+        if selected_refgeo_indices:
+            text = self._xy_plots._refgeo_fns[selected_refgeo_indices[0]][0]
         err_msg = ""
         fn_help_str = "\n".join([f"- {fn.__doc__}" for fn_name, fn in self._xy_plots._SIMPLEEVAL_FNS.items()])
         while True:
@@ -120,7 +141,10 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
                 return
             else:
                 try:
-                    self._xy_plots.add_ref_geometry_fn(text)
+                    if selected_refgeo_indices:
+                        self._xy_plots.set_ref_geometry_fn(text, selected_refgeo_indices[0])
+                    else:
+                        self._xy_plots.set_ref_geometry_fn(text)
                     return
                 except SyntaxError as exc:
                     err_msg = f"\n\n{exc.__class__.__name__}: {exc}"

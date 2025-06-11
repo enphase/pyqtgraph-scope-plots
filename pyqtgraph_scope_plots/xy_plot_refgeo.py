@@ -53,7 +53,6 @@ class RefGeoXyPlotWidget(XyPlotWidget):
             self._simpleeval.names = {
                 # "data": other_data_dict,  # TODO support aligned data
             }
-
             xs, ys = self._simpleeval.eval(refgeo_expr, refgeo_parsed)
             curve = pg.PlotCurveItem(x=xs, y=ys)
             self.addItem(curve)

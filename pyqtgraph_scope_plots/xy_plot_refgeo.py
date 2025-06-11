@@ -38,6 +38,7 @@ class RefGeoXyPlotWidget(XyPlotWidget):
         self._simpleeval = simpleeval.EvalWithCompoundTypes(functions=self._SIMPLEEVAL_FNS)
 
     def add_ref_geometry_fn(self, expr_str: str) -> None:
+        """Adds a reference geometry function. Can raise SyntaxError on a parsing failure."""
         if len(expr_str) == 0:
             return
         parsed = self._simpleeval.parse(expr_str)

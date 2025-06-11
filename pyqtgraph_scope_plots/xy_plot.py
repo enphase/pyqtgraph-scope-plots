@@ -18,12 +18,12 @@ import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QSize, Signal
 from PySide6.QtGui import QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent
-from PySide6.QtWidgets import QMessageBox, QWidget
+from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidget, QTableWidgetItem
 from numpy import typing as npt
 from pydantic import BaseModel
 
 from .multi_plot_widget import DragTargetOverlay, MultiPlotWidget, LinkedMultiPlotWidget
-from .signals_table import HasRegionSignalsTable, DraggableSignalsTable
+from .signals_table import HasRegionSignalsTable, DraggableSignalsTable, SignalsTable
 
 
 class XyWindowModel(BaseModel):
@@ -225,3 +225,38 @@ class XyDragDroppable(BaseXyPlot):
             return
         self.add_xy(drag_data_names[0], drag_data_names[1])
         event.accept()
+
+
+class XyPlotTable(QTableWidget):
+    COL_X_NAME: int = 0
+    COL_Y_NAME: int = 1
+
+    def __init__(self, plots: MultiPlotWidget, xy_plots: XyPlotWidget):
+        super().__init__()
+        self._plots = plots
+        self._xy_plots = xy_plots
+
+        self._plots.sigDataItemsUpdated.connect(self._update)
+        self._xy_plots.sigXysChanged.connect(self._update)
+
+        self.setColumnCount(2)
+        self.setHorizontalHeaderItem(self.COL_X_NAME, QTableWidgetItem("X"))
+        self.setHorizontalHeaderItem(self.COL_Y_NAME, QTableWidgetItem("Y"))
+
+    def _update(self) -> None:
+        self.setRowCount(0)  # clear table
+        self.setRowCount(len(self._xy_plots._xys))
+        for row, (x_name, y_name) in enumerate(self._xy_plots._xys):
+            x_item = SignalsTable._create_noneditable_table_item()
+            x_item.setText(x_name)
+            x_color, _ = self._plots._data_items.get(x_name, (None, None))
+            if x_color is not None:
+                x_item.setForeground(x_color)
+            self.setItem(row, self.COL_X_NAME, x_item)
+
+            y_item = SignalsTable._create_noneditable_table_item()
+            y_item.setText(y_name)
+            y_color, _ = self._plots._data_items.get(y_name, (None, None))
+            if y_color is not None:
+                y_item.setForeground(y_color)
+            self.setItem(row, self.COL_Y_NAME, y_item)

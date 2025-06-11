@@ -11,7 +11,7 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-
+from functools import partial
 from typing import Any, List, Tuple, Mapping, Optional
 
 import numpy as np
@@ -66,11 +66,6 @@ class XyTable(
         super()._populate_context_menu(menu)
         menu.addAction(self._xy_action)
 
-    def set_range(self, range: Tuple[float, float]) -> None:
-        # TODO refactor to listen on MPW signal - for each individual XYPlotWidget
-        super().set_range(range)
-        self._update_xys()
-
     def set_data(
         self,
         data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
@@ -102,6 +97,7 @@ class XyTable(
         xy_plot.show()
         xy_plot.set_range(self._range)
         self._xy_plots.append(xy_plot)  # need an active reference to prevent GC'ing
+        xy_plot.closed.connect(partial(self._on_closed_xy, xy_plot))
         return xy_plot
 
     def _on_closed_xy(self, closed: BaseXyPlot) -> None:

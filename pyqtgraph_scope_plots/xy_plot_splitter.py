@@ -48,14 +48,11 @@ class XyPlotSplitter(BaseXyPlot, QSplitter):
     def add_xy(self, x_name: str, y_name: str) -> None:
         self._xy_plots.add_xy(x_name, y_name)
 
-    def set_range(self, region: Tuple[float, float]) -> None:
-        self._xy_plots.set_range(region)
-
     def _write_model(self, model: BaseModel) -> None:
         self._xy_plots._write_model(model)
 
     def _load_model(self, model: BaseModel) -> None:
         self._xy_plots._load_model(model)
 
-    def closeEvent(self, event: QtGui.QCloseEvent):
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.closed.emit()

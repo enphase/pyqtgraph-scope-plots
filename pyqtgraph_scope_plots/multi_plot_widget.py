@@ -413,8 +413,8 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
             if plot_item is not sig_plot_item and isinstance(plot_item, LiveCursorPlot):
                 with QSignalBlocker(plot_item):
                     plot_item.set_live_cursor(position)
-        self.sigHoverCursorChanged.emit(position)
         self._last_hover = position
+        self.sigHoverCursorChanged.emit(position)
 
     def _on_region_change(
         self, sig_plot_item: Optional[pg.PlotItem], region: Optional[Union[float, Tuple[float, float]]]
@@ -424,8 +424,8 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
             if plot_item is not sig_plot_item and isinstance(plot_item, RegionPlot):
                 with QSignalBlocker(plot_item):
                     plot_item.set_region(region)
-        self.sigCursorRangeChanged.emit(region)
         self._last_region = region
+        self.sigCursorRangeChanged.emit(region)
 
     def _on_poi_change(self, sig_plot_item: Optional[pg.PlotItem], pois: List[float]) -> None:
         """Propagates POI change to all plots, excluding signal source sig_plot_item if specified."""
@@ -433,8 +433,8 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
             if plot_item is not sig_plot_item and isinstance(plot_item, PointsOfInterestPlot):
                 with QSignalBlocker(plot_item):
                     plot_item.set_pois(pois)
-        self.sigPoiChanged.emit(pois)
         self._last_pois = pois
+        self.sigPoiChanged.emit(pois)
 
     def create_drag_cursor(self, pos: float) -> None:
         for plot_item, _ in self._plot_item_data.items():
@@ -448,8 +448,8 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
             if plot_item is not sig_plot_item and isinstance(plot_item, DraggableCursorPlot):
                 with QSignalBlocker(plot_item):
                     plot_item.set_drag_cursor(pos)
-        self.sigDragCursorChanged.emit(pos)
         self._last_drag_cursor = pos
+        self.sigDragCursorChanged.emit(pos)
 
     def _on_drag_cursor_clear(self, sig_plot_item: pg.PlotItem) -> None:
         """Propagates drag cursor removal to all plots, excluding signal source sig_plot_item if specified."""
@@ -457,8 +457,8 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
             if plot_item is not sig_plot_item and isinstance(plot_item, DraggableCursorPlot):
                 with QSignalBlocker(plot_item):
                     plot_item.set_drag_cursor(None)
-        self.sigDragCursorCleared.emit()
         self._last_drag_cursor = None
+        self.sigDragCursorCleared.emit()
 
 
 class DragTargetOverlay(QWidget):

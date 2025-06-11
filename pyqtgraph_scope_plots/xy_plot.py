@@ -22,7 +22,7 @@ from PySide6.QtWidgets import QMessageBox
 from numpy import typing as npt
 from pydantic import BaseModel
 
-from .multi_plot_widget import DragTargetOverlay, MultiPlotWidget
+from .multi_plot_widget import DragTargetOverlay, MultiPlotWidget, LinkedMultiPlotWidget
 from .signals_table import HasRegionSignalsTable, DraggableSignalsTable
 
 
@@ -62,10 +62,12 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     def __init__(self, plots: MultiPlotWidget):
         super().__init__(plots)
         self._xys: List[Tuple[str, str]] = []
-        self._region = (-float("inf"), float("inf"))
 
         self._drag_overlays: List[DragTargetOverlay] = []
         self.setAcceptDrops(True)
+
+        if isinstance(self._plots, LinkedMultiPlotWidget):
+            plots.sigCursorRangeChanged.connect(self._update)
 
     def _write_model(self, model: BaseModel) -> None:
         assert isinstance(model, XyWindowModel)
@@ -96,10 +98,6 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         if (x_name, y_name) not in self._xys:
             self._xys.append((x_name, y_name))
             self._update()
-
-    def set_range(self, region: Tuple[float, float]) -> None:
-        self._region = region
-        self._update()
 
     @staticmethod
     def _get_correlated_indices(
@@ -135,6 +133,10 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         for data_item in self.listDataItems():  # clear existing
             self.removeItem(data_item)
 
+        region = (-float("inf"), float("inf"))
+        if isinstance(self._plots, LinkedMultiPlotWidget) and isinstance(self._plots._last_region, tuple):
+            region = self._plots._last_region  # get region from plot
+
         data = self._plots._data
         for x_name, y_name in self._xys:
             x_ts, x_ys = data.get(x_name, (None, None))
@@ -143,8 +145,8 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
                 continue
 
             # truncate to smaller series, if needed
-            region_lo = max(self._region[0], x_ts[0], y_ts[0])
-            region_hi = min(self._region[1], x_ts[-1], y_ts[-1])
+            region_lo = max(region[0], x_ts[0], y_ts[0])
+            region_hi = min(region[1], x_ts[-1], y_ts[-1])
             indices = self._get_correlated_indices(x_ts, y_ts, region_lo, region_hi)
             if indices is None:
                 print(f"X/Y indices of {x_name}, {y_name} empty or do not match")
@@ -152,7 +154,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             (xt_lo, xt_hi), (yt_lo, yt_hi) = indices
 
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
-            y_color, _ = self._plots._data_items.get(y_name, QColor("white"))
+            y_color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
             fade_segments = min(
                 self.FADE_SEGMENTS, xt_hi - xt_lo
             )  # keep track of the x time indices, apply offset for y time indices

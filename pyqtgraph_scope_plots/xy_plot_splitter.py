@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 from .multi_plot_widget import MultiPlotWidget
 from .xy_plot import BaseXyPlot, XyPlotWidget, XyDragDroppable, XyPlotTable
+from .xy_plot_refgeo import RefGeoXyPlotTable, RefGeoXyPlotWidget
 
 
 class XyPlotSplitter(BaseXyPlot, QSplitter):
@@ -27,11 +28,14 @@ class XyPlotSplitter(BaseXyPlot, QSplitter):
 
     closed = Signal()
 
-    class FullXyPlotWidget(XyDragDroppable, XyPlotWidget):  # only for mixin composition
+    class FullXyPlotWidget(RefGeoXyPlotWidget, XyDragDroppable, XyPlotWidget):  # only for mixin composition
+        pass
+
+    class FullXyPlotTable(RefGeoXyPlotTable, XyPlotTable):  # only for mixin composition
         pass
 
     _XY_PLOT_TYPE: Type[XyPlotWidget] = FullXyPlotWidget
-    _XY_PLOT_TABLE_TYPE: Type[XyPlotTable] = XyPlotTable
+    _XY_PLOT_TABLE_TYPE: Type[XyPlotTable] = FullXyPlotTable
 
     def _make_xy_plots(self) -> XyPlotWidget:
         """Creates the XyPlot widget. self._plots is initialized by this time.

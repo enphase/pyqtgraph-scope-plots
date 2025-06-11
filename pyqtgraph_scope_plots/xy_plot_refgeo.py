@@ -11,31 +11,33 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-from typing import Any, List, Tuple, Dict, Sequence
+from typing import Any, List, Tuple, Dict, Sequence, Callable
 
 import simpleeval
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QMenu
+from PySide6.QtWidgets import QMenu, QInputDialog, QLineEdit
 import pyqtgraph as pg
 
 from .xy_plot import XyPlotWidget, XyPlotTable, ContextMenuXyPlotTable
 
 
 def _refgeo_polyline_fn(*pts: Tuple[float, float]) -> Tuple[Sequence[float], Sequence[float]]:
+    """turns of sequence of (x, y) points into (xs, ys)"""
     return [pt[0] for pt in pts], [pt[1] for pt in pts]
 
 
 class RefGeoXyPlotWidget(XyPlotWidget):
     """Mixin into XyPlotWidget that adds support for reference geometry as a polyline."""
 
-    _SIMPLEEVAL_FNS: Dict[str, Any] = {
+    _SIMPLEEVAL_FNS: Dict[str, Callable] = {
         "polyline": _refgeo_polyline_fn
     }  # optional additional available in refgeo expressions
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._ref_geometry_fns: List[Tuple[str, Any]] = []  # (expr str, parsed)
-        self._simpleeval = simpleeval.EvalWithCompoundTypes(functions=self._SIMPLEEVAL_FNS)
+        # copy, since simpleeval internally mutates the functions dict
+        self._simpleeval = simpleeval.EvalWithCompoundTypes(functions=self._SIMPLEEVAL_FNS.copy())
 
     def add_ref_geometry_fn(self, expr_str: str) -> None:
         """Adds a reference geometry function. Can raise SyntaxError on a parsing failure."""
@@ -53,9 +55,12 @@ class RefGeoXyPlotWidget(XyPlotWidget):
             self._simpleeval.names = {
                 # "data": other_data_dict,  # TODO support aligned data
             }
-            xs, ys = self._simpleeval.eval(refgeo_expr, refgeo_parsed)
-            curve = pg.PlotCurveItem(x=xs, y=ys)
-            self.addItem(curve)
+            try:
+                xs, ys = self._simpleeval.eval(refgeo_expr, refgeo_parsed)
+                curve = pg.PlotCurveItem(x=xs, y=ys)
+                self.addItem(curve)
+            except Exception as e:
+                pass  # TODO save somewhere and fire a signal
 
 
 class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
@@ -69,4 +74,25 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
         menu.addAction(add_refgeo)
 
     def _on_add_refgeo(self) -> None:
-        raise NotImplementedError  # TODO IMPLEMENT ME
+        assert isinstance(self._xy_plots, RefGeoXyPlotWidget)
+        text = ""
+        err_msg = ""
+        fn_help_str = "\n".join([f"{fn_name}: {fn.__doc__}" for fn_name, fn in self._xy_plots._SIMPLEEVAL_FNS.items()])
+        while True:
+            text, ok = QInputDialog().getText(
+                self,
+                "Add reference geometry",
+                "Function for reference geometry, as a tuple of xs, ys, for example '([0, 1], [0, 1])' for a diagonal line. \n"
+                "Use 'data['...']' or 'data.get('...') to access the data sequence (bounded to the selected region) by name. \n"
+                "These helper functions are available: \n" + fn_help_str + err_msg,
+                QLineEdit.EchoMode.Normal,
+                text,
+            )
+            if not ok:
+                return
+            else:
+                try:
+                    self._xy_plots.add_ref_geometry_fn(text)
+                    return
+                except SyntaxError as e:
+                    err_msg = f"\n\n{e.__class__.__name__}: {e}"

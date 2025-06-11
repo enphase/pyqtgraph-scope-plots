@@ -56,8 +56,9 @@ class XyPlotSplitter(BaseXyPlot, QSplitter):
     def add_xy(self, x_name: str, y_name: str) -> None:
         self._xy_plots.add_xy(x_name, y_name)
 
+    @classmethod
     def _create_skeleton_model_type(cls) -> Type[BaseModel]:
-        return cls._xy_plots._create_skeleton_model_type()
+        return cls._XY_PLOT_TYPE._create_skeleton_model_type()
 
     def _write_model(self, model: BaseModel) -> None:
         self._xy_plots._write_model(model)

@@ -48,8 +48,7 @@ class XyTable(
         assert isinstance(model, XyTableStateModel)
         model.xy_windows = []
         for xy_plot in self._xy_plots:
-            model.xy_windows.append(XyWindowModel())
-            xy_plot._write_model(model.xy_windows[-1])
+            model.xy_windows.append(xy_plot._dump_model())  # type: ignore
 
     def _load_model(self, model: BaseModel) -> None:
         super()._load_model(model)

@@ -51,8 +51,8 @@ class HasSaveLoadConfig:
     - where a None is a concrete value, use something else, e.g., empty tuple.
     """
 
-    TOP_MODEL_BASES: List[ModelMetaclass] = []  # defined in subclasses
-    DATA_MODEL_BASES: List[ModelMetaclass] = []
+    _MODEL_BASES: List[ModelMetaclass] = []  # defined in subclasses
+    _DATA_MODEL_BASES: List[ModelMetaclass] = []
 
     @classmethod
     def _get_model_bases(cls) -> Tuple[List[ModelMetaclass], List[ModelMetaclass]]:
@@ -65,9 +65,9 @@ class HasSaveLoadConfig:
         data_model_bases = []
         for base in cls.__mro__:
             if issubclass(base, HasSaveLoadConfig) and "TOP_MODEL_BASES" in base.__dict__:
-                top_model_bases.extend(base.TOP_MODEL_BASES)
+                top_model_bases.extend(base._MODEL_BASES)
             if issubclass(base, HasSaveLoadConfig) and "DATA_MODEL_BASES" in base.__dict__:
-                data_model_bases.extend(base.DATA_MODEL_BASES)
+                data_model_bases.extend(base._DATA_MODEL_BASES)
         return data_model_bases, top_model_bases
 
     @classmethod

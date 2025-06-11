@@ -36,7 +36,7 @@ class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
     This parses the user input and provides a get_transform."""
 
     COL_TRANSFORM = -1
-    DATA_MODEL_BASES = [TransformsDataStateModel]
+    _DATA_MODEL_BASES = [TransformsDataStateModel]
 
     class AllDataDict:
         """Takes in multiple series of (xs, ys) and returns the value at exactly the current x.

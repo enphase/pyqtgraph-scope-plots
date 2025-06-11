@@ -351,7 +351,7 @@ class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
     This gets sent as a signal, and an upper must handle plumbing the colors through.
     """
 
-    DATA_MODEL_BASES = [ColorPickerDataStateModel]
+    _DATA_MODEL_BASES = [ColorPickerDataStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)

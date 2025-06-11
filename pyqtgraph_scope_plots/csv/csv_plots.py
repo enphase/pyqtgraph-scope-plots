@@ -69,7 +69,7 @@ class CsvLoaderStateModel(BaseTopModel):
 class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, HasSaveLoadConfig):
     """Example app-level widget that loads CSV files into the plotter"""
 
-    TOP_MODEL_BASES = [CsvLoaderStateModel]
+    _MODEL_BASES = [CsvLoaderStateModel]
 
     WATCH_INTERVAL_MS = 333  # polls the filesystem metadata for changes this frequently
 

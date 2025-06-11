@@ -32,7 +32,7 @@ class XyTable(
 ):
     """Mixin into SignalsTable that adds the option to open an XY plot in a separate window."""
 
-    TOP_MODEL_BASES = [XyTableStateModel]
+    _MODEL_BASES = [XyTableStateModel]
     _XY_PLOT_TYPE: Type[BaseXyPlot] = XyPlotSplitter
 
     def __init__(self, *args: Any, **kwargs: Any):

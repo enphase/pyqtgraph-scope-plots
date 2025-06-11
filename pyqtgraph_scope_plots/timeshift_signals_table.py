@@ -36,7 +36,7 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadConfig):
     that gets its data from the user dragging a plot line)."""
 
     COL_TIMESHIFT = -1
-    DATA_MODEL_BASES = [TimeshiftDataStateModel]
+    _DATA_MODEL_BASES = [TimeshiftDataStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)

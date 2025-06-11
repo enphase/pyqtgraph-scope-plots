@@ -40,8 +40,8 @@ class BaseModelSub2(BaseTopModel):
 
 
 class SaveRestoreSub(HasSaveLoadConfig):
-    TOP_MODEL_BASES = [BaseModelSub1, BaseModelSub2]
-    DATA_MODEL_BASES = [DataModelSub1, DataModelSub2]
+    _MODEL_BASES = [BaseModelSub1, BaseModelSub2]
+    _DATA_MODEL_BASES = [DataModelSub1, DataModelSub2]
 
     def __init__(self, data_names: Iterable[str]):
         self.data_field1s = {}

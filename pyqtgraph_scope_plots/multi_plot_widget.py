@@ -74,7 +74,7 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
     sigDataItemsUpdated = Signal()  # called when new plot data items are set
     sigDataUpdated = Signal()  # called when new plot data is available
 
-    TOP_MODEL_BASES = [MultiPlotStateModel]
+    _MODEL_BASES = [MultiPlotStateModel]
 
     def __init__(
         self,
@@ -367,7 +367,7 @@ class LinkedMultiPlotStateModel(BaseTopModel):
 class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
     """Mixin into the MultiPlotWidget that links PointsOfInterestPlot, RegionPlot, and LiveCursorPlot"""
 
-    TOP_MODEL_BASES = [LinkedMultiPlotStateModel]
+    _MODEL_BASES = [LinkedMultiPlotStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._last_hover: Optional[float] = None  # must be init'd before the first plot is created in __init__

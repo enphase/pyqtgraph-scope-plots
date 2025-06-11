@@ -51,3 +51,8 @@ def test_polyline_fn(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
 def test_table(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
     splitter._xy_plots.add_ref_geometry_fn("([-1, 1], [-1, -1])")
     qtbot.waitUntil(lambda: splitter._table.item(0, 0).text() == "([-1, 1], [-1, -1])")
+
+
+def test_table_err(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
+    splitter._xy_plots.add_ref_geometry_fn("abc")
+    qtbot.waitUntil(lambda: "NameNotDefined" in splitter._table.item(0, 0).text())

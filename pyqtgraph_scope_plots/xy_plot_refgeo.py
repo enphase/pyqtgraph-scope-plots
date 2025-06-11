@@ -11,7 +11,7 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-from typing import Any, List, Tuple, Dict, Sequence, Callable
+from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional
 
 import simpleeval
 from PySide6.QtGui import QAction
@@ -38,6 +38,8 @@ class RefGeoXyPlotWidget(XyPlotWidget):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._refgeo_fns: List[Tuple[str, Any]] = []  # (expr str, parsed)
+        self._refgeo_errs: List[Optional[Exception]] = []  # index-aligned with refgeo_fns
+
         # copy, since simpleeval internally mutates the functions dict
         self._simpleeval = simpleeval.EvalWithCompoundTypes(functions=self._SIMPLEEVAL_FNS.copy())
 
@@ -54,6 +56,8 @@ class RefGeoXyPlotWidget(XyPlotWidget):
         super()._update()  # data items drawn here
 
         # draw reference geometry
+        last_refgeo_err = any([err is not None for err in self._refgeo_errs])  # store last to emit on failing -> ok
+        self._refgeo_errs = []
         for refgeo_expr, refgeo_parsed in self._refgeo_fns:
             self._simpleeval.names = {
                 # "data": other_data_dict,  # TODO support aligned data
@@ -62,8 +66,12 @@ class RefGeoXyPlotWidget(XyPlotWidget):
                 xs, ys = self._simpleeval.eval(refgeo_expr, refgeo_parsed)
                 curve = pg.PlotCurveItem(x=xs, y=ys)
                 self.addItem(curve)
+                self._refgeo_errs.append(None)
             except Exception as e:
-                pass  # TODO save somewhere and fire a signal
+                self._refgeo_errs.append(e)
+
+        if last_refgeo_err or any([err is not None for err in self._refgeo_errs]):
+            self.sigXyDataItemsChanged.emit()
 
 
 class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
@@ -83,7 +91,13 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
         self.setRowCount(offset + len(self._xy_plots._refgeo_fns))
         for row, (refgeo_expr, _) in enumerate(self._xy_plots._refgeo_fns):
             item = SignalsTable._create_noneditable_table_item()
-            item.setText(refgeo_expr)
+            exc: Optional[Exception] = None
+            if len(self._xy_plots._refgeo_errs) > row:
+                exc = self._xy_plots._refgeo_errs[row]
+            if exc is not None:
+                item.setText(f"{refgeo_expr}: {exc.__class__.__name__}: {exc}")
+            else:
+                item.setText(refgeo_expr)
             self.setItem(offset + row, self.COL_X_NAME, item)
             self.setSpan(offset + row, self.COL_X_NAME, 1, 2)
 
@@ -108,5 +122,5 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
                 try:
                     self._xy_plots.add_ref_geometry_fn(text)
                     return
-                except SyntaxError as e:
-                    err_msg = f"\n\n{e.__class__.__name__}: {e}"
+                except SyntaxError as exc:
+                    err_msg = f"\n\n{exc.__class__.__name__}: {exc}"

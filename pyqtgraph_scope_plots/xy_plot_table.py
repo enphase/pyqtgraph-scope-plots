@@ -40,7 +40,7 @@ class XyTable(
         super().__init__(*args, **kwargs)
         self._xy_action = QAction("Create X-Y Plot", self)
         self._xy_action.triggered.connect(self._on_create_xy)
-        self._xy_plots: List[BaseXyPlot] = []  # TODO store as weakrefs, so closes properly registered
+        self._xy_plots: List[BaseXyPlot] = []
 
     def _write_model(self, model: BaseTopModel) -> None:
         super()._write_model(model)
@@ -65,19 +65,6 @@ class XyTable(
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)
         menu.addAction(self._xy_action)
-
-    def set_data(
-        self,
-        data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
-    ) -> None:
-        # TODO refactor to listen on MPW signal - for each individual XYPlotWidget
-        super().set_data(data)
-        self._update_xys()
-
-    def _update_xys(self) -> None:
-        # TODO eliminate this, each widget individually listens for data and region events
-        for xy_plot in self._xy_plots:
-            xy_plot.set_range(self._range)
 
     def _on_create_xy(self) -> Optional[BaseXyPlot]:
         """Creates an XY plot with the selected signal(s) and returns the new plot."""

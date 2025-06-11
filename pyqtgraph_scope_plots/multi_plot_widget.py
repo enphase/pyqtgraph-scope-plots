@@ -71,6 +71,8 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
     sigDragCursorChanged = Signal(float)  # x-position
     sigDragCursorCleared = Signal()
 
+    sigDataUpdated = Signal()  # called when new plot data is available
+
     TOP_MODEL_BASES = [MultiPlotStateModel]
 
     def __init__(
@@ -85,7 +87,7 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
         self._new_data_action = new_data_action
 
         self._data_items: Mapping[str, Tuple[QColor, MultiPlotWidget.PlotType]] = {}  # ordered
-        self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
+        self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}  # post-transforms
 
         self.setOrientation(Qt.Orientation.Vertical)
         default_plot_item = self._init_plot_item(self._create_plot_item(self.PlotType.DEFAULT))
@@ -324,6 +326,7 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
         set_data_items, missing items will log an error."""
         self._data = {name: (np.array(xs), np.array(ys)) for name, (xs, ys) in data.items()}
         self._update_plots()
+        self.sigDataUpdated.emit()
 
     def _update_plots(self) -> None:
         for plot_item, data_names in self._plot_item_data.items():

@@ -66,6 +66,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         self._drag_overlays: List[DragTargetOverlay] = []
         self.setAcceptDrops(True)
 
+        plots.sigDataUpdated.connect(self._update)
         if isinstance(self._plots, LinkedMultiPlotWidget):
             plots.sigCursorRangeChanged.connect(self._update)
 

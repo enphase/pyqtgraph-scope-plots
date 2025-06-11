@@ -19,7 +19,6 @@ from pydantic import BaseModel
 from pyqtgraph_scope_plots.save_restore_model import (
     DataTopModel,
     BaseTopModel,
-    HasSaveLoadConfig,
     HasSaveLoadDataConfig,
 )
 
@@ -58,7 +57,7 @@ class SaveRestoreSub(HasSaveLoadDataConfig):
         self.base_field1 = 2.0
         self.inner_a_field = "a"
 
-    def _write_model(self, model: BaseTopModel) -> None:
+    def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
 
         assert isinstance(model, BaseModelSub1) and isinstance(model, BaseModelSub2)
@@ -70,7 +69,7 @@ class SaveRestoreSub(HasSaveLoadDataConfig):
         model.base_field1 = self.base_field1
         model.inner.a_field = self.inner_a_field
 
-    def _load_model(self, model: BaseTopModel) -> None:
+    def _load_model(self, model: BaseModel) -> None:
         super()._load_model(model)
 
         assert isinstance(model, BaseModelSub1) and isinstance(model, BaseModelSub2)

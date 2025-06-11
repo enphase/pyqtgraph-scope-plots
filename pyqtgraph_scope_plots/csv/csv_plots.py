@@ -37,6 +37,7 @@ from PySide6.QtWidgets import (
     QToolButton,
     QMessageBox,
 )
+from pydantic import BaseModel
 from pydantic._internal._model_construction import ModelMetaclass
 
 from ..animation_plot_table_widget import AnimationPlotsTableWidget
@@ -155,12 +156,12 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         table_bases = cls.CsvSignalsTable._get_data_model_bases()
         return bases + plot_bases + table_bases
 
-    def _write_model(self, model: BaseTopModel) -> None:
+    def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
         self._table._write_model(model)
         self._plots._write_model(model)
 
-    def _load_model(self, model: BaseTopModel) -> None:
+    def _load_model(self, model: BaseModel) -> None:
         super()._load_model(model)
         self._table._load_model(model)
         self._plots._load_model(model)

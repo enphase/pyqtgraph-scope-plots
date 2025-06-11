@@ -16,6 +16,7 @@ from typing import Any, List, Optional, Type
 
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QMessageBox, QWidget
+from pydantic import BaseModel
 
 from .save_restore_model import BaseTopModel, HasSaveLoadDataConfig
 from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable, DraggableSignalsTable
@@ -41,7 +42,7 @@ class XyTable(
         self._xy_action.triggered.connect(self._on_create_xy)
         self._xy_plots: List[BaseXyPlot] = []
 
-    def _write_model(self, model: BaseTopModel) -> None:
+    def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
         assert isinstance(model, XyTableStateModel)
         model.xy_windows = []
@@ -49,7 +50,7 @@ class XyTable(
             model.xy_windows.append(XyWindowModel())
             xy_plot._write_model(model.xy_windows[-1])
 
-    def _load_model(self, model: BaseTopModel) -> None:
+    def _load_model(self, model: BaseModel) -> None:
         super()._load_model(model)
         assert isinstance(model, XyTableStateModel)
         if model.xy_windows is None:

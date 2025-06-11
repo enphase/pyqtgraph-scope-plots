@@ -100,7 +100,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         self._data_name_to_plot_item: Dict[Optional[str], pg.PlotItem] = {None: default_plot_item}
         self._anchor_x_plot_item: pg.PlotItem = default_plot_item  # PlotItem that everyone's x-axis is linked to
 
-    def _write_model(self, model: BaseTopModel) -> None:
+    def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
         assert isinstance(model, MultiPlotStateModel)
         model.plot_widgets = []
@@ -130,7 +130,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
             else:
                 model.x_range = tuple(x_viewbox.viewRange()[0])
 
-    def _load_model(self, model: BaseTopModel) -> None:
+    def _load_model(self, model: BaseModel) -> None:
         super()._load_model(model)
 
         assert isinstance(model, MultiPlotStateModel)
@@ -376,13 +376,13 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
         self._last_drag_cursor: Optional[float] = None
         super().__init__(*args, **kwargs)
 
-    def _write_model(self, model: BaseTopModel) -> None:
+    def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
         assert isinstance(model, LinkedMultiPlotStateModel)
         model.region = self._last_region
         model.pois = self._last_pois
 
-    def _load_model(self, model: BaseTopModel) -> None:
+    def _load_model(self, model: BaseModel) -> None:
         super()._load_model(model)
         assert isinstance(model, LinkedMultiPlotStateModel)
         if model.region is not None:

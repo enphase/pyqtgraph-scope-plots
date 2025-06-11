@@ -100,7 +100,7 @@ class HasSaveLoadDataConfig(HasSaveLoadConfig):
     def _get_data_model_bases(cls) -> List[ModelMetaclass]:
         model_bases = []
         for base in cls.__mro__:
-            if issubclass(base, HasSaveLoadConfig) and "_DATA_MODEL_BASES" in base.__dict__:
+            if issubclass(base, HasSaveLoadDataConfig) and "_DATA_MODEL_BASES" in base.__dict__:
                 model_bases.extend(base._DATA_MODEL_BASES)
         return model_bases
 
@@ -122,18 +122,12 @@ class HasSaveLoadDataConfig(HasSaveLoadConfig):
         """Returns an empty model of the correct type (containing all _get_model_bases)
         that can be passed into _save_model."""
         top_model_cls = cls._create_skeleton_model_type()
-        data_model_cls = top_model_cls.model_fields["data"].annotation.__args__[1]
+        data_model_cls = top_model_cls.model_fields["data"].annotation.__args__[1]  # type: ignore
         top_model = top_model_cls(data={data_name: data_model_cls() for data_name in data_names})
-        return top_model
+        return top_model  # type: ignore
 
     def _dump_model(self, data_names: Iterable[str]) -> BaseTopModel:
         """For top-level self, generate the save state model. Convenience wrapper around model creation and writing."""
         model = self._create_skeleton_data_model(data_names)
         self._write_model(model)
         return model
-
-    def _write_model(self, model: BaseTopModel) -> None:
-        pass
-
-    def _load_model(self, model: BaseTopModel) -> None:
-        pass

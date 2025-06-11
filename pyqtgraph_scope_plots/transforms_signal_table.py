@@ -20,9 +20,10 @@ import numpy.typing as npt
 import simpleeval
 from PySide6.QtGui import QColor, QAction
 from PySide6.QtWidgets import QTableWidgetItem, QMenu, QInputDialog, QLineEdit
+from pydantic import BaseModel
 
 from .cache_dict import IdentityCacheDict
-from .save_restore_model import DataTopModel, BaseTopModel, HasSaveLoadDataConfig
+from .save_restore_model import DataTopModel, HasSaveLoadDataConfig, BaseTopModel
 from .signals_table import ContextMenuSignalsTable
 from .util import not_none
 
@@ -89,14 +90,16 @@ class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
             npt.NDArray[np.float64], npt.NDArray[np.float64]
         ]()  # src data -> output data
 
-    def _write_model(self, model: BaseTopModel) -> None:
+    def _write_model(self, model: BaseModel) -> None:
+        assert isinstance(model, BaseTopModel)
         super()._write_model(model)
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, TransformsDataStateModel)
             transform, _ = self._transforms.get(data_name, ("", None))
             data_model.transform = transform
 
-    def _load_model(self, model: BaseTopModel) -> None:
+    def _load_model(self, model: BaseModel) -> None:
+        assert isinstance(model, BaseTopModel)
         super()._load_model(model)
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, TransformsDataStateModel)

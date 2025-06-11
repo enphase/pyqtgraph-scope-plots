@@ -130,7 +130,7 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
             text, ok = QInputDialog().getText(
                 self,
                 "Add reference geometry",
-                "Function for reference geometry, as a tuple of xs, ys, for example '([0, 1], [0, 1])' for a diagonal line. \n"
+                "Function for reference geometry, as (xs, ys), for example '([0, 1], [0, 1])' for a diagonal line. \n"
                 # "Use 'data['...']' or 'data.get('...') to access the data sequence (bounded to the selected region) by name. \n"  # TODO
                 "These helper functions are available: \n" + fn_help_str + err_msg,
                 QLineEdit.EchoMode.Normal,

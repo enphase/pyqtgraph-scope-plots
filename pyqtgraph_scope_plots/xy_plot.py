@@ -12,13 +12,13 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import List, Tuple, Optional, Literal, Union, cast
+from typing import List, Tuple, Optional, Literal, Union, cast, Any
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6.QtCore import QSize, Signal
-from PySide6.QtGui import QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent
-from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidget, QTableWidgetItem
+from PySide6.QtCore import QSize, Signal, QPoint
+from PySide6.QtGui import QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent, Qt
+from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidget, QTableWidgetItem, QMenu
 from numpy import typing as npt
 from pydantic import BaseModel
 
@@ -260,3 +260,21 @@ class XyPlotTable(QTableWidget):
             if y_color is not None:
                 y_item.setForeground(y_color)
             self.setItem(row, self.COL_Y_NAME, y_item)
+
+
+class ContextMenuXyPlotTable(XyPlotTable):
+    """Mixin into XyPlotTable that adds a context menu on rows."""
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._spawn_table_cell_menu)
+
+    def _spawn_table_cell_menu(self, pos: QPoint) -> None:
+        menu = QMenu(self)
+        self._populate_context_menu(menu)
+        menu.popup(self.mapToGlobal(pos))
+
+    def _populate_context_menu(self, menu: QMenu) -> None:
+        """Called when the context menu is created, to populate its items."""
+        pass

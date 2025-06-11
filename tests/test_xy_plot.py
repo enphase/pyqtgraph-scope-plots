@@ -88,6 +88,7 @@ def test_xy_create_ui(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     plot._table.item(1, 0).setSelected(True)
     plot._table.item(0, 0).setSelected(True)
     xy_plot = cast(XyPlotSplitter, plot._table._on_create_xy())
+    qtbot.waitSignal(xy_plot._xy_plots.sigXysChanged)
     assert xy_plot is not None
     assert xy_plot._xy_plots._xys == [("1", "0")]
 
@@ -95,6 +96,7 @@ def test_xy_create_ui(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     plot._table.item(0, 0).setSelected(True)
     plot._table.item(1, 0).setSelected(True)
     xy_plot = cast(XyPlotSplitter, plot._table._on_create_xy())
+    qtbot.waitSignal(xy_plot._xy_plots.sigXysChanged)
     assert xy_plot is not None
     assert xy_plot._xy_plots._xys == [("0", "1")]
 

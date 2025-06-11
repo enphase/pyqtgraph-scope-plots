@@ -59,6 +59,8 @@ class BaseXyPlot:
 class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     FADE_SEGMENTS = 16
 
+    sigXysChanged = Signal()
+
     def __init__(self, plots: MultiPlotWidget):
         super().__init__(plots)
         self._xys: List[Tuple[str, str]] = []
@@ -99,6 +101,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         if (x_name, y_name) not in self._xys:
             self._xys.append((x_name, y_name))
             self._update()
+        self.sigXysChanged.emit()
 
     @staticmethod
     def _get_correlated_indices(

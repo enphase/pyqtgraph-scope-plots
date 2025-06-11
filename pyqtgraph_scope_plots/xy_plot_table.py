@@ -12,16 +12,14 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 from functools import partial
-from typing import Any, List, Tuple, Mapping, Optional
+from typing import Any, List, Optional
 
-import numpy as np
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QMessageBox, QWidget
-from numpy import typing as npt
 
 from .save_restore_model import HasSaveLoadConfig, BaseTopModel
 from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable, DraggableSignalsTable
-from .xy_plot import BaseXyPlot, XyPlotWidget, XyWindowModel
+from .xy_plot import BaseXyPlot, XyWindowModel
 from .xy_plot_splitter import XyPlotSplitter
 
 
@@ -82,7 +80,6 @@ class XyTable(
         """Creates and opens an empty XY plot widget."""
         xy_plot = XyPlotSplitter(self._plots)
         xy_plot.show()
-        xy_plot.set_range(self._range)
         self._xy_plots.append(xy_plot)  # need an active reference to prevent GC'ing
         xy_plot.closed.connect(partial(self._on_closed_xy, xy_plot))
         return xy_plot

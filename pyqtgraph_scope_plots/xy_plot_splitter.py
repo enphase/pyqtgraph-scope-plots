@@ -39,7 +39,7 @@ class XyPlotTable(QTableWidget):
         self.setHorizontalHeaderItem(self.COL_X_NAME, QTableWidgetItem("X"))
         self.setHorizontalHeaderItem(self.COL_Y_NAME, QTableWidgetItem("Y"))
 
-    def _update(self):
+    def _update(self) -> None:
         self.setRowCount(0)  # clear table
         self.setRowCount(len(self._xy_plots._xys))
         for row, (x_name, y_name) in enumerate(self._xy_plots._xys):

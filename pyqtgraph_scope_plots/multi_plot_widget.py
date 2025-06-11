@@ -71,6 +71,7 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
     sigDragCursorChanged = Signal(float)  # x-position
     sigDragCursorCleared = Signal()
 
+    sigDataItemsUpdated = Signal()  # called when new plot data items are set
     sigDataUpdated = Signal()  # called when new plot data is available
 
     TOP_MODEL_BASES = [MultiPlotStateModel]
@@ -320,6 +321,7 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
         self._check_create_default_plot()
         self._update_data_name_to_plot_item()
         self._update_plots_x_axis()
+        self.sigDataItemsUpdated.emit()
 
     def set_data(self, data: Mapping[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]]) -> None:
         """Sets the data to be plotted as data name -> (xs, ys). Data names must have been previously set with

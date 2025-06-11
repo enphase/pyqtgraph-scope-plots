@@ -15,20 +15,18 @@
 from io import StringIO
 from typing import cast
 
-import pytest
 import pyqtgraph as pg
+import pytest
 from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.plots_table_widget import PlotsTableWidget
 from pyqtgraph_scope_plots.multi_plot_widget import (
     MultiPlotWidget,
     MultiPlotStateModel,
-    LinkedMultiPlotStateModel,
     PlotWidgetModel,
 )
+from pyqtgraph_scope_plots.plots_table_widget import PlotsTableWidget
 from .test_util import assert_cast
-from pyqtgraph_scope_plots.util import not_none
 
 
 @pytest.fixture()
@@ -97,6 +95,13 @@ def test_empty_default_plots(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     plot._set_data_items([])
     qtbot.waitUntil(lambda: plot._plots.count() == 1)
     assert plot._table.rowCount() == 0
+
+
+def test_data_signals(qtbot: QtBot, plot: PlotsTableWidget) -> None:
+    plot._set_data({})
+    qtbot.waitSignals([plot._plots.sigDataUpdated])
+    plot._set_data_items([])
+    qtbot.waitSignals([plot._plots.sigDataItemsUpdated, plot._plots.sigDataUpdated])
 
 
 def test_plot_merge(qtbot: QtBot, plot: PlotsTableWidget) -> None:

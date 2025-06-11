@@ -28,10 +28,12 @@ def test_linked_live_cursor(qtbot: QtBot, plot: PlotsTableWidget) -> None:
         assert plot_item(plot, i).hover_cursor is None  # verify initial state
 
     plot_item(plot, 0).set_live_cursor(0.1)
+    qtbot.waitSignal(plot._plots.sigHoverCursorChanged)
     qtbot.waitUntil(lambda: not_none(plot_item(plot, 1).hover_cursor).x() == 0.1)
     assert not_none(plot_item(plot, 2).hover_cursor).x() == 0.1
 
     plot_item(plot, 1).set_live_cursor(None)
+    qtbot.waitSignal(plot._plots.sigHoverCursorChanged)
     qtbot.waitUntil(lambda: plot_item(plot, 0).hover_cursor is None)
     assert plot_item(plot, 2).hover_cursor is None
 
@@ -42,12 +44,14 @@ def test_linked_region(qtbot: QtBot, plot: PlotsTableWidget) -> None:
         assert plot_item(plot, i).cursor_range is None
 
     plot_item(plot, 0).set_region((0.1, 1.5))
+    qtbot.waitSignal(plot._plots.sigCursorRangeChanged)
     qtbot.waitUntil(lambda: not_none(plot_item(plot, 1).cursor_range).getRegion() == (0.1, 1.5))
     assert not_none(plot_item(plot, 2).cursor_range).getRegion() == (0.1, 1.5)
     for i in range(3):
         assert plot_item(plot, i).cursor is None
 
     plot_item(plot, 1).set_region(1.0)
+    qtbot.waitSignal(plot._plots.sigCursorRangeChanged)
     qtbot.waitUntil(lambda: not_none(plot_item(plot, 0).cursor).x() == 1.0)
     assert not_none(plot_item(plot, 2).cursor).x() == 1.0
     for i in range(3):
@@ -100,6 +104,7 @@ def test_linked_pois(qtbot: QtBot, plot: PlotsTableWidget) -> None:
         assert not plot_item(plot, i).pois  # verify initial state
 
     plot_item(plot, 0).set_pois([0.1, 1.5])
+    qtbot.waitSignal(plot._plots.sigPoiChanged)
     qtbot.waitUntil(lambda: [poi.x() for poi in plot_item(plot, 1).pois] == [0.1, 1.5])
     assert [poi.x() for poi in plot_item(plot, 2).pois] == [0.1, 1.5]
 
@@ -128,6 +133,7 @@ def test_linked_drag_cursor(qtbot: QtBot, plot: PlotsTableWidget) -> None:
         assert plot_item(plot, i).drag_cursor is None  # verify initial state
 
     plot_item(plot, 0).set_drag_cursor(0.2)
+    qtbot.waitSignal(plot._plots.sigDragCursorChanged)
     qtbot.waitUntil(
         lambda: plot_item(plot, 1).drag_cursor is not None and plot_item(plot, 1).drag_cursor.pos().x() == 0.2
     )

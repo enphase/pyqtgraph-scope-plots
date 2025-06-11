@@ -24,7 +24,7 @@ from .xy_plot_refgeo import RefGeoXyPlotTable, RefGeoXyPlotWidget
 
 
 class XyPlotSplitter(BaseXyPlot, QSplitter):
-    """XY plot splitter with a table that otherwise passes the BaseXyPlot interface items to its plot."""
+    """XY plot splitter with a table that otherwise delegates the BaseXyPlot interface items to its plot."""
 
     class FullXyPlotWidget(RefGeoXyPlotWidget, XyDragDroppable, XyPlotWidget):  # only for mixin composition
         pass
@@ -55,6 +55,9 @@ class XyPlotSplitter(BaseXyPlot, QSplitter):
 
     def add_xy(self, x_name: str, y_name: str) -> None:
         self._xy_plots.add_xy(x_name, y_name)
+
+    def _create_skeleton_model_type(cls) -> Type[BaseModel]:
+        return cls._xy_plots._create_skeleton_model_type()
 
     def _write_model(self, model: BaseModel) -> None:
         self._xy_plots._write_model(model)

@@ -56,6 +56,12 @@ class HasSaveLoadConfig:
 
         return top_model_cls
 
+    def _dump_model(self) -> BaseModel:
+        """For top-level self, generate the save state model. Convenience wrapper around model creation and writing."""
+        model = self._create_skeleton_model_type()()
+        self._write_model(model)
+        return model
+
     def _write_model(self, model: BaseModel) -> None:
         """Saves the data into the top-level model. model.data is pre-populated with models for every data item.
         Mutates the model in-place.
@@ -126,8 +132,9 @@ class HasSaveLoadDataConfig(HasSaveLoadConfig):
         top_model = top_model_cls(data={data_name: data_model_cls() for data_name in data_names})
         return top_model  # type: ignore
 
-    def _dump_model(self, data_names: Iterable[str]) -> BaseTopModel:
-        """For top-level self, generate the save state model. Convenience wrapper around model creation and writing."""
+    def _dump_data_model(self, data_names: Iterable[str]) -> BaseTopModel:
+        """For top-level self, generate the save state model, including top-level data items.
+        Convenience wrapper around model creation and writing."""
         model = self._create_skeleton_data_model(data_names)
         self._write_model(model)
         return model

@@ -21,11 +21,12 @@ from pydantic import BaseModel
 from .save_restore_model import BaseTopModel, HasSaveLoadDataConfig
 from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable, DraggableSignalsTable
 from .xy_plot import BaseXyPlot, XyWindowModel
+from .xy_plot_refgeo import XyRefGeoModel
 from .xy_plot_splitter import XyPlotSplitter
 
 
 class XyTableStateModel(BaseTopModel):
-    xy_windows: Optional[List[XyWindowModel]] = None
+    xy_windows: Optional[List[XyRefGeoModel]] = None
 
 
 class XyTable(

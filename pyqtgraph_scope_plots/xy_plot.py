@@ -22,6 +22,7 @@ from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidget, QTableWidgetIt
 from numpy import typing as npt
 from pydantic import BaseModel
 
+from .save_restore_model import HasSaveLoadConfig
 from .multi_plot_widget import DragTargetOverlay, MultiPlotWidget, LinkedMultiPlotWidget
 from .signals_table import HasRegionSignalsTable, DraggableSignalsTable, SignalsTable
 
@@ -32,9 +33,10 @@ class XyWindowModel(BaseModel):
     y_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
 
 
-class BaseXyPlot:
+class BaseXyPlot(HasSaveLoadConfig):
     """Abstract interface for a XY plot widget"""
 
+    _MODEL_BASES = [XyWindowModel]
     closed = Signal()
 
     def __init__(self, plots: MultiPlotWidget):
@@ -43,14 +45,6 @@ class BaseXyPlot:
 
     def add_xy(self, x_name: str, y_name: str) -> None:
         """Adds a XY plot to the widget"""
-        ...
-
-    def _write_model(self, model: BaseModel) -> None:
-        """Writes widget state to a BaseModel. Should assert it is the right type."""
-        ...
-
-    def _load_model(self, model: BaseModel) -> None:
-        """Loads widget state from a BaseModel. Should assert it is the right type."""
         ...
 
 
@@ -73,6 +67,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             plots.sigCursorRangeChanged.connect(self._update)
 
     def _write_model(self, model: BaseModel) -> None:
+        super()._write_model(model)
         assert isinstance(model, XyWindowModel)
         model.xy_data_items = self._xys
         viewbox = cast(pg.PlotItem, self.getPlotItem()).getViewBox()
@@ -86,6 +81,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             model.y_range = tuple(viewbox.viewRange()[1])
 
     def _load_model(self, model: BaseModel) -> None:
+        super()._load_model(model)
         assert isinstance(model, XyWindowModel)
         for xy_data_item in model.xy_data_items:
             self.add_xy(*xy_data_item)

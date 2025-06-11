@@ -11,13 +11,14 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
+from typing import cast
 
 import pytest
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.xy_plot_splitter import XyPlotSplitter
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
-from pyqtgraph_scope_plots.xy_plot_refgeo import RefGeoXyPlotWidget
+from pyqtgraph_scope_plots.xy_plot_refgeo import RefGeoXyPlotWidget, XyRefGeoModel
 
 
 @pytest.fixture()
@@ -71,3 +72,23 @@ def test_table(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
 def test_table_err(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
     splitter._xy_plots.set_ref_geometry_fn("abc")
     qtbot.waitUntil(lambda: "NameNotDefined" in splitter._table.item(0, 0).text())
+
+
+def test_refgeo_save(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
+    qtbot.waitUntil(lambda: cast(XyRefGeoModel, splitter._dump_model()).ref_geo == [])
+
+    splitter._xy_plots.set_ref_geometry_fn("([-1, 1], [-1, -1])")
+    qtbot.waitUntil(lambda: cast(XyRefGeoModel, splitter._dump_model()).ref_geo == ["([-1, 1], [-1, -1])"])
+
+
+def test_refgeo_load(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
+    model = cast(XyRefGeoModel, splitter._dump_model())
+
+    model.ref_geo = ["([-1, 1], [-1, -1])"]
+    splitter._load_model(model)
+    qtbot.waitUntil(lambda: splitter._table.rowCount() == 1)
+    assert splitter._table.item(0, 0).text() == "([-1, 1], [-1, -1])"
+
+    model.ref_geo = []
+    splitter._load_model(model)
+    qtbot.waitUntil(lambda: splitter._table.rowCount() == 0)

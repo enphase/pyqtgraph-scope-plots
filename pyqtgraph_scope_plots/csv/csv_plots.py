@@ -432,7 +432,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             f.write(yaml.dump(model.model_dump(), sort_keys=False))
 
     def _do_save_config(self, filename: str) -> CsvLoaderStateModel:
-        model = self._dump_model(self._table._data_items.keys())
+        model = self._dump_data_model(self._table._data_items.keys())
         assert isinstance(model, CsvLoaderStateModel)
 
         if len(self._csv_data_items) == 0:

@@ -118,13 +118,13 @@ def test_xy_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     xy_plot.add_xy("0", "1")
     xy_plot.add_xy("1", "0")
     qtbot.waitUntil(
-        lambda: cast(XyTableStateModel, plot._table._dump_model([])).xy_windows
+        lambda: cast(XyTableStateModel, plot._table._dump_data_model([])).xy_windows
         == [XyWindowModel(xy_data_items=[("0", "1"), ("1", "0")], x_range="auto", y_range="auto")]
     )
 
 
 def test_xy_load(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    model = cast(XyTableStateModel, plot._table._dump_model([]))
+    model = cast(XyTableStateModel, plot._table._dump_data_model([]))
 
     model.xy_windows = [XyWindowModel(xy_data_items=[("1", "0")])]
     plot._table._load_model(model)

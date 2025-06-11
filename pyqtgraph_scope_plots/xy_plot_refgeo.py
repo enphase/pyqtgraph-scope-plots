@@ -18,9 +18,14 @@ import simpleeval
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QInputDialog, QLineEdit
 import pyqtgraph as pg
+from pydantic import BaseModel
 
 from .signals_table import SignalsTable
-from .xy_plot import XyPlotWidget, XyPlotTable, ContextMenuXyPlotTable
+from .xy_plot import XyPlotWidget, XyPlotTable, ContextMenuXyPlotTable, XyWindowModel
+
+
+class XyRefGeoModel(XyWindowModel):
+    ref_geo: List[str] = []
 
 
 def _refgeo_polyline_fn(*pts: Tuple[float, float]) -> Tuple[Sequence[float], Sequence[float]]:
@@ -31,6 +36,8 @@ def _refgeo_polyline_fn(*pts: Tuple[float, float]) -> Tuple[Sequence[float], Seq
 class RefGeoXyPlotWidget(XyPlotWidget):
     """Mixin into XyPlotWidget that adds support for reference geometry as a polyline.
     For signal purposes, reference geometry is counted as a data item change."""
+
+    _MODEL_BASES = [XyRefGeoModel]
 
     _SIMPLEEVAL_FNS: Dict[str, Callable[[Any], Any]] = {
         "polyline": _refgeo_polyline_fn
@@ -44,9 +51,30 @@ class RefGeoXyPlotWidget(XyPlotWidget):
         # copy, since simpleeval internally mutates the functions dict
         self._simpleeval = simpleeval.EvalWithCompoundTypes(functions=self._SIMPLEEVAL_FNS.copy())
 
-    def set_ref_geometry_fn(self, expr_str: str, index: Optional[int] = None) -> None:
+    def _write_model(self, model: BaseModel) -> None:
+        super()._write_model(model)
+        assert isinstance(model, XyRefGeoModel)
+        model.ref_geo = [expr for expr, parsed in self._refgeo_fns]
+
+    def _load_model(self, model: BaseModel) -> None:
+        super()._load_model(model)
+        assert isinstance(model, XyRefGeoModel)
+        while len(self._refgeo_fns) > 0:  # delete existing
+            self.set_ref_geometry_fn("", 0, update=False)
+        for expr in model.ref_geo:
+            try:
+                self.set_ref_geometry_fn(expr, update=False)
+            except Exception as e:
+                pass  # ignore
+
+        # bulk update
+        self._update()
+        self.sigXyDataItemsChanged.emit()
+
+    def set_ref_geometry_fn(self, expr_str: str, index: Optional[int] = None, *, update: bool = True) -> None:
         """Sets a reference geometry function at some index. Can raise SyntaxError on a parsing failure.
-        If index is None, adds a new function. If valid index and empty string, deletes the function."""
+        If index is None, adds a new function. If valid index and empty string, deletes the function.
+        Optionally set update to false to not fire signals / update to allow a future bulk update"""
         if len(expr_str) == 0:
             if index is not None:
                 del self._refgeo_fns[index]

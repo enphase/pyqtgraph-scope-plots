@@ -27,7 +27,7 @@ from ..util import int_color
 
 
 class CsvLoaderPlotsTableWindow(CsvLoaderPlotsTableWidget):
-    def closeEvent(self, event: QtGui.QCloseEvent):
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         QApplication.closeAllWindows()
         event.accept()
 

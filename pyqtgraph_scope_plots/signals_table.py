@@ -25,6 +25,7 @@ from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
 from PySide6.QtWidgets import QTableWidgetItem, QTableWidget, QHeaderView, QMenu, QLabel, QColorDialog
 
 from .cache_dict import IdentityCacheDict
+from .multi_plot_widget import MultiPlotWidget
 from .save_restore_model import HasSaveLoadConfig, DataTopModel, BaseTopModel
 from .util import not_none
 
@@ -74,8 +75,9 @@ class SignalsTable(QTableWidget):
         Subclasses should override this (including a super() call)"""
         self.setHorizontalHeaderItem(self.COL_NAME, QTableWidgetItem("Name"))
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, plots: MultiPlotWidget) -> None:
+        super().__init__()
+        self._plots = plots
         self._init_col_counts()
         self.setColumnCount(self.COL_COUNT)
         self._init_table()
@@ -277,7 +279,7 @@ class StatsSignalsTable(HasRegionSignalsTable, HasDataSignalsTable):
 
     def _render_value(self, data_name: str, value: float) -> str:
         """Float-to-string conversion for a value. Optionally override this to provide smarter precision."""
-        return f"{value:.3f}"
+        return self._plots.render_value(data_name, value)
 
     def _update_stats(self) -> None:
         for row, name in enumerate(self._data_items.keys()):

@@ -26,7 +26,6 @@ from pydantic import BaseModel
 
 from .enum_waveform_plotitem import EnumWaveformPlot
 from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot
-from .signals_table import DraggableSignalsTable
 from .save_restore_model import HasSaveLoadConfig, BaseTopModel
 
 
@@ -545,6 +544,8 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
         self._update_plots()
 
     def dragEnterEvent(self, event: QDragMoveEvent) -> None:
+        from .signals_table import DraggableSignalsTable
+
         if not event.mimeData().data(DraggableSignalsTable.DRAG_MIME_TYPE):  # check for right type
             return
         event.accept()
@@ -602,6 +603,8 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
         self._clear_drag_overlays()
 
     def dropEvent(self, event: QDropEvent) -> None:
+        from .signals_table import DraggableSignalsTable
+
         self._clear_drag_overlays()
 
         data = event.mimeData().data(DraggableSignalsTable.DRAG_MIME_TYPE)

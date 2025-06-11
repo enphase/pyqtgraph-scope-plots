@@ -21,28 +21,35 @@ from PySide6.QtWidgets import QMenu, QMessageBox, QWidget, QSplitter, QTableWidg
 from numpy import typing as npt
 from pydantic import BaseModel
 
+from .multi_plot_widget import MultiPlotWidget
 from .save_restore_model import HasSaveLoadConfig, BaseTopModel
 from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable, DraggableSignalsTable
 from .xy_plot import BaseXyPlot, XyPlotWidget, XyWindowModel
 
 
+class XyPlotTable(QTableWidget):
+    def __init__(self, plot_widget: XyPlotWidget):
+        super().__init__()
+        self._plot_widget = plot_widget
+
+
 class XyPlotSplitter(BaseXyPlot, QSplitter):
-    def __init__(self, table_parent: "XyTable"):
-        super().__init__(table_parent=table_parent)
+    def __init__(self, plots: MultiPlotWidget):
+        super().__init__(plots)
         self.setOrientation(Qt.Orientation.Vertical)
-        self._plots = XyPlotWidget(table_parent=table_parent)
-        self.addWidget(self._plots)
-        self._table = QTableWidget()
+        self._xy_plots = XyPlotWidget(plots)
+        self.addWidget(self._xy_plots)
+        self._table = XyPlotTable(self._xy_plots)
         self.addWidget(self._table)
 
     def add_xy(self, x_name: str, y_name: str) -> None:
-        self._plots.add_xy(x_name, y_name)
+        self._xy_plots.add_xy(x_name, y_name)
 
     def set_range(self, region: Tuple[float, float]) -> None:
-        self._plots.set_range(region)
+        self._xy_plots.set_range(region)
 
     def _write_model(self, model: BaseModel) -> None:
-        self._plots._write_model(model)
+        self._xy_plots._write_model(model)
 
     def _load_model(self, model: BaseModel) -> None:
-        self._plots._load_model(model)
+        self._xy_plots._load_model(model)

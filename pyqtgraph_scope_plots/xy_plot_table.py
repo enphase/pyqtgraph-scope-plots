@@ -40,7 +40,7 @@ class XyTable(
         super().__init__(*args, **kwargs)
         self._xy_action = QAction("Create X-Y Plot", self)
         self._xy_action.triggered.connect(self._on_create_xy)
-        self._xy_plots: List[BaseXyPlot] = []
+        self._xy_plots: List[BaseXyPlot] = []  # TODO store as weakrefs, so closes properly registered
 
     def _write_model(self, model: BaseTopModel) -> None:
         super()._write_model(model)
@@ -67,6 +67,7 @@ class XyTable(
         menu.addAction(self._xy_action)
 
     def set_range(self, range: Tuple[float, float]) -> None:
+        # TODO refactor to listen on MPW signal - for each individual XYPlotWidget
         super().set_range(range)
         self._update_xys()
 
@@ -74,10 +75,12 @@ class XyTable(
         self,
         data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
     ) -> None:
+        # TODO refactor to listen on MPW signal - for each individual XYPlotWidget
         super().set_data(data)
         self._update_xys()
 
     def _update_xys(self) -> None:
+        # TODO eliminate this, each widget individually listens for data and region events
         for xy_plot in self._xy_plots:
             xy_plot.set_range(self._range)
 
@@ -95,7 +98,7 @@ class XyTable(
 
     def create_xy(self) -> BaseXyPlot:
         """Creates and opens an empty XY plot widget."""
-        xy_plot = XyPlotSplitter(table_parent=self)
+        xy_plot = XyPlotSplitter(self._plots)
         xy_plot.show()
         xy_plot.set_range(self._range)
         self._xy_plots.append(xy_plot)  # need an active reference to prevent GC'ing

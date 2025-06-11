@@ -20,7 +20,8 @@ from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.plots_table_widget import PlotsTableWidget
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
-from pyqtgraph_scope_plots.xy_plot import XyPlotWidget, XyTableStateModel, XyWindowModel
+from pyqtgraph_scope_plots.xy_plot import XyPlotWidget, XyWindowModel
+from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel
 
 
 @pytest.fixture()

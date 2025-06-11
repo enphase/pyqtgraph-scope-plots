@@ -16,16 +16,14 @@ from typing import List, Tuple, Optional, Literal, Union, cast
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6 import QtGui
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent
 from PySide6.QtWidgets import QMessageBox
 from numpy import typing as npt
 from pydantic import BaseModel
 
-from .multi_plot_widget import DragTargetOverlay
+from .multi_plot_widget import DragTargetOverlay, MultiPlotWidget
 from .signals_table import HasRegionSignalsTable, DraggableSignalsTable
-from .transforms_signal_table import TransformsSignalsTable
 
 
 class XyWindowModel(BaseModel):
@@ -37,9 +35,9 @@ class XyWindowModel(BaseModel):
 class BaseXyPlot:
     """Abstract interface for a XY plot widget"""
 
-    def __init__(self, table_parent: "XyTable"):
+    def __init__(self, plots: MultiPlotWidget):
         super().__init__()
-        self._parent = table_parent
+        self._plots = plots
 
     def add_xy(self, x_name: str, y_name: str) -> None:
         """Adds a XY plot to the widget"""
@@ -61,8 +59,8 @@ class BaseXyPlot:
 class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     FADE_SEGMENTS = 16
 
-    def __init__(self, table_parent: "XyTable"):
-        super().__init__(table_parent=table_parent)
+    def __init__(self, plots: MultiPlotWidget):
+        super().__init__(plots)
         self._xys: List[Tuple[str, str]] = []
         self._region = (-float("inf"), float("inf"))
 
@@ -103,9 +101,6 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         self._region = region
         self._update()
 
-    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        self._parent._on_closed_xy(self)
-
     @staticmethod
     def _get_correlated_indices(
         x_ts: npt.NDArray[np.float64], y_ts: npt.NDArray[np.float64], start: float, end: float
@@ -140,16 +135,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         for data_item in self.listDataItems():  # clear existing
             self.removeItem(data_item)
 
-        data = self._parent._data
-        if isinstance(self._parent, TransformsSignalsTable):  # TODO deduplicate with PlotsTableWidget
-            transformed_data = {}
-            for data_name in data.keys():
-                transformed = self._parent.apply_transform(data_name, data)
-                if isinstance(transformed, Exception):
-                    continue
-                transformed_data[data_name] = data[data_name][0], transformed
-            data = transformed_data
-
+        data = self._plots._data
         for x_name, y_name in self._xys:
             x_ts, x_ys = data.get(x_name, (None, None))
             y_ts, y_ys = data.get(y_name, (None, None))
@@ -166,7 +152,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             (xt_lo, xt_hi), (yt_lo, yt_hi) = indices
 
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
-            y_color = self._parent._data_items.get(y_name, QColor("white"))
+            y_color, _ = self._plots._data_items.get(y_name, QColor("white"))
             fade_segments = min(
                 self.FADE_SEGMENTS, xt_hi - xt_lo
             )  # keep track of the x time indices, apply offset for y time indices

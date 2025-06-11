@@ -22,7 +22,7 @@ from .xy_plot import XyPlotWidget, XyPlotTable, ContextMenuXyPlotTable
 
 
 def _refgeo_polyline_fn(*pts: Tuple[float, float]) -> Tuple[Sequence[float], Sequence[float]]:
-    """turns of sequence of (x, y) points into (xs, ys)"""
+    """polyline(*pts: (x, y)) -> (xs, ys): turns of sequence of (x, y) points into (xs, ys)"""
     return [pt[0] for pt in pts], [pt[1] for pt in pts]
 
 
@@ -77,7 +77,7 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
         assert isinstance(self._xy_plots, RefGeoXyPlotWidget)
         text = ""
         err_msg = ""
-        fn_help_str = "\n".join([f"{fn_name}: {fn.__doc__}" for fn_name, fn in self._xy_plots._SIMPLEEVAL_FNS.items()])
+        fn_help_str = "\n".join([f"- {fn.__doc__}" for fn_name, fn in self._xy_plots._SIMPLEEVAL_FNS.items()])
         while True:
             text, ok = QInputDialog().getText(
                 self,

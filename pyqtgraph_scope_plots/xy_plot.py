@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import List, Tuple, Optional, Literal, Union, cast, Any
+from typing import List, Tuple, Optional, Literal, Union, cast, Any, Dict, Sequence
 
 import numpy as np
 import pyqtgraph as pg
@@ -55,11 +55,13 @@ class BaseXyPlot:
 class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     FADE_SEGMENTS = 16
 
-    sigXysChanged = Signal()
+    sigXyDataItemsChanged = Signal()
+    sigXyDataChanged = Signal()
 
     def __init__(self, plots: MultiPlotWidget):
         super().__init__(plots)
         self._xys: List[Tuple[str, str]] = []
+        self._data: Dict[str, Sequence[float]] = {}  # data, post alignment and truncation to regions
 
         self._drag_overlays: List[DragTargetOverlay] = []
         self.setAcceptDrops(True)
@@ -97,7 +99,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         if (x_name, y_name) not in self._xys:
             self._xys.append((x_name, y_name))
             self._update()
-        self.sigXysChanged.emit()
+        self.sigXyDataItemsChanged.emit()
 
     @staticmethod
     def _get_correlated_indices(
@@ -237,7 +239,7 @@ class XyPlotTable(QTableWidget):
         self._xy_plots = xy_plots
 
         self._plots.sigDataItemsUpdated.connect(self._update)
-        self._xy_plots.sigXysChanged.connect(self._update)
+        self._xy_plots.sigXyDataItemsChanged.connect(self._update)
 
         self.setColumnCount(2)
         self.setHorizontalHeaderItem(self.COL_X_NAME, QTableWidgetItem("X"))

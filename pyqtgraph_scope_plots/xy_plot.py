@@ -16,9 +16,9 @@ from typing import List, Tuple, Optional, Literal, Union, cast
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6.QtCore import QSize, QObject, Signal
+from PySide6.QtCore import QSize, Signal
 from PySide6.QtGui import QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox, QWidget
 from numpy import typing as npt
 from pydantic import BaseModel
 
@@ -174,7 +174,20 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
                 curve.setPen(color=segment_color, width=1)
                 self.addItem(curve)
 
+
+class XyDragDroppable(BaseXyPlot):
+    """Mixin to BaseXyPlot that adds XYs from a drag-drop action from the signals table.
+    This MUST be mixed into a QWidget subclass, but mypy can't encode the type dependency."""
+
+    def __init__(self, plots: MultiPlotWidget):
+        super().__init__(plots)
+        assert isinstance(self, QWidget)
+
+        self._drag_overlays: List[DragTargetOverlay] = []
+        self.setAcceptDrops(True)
+
     def dragEnterEvent(self, event: QDragMoveEvent) -> None:
+        assert isinstance(self, QWidget)
         if not event.mimeData().data(DraggableSignalsTable.DRAG_MIME_TYPE):  # check for right type
             return
         overlay = DragTargetOverlay(self)
@@ -202,6 +215,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             return
         drag_data_names = bytes(data.data()).decode("utf-8").split("\0")
         if len(drag_data_names) != 2:
+            assert isinstance(self, QWidget)
             QMessageBox.critical(
                 self,
                 "Error",

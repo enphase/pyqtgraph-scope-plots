@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 from .multi_plot_widget import MultiPlotWidget
 from .signals_table import SignalsTable
-from .xy_plot import BaseXyPlot, XyPlotWidget
+from .xy_plot import BaseXyPlot, XyPlotWidget, XyDragDroppable
 
 
 class XyPlotTable(QTableWidget):
@@ -59,9 +59,14 @@ class XyPlotTable(QTableWidget):
 
 
 class XyPlotSplitter(BaseXyPlot, QSplitter):
+    """XY plot splitter with a table that otherwise passes the BaseXyPlot interface items to its plot."""
+
     closed = Signal()
 
-    _XY_PLOT_TYPE: Type[XyPlotWidget] = XyPlotWidget
+    class FullXyPlotWidget(XyDragDroppable, XyPlotWidget):  # only for mixin composition
+        pass
+
+    _XY_PLOT_TYPE: Type[XyPlotWidget] = FullXyPlotWidget
     _XY_PLOT_TABLE_TYPE: Type[XyPlotTable] = XyPlotTable
 
     def _make_xy_plots(self) -> XyPlotWidget:

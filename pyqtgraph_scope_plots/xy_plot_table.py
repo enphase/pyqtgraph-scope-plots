@@ -23,8 +23,8 @@ from PySide6.QtWidgets import QMenu, QMessageBox, QWidget
 from numpy import typing as npt
 from pydantic import BaseModel
 
-from .save_restore_model import HasSaveLoadConfig, BaseTopModel
 from .multi_plot_widget import DragTargetOverlay
+from .save_restore_model import HasSaveLoadConfig, BaseTopModel
 from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable, DraggableSignalsTable
 from .transforms_signal_table import TransformsSignalsTable
 
@@ -38,8 +38,9 @@ class XyWindowModel(BaseModel):
 class BaseXyPlot:
     """Abstract interface for a XY plot widget"""
 
-    def __init__(self, parent: "XyTable"):
+    def __init__(self, table_parent: "XyTable"):
         super().__init__()
+        self._parent = table_parent
 
     def add_xy(self, x_name: str, y_name: str) -> None:
         """Adds a XY plot to the widget"""
@@ -58,12 +59,11 @@ class BaseXyPlot:
         ...
 
 
-class XyPlotWidget(pg.PlotWidget, BaseXyPlot):  # type: ignore[misc]
+class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     FADE_SEGMENTS = 16
 
-    def __init__(self, parent: "XyTable"):
-        super().__init__(parent)
-        self._parent = parent
+    def __init__(self, table_parent: "XyTable"):
+        super().__init__(table_parent=table_parent)
         self._xys: List[Tuple[str, str]] = []
         self._region = (-float("inf"), float("inf"))
 
@@ -296,7 +296,7 @@ class XyTable(
 
     def create_xy(self) -> BaseXyPlot:
         """Creates and opens an empty XY plot widget."""
-        xy_plot = XyPlotWidget(self)
+        xy_plot = XyPlotWidget(table_parent=self)
         xy_plot.show()
         xy_plot.set_range(self._range)
         self._xy_plots.append(xy_plot)  # need an active reference to prevent GC'ing

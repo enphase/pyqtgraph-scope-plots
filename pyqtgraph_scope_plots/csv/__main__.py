@@ -18,6 +18,7 @@ synthetic data and also can load CSVs."""
 import math
 
 import numpy as np
+from PySide6 import QtGui
 from PySide6.QtWidgets import QApplication
 
 from .csv_plots import CsvLoaderPlotsTableWidget
@@ -25,9 +26,15 @@ from ..multi_plot_widget import MultiPlotWidget
 from ..util import int_color
 
 
+class CsvLoaderPlotsTableWindow(CsvLoaderPlotsTableWidget):
+    def closeEvent(self, event: QtGui.QCloseEvent):
+        QApplication.closeAllWindows()
+        event.accept()
+
+
 if __name__ == "__main__":
     app = QApplication([])
-    plots = CsvLoaderPlotsTableWidget()
+    plots = CsvLoaderPlotsTableWindow()
     plots.resize(1200, 800)
 
     PTS_PER_CYCLE = 128

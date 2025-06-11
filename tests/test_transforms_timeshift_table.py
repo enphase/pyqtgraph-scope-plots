@@ -22,6 +22,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QInputDialog
 from pytestqt.qtbot import QtBot
 
+from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
 from pyqtgraph_scope_plots.timeshift_signals_table import TimeshiftSignalsTable, TimeshiftDataStateModel
 from pyqtgraph_scope_plots.transforms_signal_table import TransformsSignalsTable, TransformsDataStateModel
 from pyqtgraph_scope_plots.util import not_none
@@ -31,7 +32,7 @@ from .test_util import context_menu, menu_action_by_name
 @pytest.fixture()
 def transforms_table(qtbot: QtBot) -> TransformsSignalsTable:
     """Creates a signals plot with multiple data items"""
-    table = TransformsSignalsTable()
+    table = TransformsSignalsTable(MultiPlotWidget())
     table.set_data_items([("0", QColor("yellow")), ("1", QColor("orange")), ("2", QColor("blue"))])
     qtbot.addWidget(table)
     table.show()
@@ -42,7 +43,7 @@ def transforms_table(qtbot: QtBot) -> TransformsSignalsTable:
 @pytest.fixture()
 def timeshifts_table(qtbot: QtBot) -> TimeshiftSignalsTable:
     """Creates a signals plot with multiple data items"""
-    table = TimeshiftSignalsTable()
+    table = TimeshiftSignalsTable(MultiPlotWidget())
     table.set_data_items([("0", QColor("yellow")), ("1", QColor("orange")), ("2", QColor("blue"))])
     qtbot.addWidget(table)
     table.show()

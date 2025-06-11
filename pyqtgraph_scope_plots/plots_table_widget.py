@@ -38,13 +38,6 @@ class PlotsTableWidget(QSplitter):
     class PlotsTableSignalsTable(XyTable, DraggableSignalsTable, TransformsSignalsTable, StatsSignalsTable):
         """SignalsTable used in PlotsTableWidget with required mixins."""
 
-        def __init__(self, plots: MultiPlotWidget, *args: Any, **kwargs: Any) -> None:
-            self._plots = plots
-            super().__init__(*args, **kwargs)
-
-        def _render_value(self, data_name: str, value: float) -> str:
-            return self._plots.render_value(data_name, value)
-
     def _make_plots(self) -> PlotsTableMultiPlots:
         """Returns the plots widget. Optionally override to use a different plots widget."""
         return self.PlotsTableMultiPlots()

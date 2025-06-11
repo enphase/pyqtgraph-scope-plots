@@ -26,7 +26,6 @@ from pydantic import BaseModel
 
 from .enum_waveform_plotitem import EnumWaveformPlot
 from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot
-from .signals_table import DraggableSignalsTable
 from .save_restore_model import HasSaveLoadConfig, BaseTopModel
 
 
@@ -72,6 +71,9 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
     sigDragCursorChanged = Signal(float)  # x-position
     sigDragCursorCleared = Signal()
 
+    sigDataItemsUpdated = Signal()  # called when new plot data items are set
+    sigDataUpdated = Signal()  # called when new plot data is available
+
     TOP_MODEL_BASES = [MultiPlotStateModel]
 
     def __init__(
@@ -86,7 +88,7 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
         self._new_data_action = new_data_action
 
         self._data_items: Mapping[str, Tuple[QColor, MultiPlotWidget.PlotType]] = {}  # ordered
-        self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
+        self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}  # post-transforms
 
         self.setOrientation(Qt.Orientation.Vertical)
         default_plot_item = self._init_plot_item(self._create_plot_item(self.PlotType.DEFAULT))
@@ -319,12 +321,14 @@ class MultiPlotWidget(HasSaveLoadConfig, QSplitter):
         self._check_create_default_plot()
         self._update_data_name_to_plot_item()
         self._update_plots_x_axis()
+        self.sigDataItemsUpdated.emit()
 
     def set_data(self, data: Mapping[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]]) -> None:
         """Sets the data to be plotted as data name -> (xs, ys). Data names must have been previously set with
         set_data_items, missing items will log an error."""
         self._data = {name: (np.array(xs), np.array(ys)) for name, (xs, ys) in data.items()}
         self._update_plots()
+        self.sigDataUpdated.emit()
 
     def _update_plots(self) -> None:
         for plot_item, data_names in self._plot_item_data.items():
@@ -414,8 +418,8 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
             if plot_item is not sig_plot_item and isinstance(plot_item, LiveCursorPlot):
                 with QSignalBlocker(plot_item):
                     plot_item.set_live_cursor(position)
-        self.sigHoverCursorChanged.emit(position)
         self._last_hover = position
+        self.sigHoverCursorChanged.emit(position)
 
     def _on_region_change(
         self, sig_plot_item: Optional[pg.PlotItem], region: Optional[Union[float, Tuple[float, float]]]
@@ -425,8 +429,8 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
             if plot_item is not sig_plot_item and isinstance(plot_item, RegionPlot):
                 with QSignalBlocker(plot_item):
                     plot_item.set_region(region)
-        self.sigCursorRangeChanged.emit(region)
         self._last_region = region
+        self.sigCursorRangeChanged.emit(region)
 
     def _on_poi_change(self, sig_plot_item: Optional[pg.PlotItem], pois: List[float]) -> None:
         """Propagates POI change to all plots, excluding signal source sig_plot_item if specified."""
@@ -434,8 +438,8 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
             if plot_item is not sig_plot_item and isinstance(plot_item, PointsOfInterestPlot):
                 with QSignalBlocker(plot_item):
                     plot_item.set_pois(pois)
-        self.sigPoiChanged.emit(pois)
         self._last_pois = pois
+        self.sigPoiChanged.emit(pois)
 
     def create_drag_cursor(self, pos: float) -> None:
         for plot_item, _ in self._plot_item_data.items():
@@ -449,8 +453,8 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
             if plot_item is not sig_plot_item and isinstance(plot_item, DraggableCursorPlot):
                 with QSignalBlocker(plot_item):
                     plot_item.set_drag_cursor(pos)
-        self.sigDragCursorChanged.emit(pos)
         self._last_drag_cursor = pos
+        self.sigDragCursorChanged.emit(pos)
 
     def _on_drag_cursor_clear(self, sig_plot_item: pg.PlotItem) -> None:
         """Propagates drag cursor removal to all plots, excluding signal source sig_plot_item if specified."""
@@ -458,8 +462,8 @@ class LinkedMultiPlotWidget(MultiPlotWidget, HasSaveLoadConfig):
             if plot_item is not sig_plot_item and isinstance(plot_item, DraggableCursorPlot):
                 with QSignalBlocker(plot_item):
                     plot_item.set_drag_cursor(None)
-        self.sigDragCursorCleared.emit()
         self._last_drag_cursor = None
+        self.sigDragCursorCleared.emit()
 
 
 class DragTargetOverlay(QWidget):
@@ -545,6 +549,8 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
         self._update_plots()
 
     def dragEnterEvent(self, event: QDragMoveEvent) -> None:
+        from .signals_table import DraggableSignalsTable
+
         if not event.mimeData().data(DraggableSignalsTable.DRAG_MIME_TYPE):  # check for right type
             return
         event.accept()
@@ -602,6 +608,8 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
         self._clear_drag_overlays()
 
     def dropEvent(self, event: QDropEvent) -> None:
+        from .signals_table import DraggableSignalsTable
+
         self._clear_drag_overlays()
 
         data = event.mimeData().data(DraggableSignalsTable.DRAG_MIME_TYPE)

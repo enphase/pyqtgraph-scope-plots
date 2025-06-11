@@ -16,13 +16,14 @@ import pytest
 from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
+from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
 from pyqtgraph_scope_plots.search_signals_table import SearchSignalsTable
 
 
 @pytest.fixture()
 def search_table(qtbot: QtBot) -> SearchSignalsTable:
     """Creates a signals plot with multiple data items"""
-    table = SearchSignalsTable()
+    table = SearchSignalsTable(MultiPlotWidget())
     table.set_data_items([("aaa", QColor("yellow")), ("abC", QColor("orange")), ("abd", QColor("blue"))])
     qtbot.addWidget(table)
     table.show()

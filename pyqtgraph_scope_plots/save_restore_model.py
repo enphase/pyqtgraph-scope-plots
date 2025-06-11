@@ -38,8 +38,8 @@ class HasSaveLoadConfig:
 
     @classmethod
     def _get_model_bases(cls) -> List[ModelMetaclass]:
-        """Returns the (data bases, misc bases) of this class.
-        Inspects each subclasses' TOP_MODEL_BASES and DATA_MODEL_BASES, so no implementation is required
+        """Returns the model bases of this class.
+        Inspects each subclasses' TOP_MODEL_BASES, so no implementation is required
         if all the HasSaveLoadConfig are mixins into the top-level class.
 
         Optionally override this if composition is used, for example saving / restore state of children."""
@@ -61,22 +61,13 @@ class HasSaveLoadConfig:
         return model
 
     def _write_model(self, model: BaseModel) -> None:
-        """Saves the data into the top-level model. model.data is pre-populated with models for every data item.
-        Mutates the model in-place.
+        """Writes data into the top-level model.
 
         IMPLEMENT ME."""
         pass
 
     def _load_model(self, model: BaseModel) -> None:
         """Restores data from the top-level model.
-
-        It is guaranteed that by the time the subclasses of this have the load called, the data_items
-        are correctly populated (responsibility of the top-level load). HOWEVER, some data_items
-        restores may fail, so this should check for the existence of each data_item.
-        data values will not be valid.
-
-        data values will be set after all mixins have completed restore.
-        This function does not need to duplicate any work that would otherwise be done on a data value set.
 
         IMPLEMENT ME."""
         pass
@@ -96,6 +87,13 @@ class HasSaveLoadDataConfig(HasSaveLoadConfig):
     """Extension of HasSaveLoadConfig, where the model is broken down into two sections:
     data (keyed by data name, sorted by data order, contains per-data items like timeshift and transforms),
     and misc (which contains everything else, typically UI state like regions and X-Y plot configurations).
+
+    Convention-wise, for top-level loading of a plot widget, data_items should be correctly populated
+    (by the top-level load) BEFORE subclasses have _load_model called. However, data_items may fail to restore,
+    so subclasses should be tolerant of missing dataitems.
+
+    Subclasses should not rely on data values being set. The top-level may blank or lazy-load data values until
+    subalssses' state is stored for performance reasons.
     """
 
     _DATA_MODEL_BASES: List[ModelMetaclass] = []

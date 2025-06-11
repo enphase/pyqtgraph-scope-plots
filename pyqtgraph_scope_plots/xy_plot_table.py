@@ -26,6 +26,7 @@ from .xy_plot_splitter import XyPlotSplitter
 
 
 class XyTableStateModel(BaseTopModel):
+    # TODO: dynamic type construction, the XyRefGeoModel is too specific at this point
     xy_windows: Optional[List[XyRefGeoModel]] = None
 
 

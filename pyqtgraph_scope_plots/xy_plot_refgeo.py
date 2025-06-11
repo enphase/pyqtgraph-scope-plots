@@ -18,6 +18,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QInputDialog, QLineEdit
 import pyqtgraph as pg
 
+from .signals_table import SignalsTable
 from .xy_plot import XyPlotWidget, XyPlotTable, ContextMenuXyPlotTable
 
 
@@ -27,7 +28,8 @@ def _refgeo_polyline_fn(*pts: Tuple[float, float]) -> Tuple[Sequence[float], Seq
 
 
 class RefGeoXyPlotWidget(XyPlotWidget):
-    """Mixin into XyPlotWidget that adds support for reference geometry as a polyline."""
+    """Mixin into XyPlotWidget that adds support for reference geometry as a polyline.
+    For signal purposes, reference geometry is counted as a data item change."""
 
     _SIMPLEEVAL_FNS: Dict[str, Callable] = {
         "polyline": _refgeo_polyline_fn
@@ -35,7 +37,7 @@ class RefGeoXyPlotWidget(XyPlotWidget):
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self._ref_geometry_fns: List[Tuple[str, Any]] = []  # (expr str, parsed)
+        self._refgeo_fns: List[Tuple[str, Any]] = []  # (expr str, parsed)
         # copy, since simpleeval internally mutates the functions dict
         self._simpleeval = simpleeval.EvalWithCompoundTypes(functions=self._SIMPLEEVAL_FNS.copy())
 
@@ -44,14 +46,15 @@ class RefGeoXyPlotWidget(XyPlotWidget):
         if len(expr_str) == 0:
             return
         parsed = self._simpleeval.parse(expr_str)
-        self._ref_geometry_fns.append((expr_str, parsed))
+        self._refgeo_fns.append((expr_str, parsed))
         self._update()
+        self.sigXyDataItemsChanged.emit()
 
     def _update(self) -> None:
         super()._update()  # data items drawn here
 
         # draw reference geometry
-        for refgeo_expr, refgeo_parsed in self._ref_geometry_fns:
+        for refgeo_expr, refgeo_parsed in self._refgeo_fns:
             self._simpleeval.names = {
                 # "data": other_data_dict,  # TODO support aligned data
             }
@@ -72,6 +75,17 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
         add_refgeo = QAction("Add reference geometry", self)
         add_refgeo.triggered.connect(self._on_add_refgeo)
         menu.addAction(add_refgeo)
+
+    def _update(self) -> None:
+        super()._update()
+        assert isinstance(self._xy_plots, RefGeoXyPlotWidget)
+        offset = self.rowCount()
+        self.setRowCount(offset + len(self._xy_plots._refgeo_fns))
+        for row, (refgeo_expr, _) in enumerate(self._xy_plots._refgeo_fns):
+            item = SignalsTable._create_noneditable_table_item()
+            item.setText(refgeo_expr)
+            self.setItem(offset + row, self.COL_X_NAME, item)
+            self.setSpan(offset + row, self.COL_X_NAME, 1, 2)
 
     def _on_add_refgeo(self) -> None:
         assert isinstance(self._xy_plots, RefGeoXyPlotWidget)

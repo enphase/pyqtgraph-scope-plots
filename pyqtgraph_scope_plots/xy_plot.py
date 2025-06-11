@@ -16,7 +16,7 @@ from typing import List, Tuple, Optional, Literal, Union, cast
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6.QtCore import QSize
+from PySide6.QtCore import QSize, QObject, Signal
 from PySide6.QtGui import QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent
 from PySide6.QtWidgets import QMessageBox
 from numpy import typing as npt

@@ -15,7 +15,8 @@
 from typing import Any, List, Tuple, Mapping, Optional
 
 import numpy as np
-from PySide6.QtCore import Qt
+from PySide6 import QtGui
+from PySide6.QtCore import Qt, Signal, QObject
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QMessageBox, QWidget, QSplitter, QTableWidget
 from numpy import typing as npt
@@ -34,6 +35,8 @@ class XyPlotTable(QTableWidget):
 
 
 class XyPlotSplitter(BaseXyPlot, QSplitter):
+    closed = Signal()
+
     def __init__(self, plots: MultiPlotWidget):
         super().__init__(plots)
         self.setOrientation(Qt.Orientation.Vertical)
@@ -53,3 +56,6 @@ class XyPlotSplitter(BaseXyPlot, QSplitter):
 
     def _load_model(self, model: BaseModel) -> None:
         self._xy_plots._load_model(model)
+
+    def closeEvent(self, event: QtGui.QCloseEvent):
+        self.closed.emit()

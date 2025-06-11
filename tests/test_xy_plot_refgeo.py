@@ -29,6 +29,15 @@ def plot(qtbot: QtBot) -> RefGeoXyPlotWidget:
     return xy_plot
 
 
+@pytest.fixture()
+def splitter(qtbot: QtBot) -> XyPlotSplitter:
+    splitter = XyPlotSplitter(MultiPlotWidget())
+    qtbot.addWidget(splitter)
+    splitter.show()
+    qtbot.waitExposed(splitter)
+    return splitter
+
+
 def test_square_points(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     # test that xy creation doesn't error out and follows the user order
     plot.add_xy("0", "1")
@@ -43,11 +52,6 @@ def test_polyline_fn(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     qtbot.wait(10)  # wait for rendering to happen
 
 
-def test_table(qtbot: QtBot):
-    splitter = XyPlotSplitter(MultiPlotWidget())
-    qtbot.addWidget(splitter)
-    splitter.show()
-    qtbot.waitExposed(splitter)
-
+def test_table(qtbot: QtBot, splitter: XyPlotSplitter):
     splitter._xy_plots.add_ref_geometry_fn("([-1, 1], [-1, -1])")
     qtbot.waitUntil(lambda: splitter._table.item(0, 0).text() == "([-1, 1], [-1, -1])")

@@ -39,15 +39,11 @@ def splitter(qtbot: QtBot) -> XyPlotSplitter:
 
 
 def test_square_points(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
-    # test that xy creation doesn't error out and follows the user order
-    plot.add_xy("0", "1")
     plot.add_ref_geometry_fn("([-1, 1, 1, -1, -1], [-1, -1, 1, 1, -1])")
     qtbot.wait(10)  # wait for rendering to happen
 
 
 def test_polyline_fn(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
-    # test that xy creation doesn't error out and follows the user order
-    plot.add_xy("0", "1")
     plot.add_ref_geometry_fn("polyline((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))")
     qtbot.wait(10)  # wait for rendering to happen
 

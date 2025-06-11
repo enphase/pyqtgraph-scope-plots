@@ -26,8 +26,6 @@ from .xy_plot_refgeo import RefGeoXyPlotTable, RefGeoXyPlotWidget
 class XyPlotSplitter(BaseXyPlot, QSplitter):
     """XY plot splitter with a table that otherwise passes the BaseXyPlot interface items to its plot."""
 
-    closed = Signal()
-
     class FullXyPlotWidget(RefGeoXyPlotWidget, XyDragDroppable, XyPlotWidget):  # only for mixin composition
         pass
 

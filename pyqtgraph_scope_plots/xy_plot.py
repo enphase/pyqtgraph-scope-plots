@@ -35,6 +35,8 @@ class XyWindowModel(BaseModel):
 class BaseXyPlot:
     """Abstract interface for a XY plot widget"""
 
+    closed = Signal()
+
     def __init__(self, plots: MultiPlotWidget):
         super().__init__()
         self._plots = plots

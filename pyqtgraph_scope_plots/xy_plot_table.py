@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 from functools import partial
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Type
 
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QMessageBox, QWidget
@@ -33,6 +33,7 @@ class XyTable(
     """Mixin into SignalsTable that adds the option to open an XY plot in a separate window."""
 
     TOP_MODEL_BASES = [XyTableStateModel]
+    _XY_PLOT_TYPE: Type[BaseXyPlot] = XyPlotSplitter
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -76,9 +77,15 @@ class XyTable(
         xy_plot.add_xy(data[0], data[1])
         return xy_plot
 
+    def _make_xy_plots(self) -> BaseXyPlot:
+        """Creates the XyPlot widget. self._plots is initialized by this time.
+        Optionally override to create a different XyPlotWidget object"""
+        return self._XY_PLOT_TYPE(self._plots)
+
     def create_xy(self) -> BaseXyPlot:
         """Creates and opens an empty XY plot widget."""
-        xy_plot = XyPlotSplitter(self._plots)
+        xy_plot = self._make_xy_plots()
+        assert isinstance(xy_plot, QWidget)
         xy_plot.show()
         self._xy_plots.append(xy_plot)  # need an active reference to prevent GC'ing
         xy_plot.closed.connect(partial(self._on_closed_xy, xy_plot))

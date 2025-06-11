@@ -31,7 +31,7 @@ class RefGeoXyPlotWidget(XyPlotWidget):
     """Mixin into XyPlotWidget that adds support for reference geometry as a polyline.
     For signal purposes, reference geometry is counted as a data item change."""
 
-    _SIMPLEEVAL_FNS: Dict[str, Callable] = {
+    _SIMPLEEVAL_FNS: Dict[str, Callable[[Any], Any]] = {
         "polyline": _refgeo_polyline_fn
     }  # optional additional available in refgeo expressions
 

@@ -15,7 +15,7 @@
 import pytest
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots import XyPlotSplitter
+from pyqtgraph_scope_plots.xy_plot_splitter import XyPlotSplitter
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
 from pyqtgraph_scope_plots.xy_plot_refgeo import RefGeoXyPlotWidget
 
@@ -48,6 +48,6 @@ def test_polyline_fn(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     qtbot.wait(10)  # wait for rendering to happen
 
 
-def test_table(qtbot: QtBot, splitter: XyPlotSplitter):
+def test_table(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
     splitter._xy_plots.add_ref_geometry_fn("([-1, 1], [-1, -1])")
     qtbot.waitUntil(lambda: splitter._table.item(0, 0).text() == "([-1, 1], [-1, -1])")

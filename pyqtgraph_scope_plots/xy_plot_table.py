@@ -19,8 +19,8 @@ from PySide6.QtWidgets import QMenu, QMessageBox, QWidget
 from pydantic import BaseModel
 
 from .save_restore_model import BaseTopModel, HasSaveLoadDataConfig
-from .signals_table import ContextMenuSignalsTable, HasDataSignalsTable, HasRegionSignalsTable, DraggableSignalsTable
-from .xy_plot import BaseXyPlot, XyWindowModel
+from .signals_table import ContextMenuSignalsTable, DraggableSignalsTable
+from .xy_plot import BaseXyPlot
 from .xy_plot_refgeo import XyRefGeoModel
 from .xy_plot_splitter import XyPlotSplitter
 
@@ -29,9 +29,7 @@ class XyTableStateModel(BaseTopModel):
     xy_windows: Optional[List[XyRefGeoModel]] = None
 
 
-class XyTable(
-    DraggableSignalsTable, ContextMenuSignalsTable, HasRegionSignalsTable, HasDataSignalsTable, HasSaveLoadDataConfig
-):
+class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasSaveLoadDataConfig):
     """Mixin into SignalsTable that adds the option to open an XY plot in a separate window."""
 
     _MODEL_BASES = [XyTableStateModel]

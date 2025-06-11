@@ -52,12 +52,10 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     FADE_SEGMENTS = 16
 
     sigXyDataItemsChanged = Signal()
-    sigXyDataChanged = Signal()
 
     def __init__(self, plots: MultiPlotWidget):
         super().__init__(plots)
         self._xys: List[Tuple[str, str]] = []
-        self._data: Dict[str, Sequence[float]] = {}  # data, post alignment and truncation to regions
 
         self._drag_overlays: List[DragTargetOverlay] = []
         self.setAcceptDrops(True)

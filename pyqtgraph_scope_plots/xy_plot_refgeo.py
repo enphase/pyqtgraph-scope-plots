@@ -78,16 +78,19 @@ class RefGeoXyPlotWidget(XyPlotWidget):
         if len(expr_str) == 0:
             if index is not None:
                 del self._refgeo_fns[index]
-                self._update()
-                self.sigXyDataItemsChanged.emit()
+                if update:
+                    self._update()
+                    self.sigXyDataItemsChanged.emit()
             return
         parsed = self._simpleeval.parse(expr_str)
         if index is not None:
             self._refgeo_fns[index] = (expr_str, parsed)
         else:
             self._refgeo_fns.append((expr_str, parsed))
-        self._update()
-        self.sigXyDataItemsChanged.emit()
+
+        if update:
+            self._update()
+            self.sigXyDataItemsChanged.emit()
 
     def _update(self) -> None:
         super()._update()  # data items drawn here

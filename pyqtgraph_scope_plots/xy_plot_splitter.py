@@ -65,7 +65,7 @@ class XyPlotSplitter(BaseXyPlot, QSplitter):
     _XY_PLOT_TABLE_TYPE: Type[XyPlotTable] = XyPlotTable
 
     def _make_xy_plots(self) -> XyPlotWidget:
-        """Creates the XyPlotTable widget. self._plots is initialized by this time.
+        """Creates the XyPlot widget. self._plots is initialized by this time.
         Optionally override to create a different XyPlotWidget object"""
         return self._XY_PLOT_TYPE(self._plots)
 

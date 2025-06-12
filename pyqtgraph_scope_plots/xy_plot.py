@@ -49,16 +49,16 @@ class BaseXyPlot(HasSaveLoadConfig):
 
 
 class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
-    FADE_SEGMENTS = 16
+    _FADE_SEGMENTS = 16
+    _ROUND_EPSILON_FACTOR = 2e-7
 
     sigXyDataItemsChanged = Signal()
+    sigDataChanged = Signal()
 
     def __init__(self, plots: MultiPlotWidget):
         super().__init__(plots)
         self._xys: List[Tuple[str, str]] = []
-
-        self._drag_overlays: List[DragTargetOverlay] = []
-        self.setAcceptDrops(True)
+        self._data: Dict[str, Sequence[float]] = {}  # post-region filtering, aligned
 
         plots.sigDataUpdated.connect(self._update)
         if isinstance(self._plots, LinkedMultiPlotWidget):
@@ -154,7 +154,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
             y_color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
             fade_segments = min(
-                self.FADE_SEGMENTS, xt_hi - xt_lo
+                self._FADE_SEGMENTS, xt_hi - xt_lo
             )  # keep track of the x time indices, apply offset for y time indices
             last_segment_end = xt_lo
             for i in range(fade_segments):

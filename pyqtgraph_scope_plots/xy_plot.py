@@ -95,12 +95,6 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         self.sigXyDataItemsChanged.emit()
 
     @staticmethod
-    def _get_region_data_indices(
-        data: List[npt.NDArray[np.float64]], region: Tuple[float, float]
-    ) -> List[Tuple[int, int]]:
-        pass
-
-    @staticmethod
     def _get_correlated_indices(
         x_ts: npt.NDArray[np.float64], y_ts: npt.NDArray[np.float64], start: float, end: float
     ) -> Optional[Tuple[Tuple[int, int], Tuple[int, int]]]:

@@ -12,8 +12,10 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 from functools import partial
-from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional
+from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional, Mapping
 
+import numpy as np
+import numpy.typing as npt
 import simpleeval
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QInputDialog, QLineEdit

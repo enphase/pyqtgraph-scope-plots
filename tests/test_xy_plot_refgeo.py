@@ -85,11 +85,11 @@ def test_data_region(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     cast(LinkedMultiPlotWidget, plot._plots)._on_region_change(None, (0, 1))
 
     with mock.patch.object(plot, "addItem") as mock_add_item:
-        plot.set_ref_geometry_fn("polyline((-1, data['x'][0]), (1, data['x'][-1]))")
+        plot.set_ref_geometry_fn("polyline((data['x'][0], -1), (data['x'][-1], 1))")
         mock_add_item.assert_called_once()
         curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
-        assert list(curve.xData) == [-1, 1]
-        assert list(curve.yData) == [0, 1]
+        assert list(curve.xData) == [0, 1]
+        assert list(curve.yData) == [-1, 1]
 
 
 def test_table(qtbot: QtBot, splitter: XyPlotSplitter) -> None:

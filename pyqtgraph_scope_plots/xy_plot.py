@@ -50,7 +50,6 @@ class BaseXyPlot(HasSaveLoadConfig):
 
 class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     _FADE_SEGMENTS = 16
-    _ROUND_EPSILON_FACTOR = 2e-7
 
     sigXyDataItemsChanged = Signal()
     sigDataChanged = Signal()
@@ -98,6 +97,12 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         self.sigXyDataItemsChanged.emit()
 
     @staticmethod
+    def _get_region_data_indices(
+        data: List[npt.NDArray[np.float64]], region: Tuple[float, float]
+    ) -> List[Tuple[int, int]]:
+        pass
+
+    @staticmethod
     def _get_correlated_indices(
         x_ts: npt.NDArray[np.float64], y_ts: npt.NDArray[np.float64], start: float, end: float
     ) -> Optional[Tuple[Tuple[int, int], Tuple[int, int]]]:
@@ -108,17 +113,6 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         if xt_lo is None or xt_hi is None or yt_lo is None or yt_hi is None or xt_hi - xt_lo < 2:
             return None
 
-        # correct for floating point imprecision in indices
-        if (xt_hi - xt_lo) == (yt_hi - yt_lo) + 1:  # delete an extra x-point
-            if abs(y_ts[yt_lo] - x_ts[xt_lo]) > abs(y_ts[yt_hi - 1] - x_ts[xt_hi - 1]):  # larger delta on low point
-                xt_lo = xt_lo + 1
-            else:
-                xt_hi = xt_hi - 1
-        elif (xt_hi - xt_lo) + 1 == (yt_hi - yt_lo):  # delete an extra y-point
-            if abs(y_ts[yt_lo] - x_ts[xt_lo]) > abs(y_ts[yt_hi - 1] - x_ts[xt_hi - 1]):  # larger delta on low point
-                yt_lo = yt_lo + 1
-            else:
-                yt_hi = yt_hi - 1
         if (xt_hi - xt_lo) != (yt_hi - yt_lo):
             return None
         x_indices = x_ts[xt_lo:xt_hi]

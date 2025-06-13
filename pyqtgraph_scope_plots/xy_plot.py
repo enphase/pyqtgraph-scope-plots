@@ -94,6 +94,13 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             self._update()
         self.sigXyDataItemsChanged.emit()
 
+    def _get_region(self) -> Tuple[float, float]:
+        """Gets the currently selected region from the plot, or (-inf, inf) by default."""
+        if isinstance(self._plots, LinkedMultiPlotWidget) and isinstance(self._plots._last_region, tuple):
+            return self._plots._last_region
+        else:
+            return (-float("inf"), float("inf"))
+
     @staticmethod
     def _get_correlated_indices(
         x_ts: npt.NDArray[np.float64], y_ts: npt.NDArray[np.float64], start: float, end: float
@@ -117,10 +124,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         for data_item in self.listDataItems():  # clear existing
             self.removeItem(data_item)
 
-        region = (-float("inf"), float("inf"))
-        if isinstance(self._plots, LinkedMultiPlotWidget) and isinstance(self._plots._last_region, tuple):
-            region = self._plots._last_region  # get region from plot
-
+        region = self._get_region()
         data = self._plots._data
         for x_name, y_name in self._xys:
             x_ts, x_ys = data.get(x_name, (None, None))

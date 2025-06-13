@@ -12,9 +12,12 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 from typing import cast
+from unittest import mock
 
 import pytest
+from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
+import pyqtgraph as pg
 
 from pyqtgraph_scope_plots.xy_plot_splitter import XyPlotSplitter
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
@@ -40,13 +43,40 @@ def splitter(qtbot: QtBot) -> XyPlotSplitter:
 
 
 def test_square_points(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
-    plot.set_ref_geometry_fn("([-1, 1, 1, -1, -1], [-1, -1, 1, 1, -1])")
-    qtbot.wait(10)  # wait for rendering to happen
+    with mock.patch.object(plot, "addItem") as mock_add_item:
+        plot.set_ref_geometry_fn("([-1, 1, 1, -1, -1], [-1, -1, 1, 1, -1])")
+        mock_add_item.assert_called_once()
+        curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
+        assert list(curve.xData) == [-1, 1, 1, -1, -1]
+        assert list(curve.yData) == [-1, -1, 1, 1, -1]
 
 
 def test_polyline_fn(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
-    plot.set_ref_geometry_fn("polyline((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))")
-    qtbot.wait(10)  # wait for rendering to happen
+    with mock.patch.object(plot, "addItem") as mock_add_item:
+        plot.set_ref_geometry_fn("polyline((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))")
+        mock_add_item.assert_called_once()
+        curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
+        assert list(curve.xData) == [-1, 1, 1, -1, -1]
+        assert list(curve.yData) == [-1, -1, 1, 1, -1]
+
+
+def test_data(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
+    plot._plots.show_data_items([("x", QColor("white"), MultiPlotWidget.PlotType.DEFAULT)])
+    plot._plots.set_data({"x": ([0, 1, 2], [0, 1, 2])})
+
+    with mock.patch.object(plot, "addItem") as mock_add_item:
+        plot.set_ref_geometry_fn("polyline((-1, data['x'][-1]), (1, data['x'][-1]))")
+        mock_add_item.assert_called_once()
+        curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
+        assert list(curve.xData) == [-1, 1]
+        assert list(curve.yData) == [2, 2]
+
+    with mock.patch.object(plot, "addItem") as mock_add_item:
+        plot.set_ref_geometry_fn("polyline((-1, data['x'][-1]), (1, data['x'][0]))", 0)
+        mock_add_item.assert_called_once()
+        curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
+        assert list(curve.xData) == [-1, 1]
+        assert list(curve.yData) == [2, 0]
 
 
 def test_table(qtbot: QtBot, splitter: XyPlotSplitter) -> None:

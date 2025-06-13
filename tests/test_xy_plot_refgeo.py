@@ -20,13 +20,13 @@ from pytestqt.qtbot import QtBot
 import pyqtgraph as pg
 
 from pyqtgraph_scope_plots.xy_plot_splitter import XyPlotSplitter
-from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
+from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
 from pyqtgraph_scope_plots.xy_plot_refgeo import RefGeoXyPlotWidget, XyRefGeoModel
 
 
 @pytest.fixture()
 def plot(qtbot: QtBot) -> RefGeoXyPlotWidget:
-    xy_plot = RefGeoXyPlotWidget(MultiPlotWidget())
+    xy_plot = RefGeoXyPlotWidget(LinkedMultiPlotWidget())
     qtbot.addWidget(xy_plot)
     xy_plot.show()
     qtbot.waitExposed(xy_plot)
@@ -35,7 +35,7 @@ def plot(qtbot: QtBot) -> RefGeoXyPlotWidget:
 
 @pytest.fixture()
 def splitter(qtbot: QtBot) -> XyPlotSplitter:
-    splitter = XyPlotSplitter(MultiPlotWidget())
+    splitter = XyPlotSplitter(LinkedMultiPlotWidget())
     qtbot.addWidget(splitter)
     splitter.show()
     qtbot.waitExposed(splitter)
@@ -77,6 +77,19 @@ def test_data(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
         curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
         assert list(curve.xData) == [-1, 1]
         assert list(curve.yData) == [2, 0]
+
+
+def test_data_region(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
+    plot._plots.show_data_items([("x", QColor("white"), MultiPlotWidget.PlotType.DEFAULT)])
+    plot._plots.set_data({"x": ([0, 1, 2], [0, 1, 2])})
+    cast(LinkedMultiPlotWidget, plot._plots)._on_region_change(None, (0, 1))
+
+    with mock.patch.object(plot, "addItem") as mock_add_item:
+        plot.set_ref_geometry_fn("polyline((-1, data['x'][0]), (1, data['x'][-1]))")
+        mock_add_item.assert_called_once()
+        curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
+        assert list(curve.xData) == [-1, 1]
+        assert list(curve.yData) == [0, 1]
 
 
 def test_table(qtbot: QtBot, splitter: XyPlotSplitter) -> None:

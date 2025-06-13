@@ -52,12 +52,10 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     _FADE_SEGMENTS = 16
 
     sigXyDataItemsChanged = Signal()
-    sigDataChanged = Signal()
 
     def __init__(self, plots: MultiPlotWidget):
         super().__init__(plots)
         self._xys: List[Tuple[str, str]] = []
-        self._data: Dict[str, Sequence[float]] = {}  # post-region filtering, aligned
 
         plots.sigDataUpdated.connect(self._update)
         if isinstance(self._plots, LinkedMultiPlotWidget):

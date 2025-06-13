@@ -35,6 +35,7 @@ from .search_signals_table import SearchSignalsTable
 from .xy_plot_table import XyTable
 from .xy_plot import XyPlotWidget, XyDragDroppable, XyPlotTable
 from .xy_plot_splitter import XyPlotSplitter
+from .xy_plot_refgeo import RefGeoXyPlotWidget, RefGeoXyPlotTable
 
 from .time_axis import TimeAxisItem
 

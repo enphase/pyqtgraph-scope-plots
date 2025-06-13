@@ -110,11 +110,15 @@ class HasRegionSignalsTable(SignalsTable):
 
     @classmethod
     def _indices_of_region(
-        cls, xs: npt.NDArray[np.float64], region: Tuple[float, float]
+        cls, ts: npt.NDArray[np.float64], region: Tuple[float, float]
     ) -> Tuple[Optional[int], Optional[int]]:
-        """Given the x points and a region, return the indices of xs containing the region"""
-        low_index = bisect.bisect_left(xs, region[0])  # inclusive
-        high_index = bisect.bisect_right(xs, region[1])  # exclusive
+        """Given sorted ts and a region, return the indices of ts containing the region.
+        Expands the region slightly to account for floating point imprecision"""
+        ROUNDING_FACTOR = 2e-7
+
+        region = (region[0] - region[0] * ROUNDING_FACTOR, region[1] + region[1] * ROUNDING_FACTOR)
+        low_index = bisect.bisect_left(ts, region[0])  # inclusive
+        high_index = bisect.bisect_right(ts, region[1])  # exclusive
         if low_index >= high_index:  # empty set
             return None, None
         else:

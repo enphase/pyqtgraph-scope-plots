@@ -12,15 +12,17 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 from functools import partial
-from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional
+from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional, Mapping
 
+import numpy as np
+import numpy.typing as npt
 import simpleeval
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QInputDialog, QLineEdit
 import pyqtgraph as pg
 from pydantic import BaseModel
 
-from .signals_table import SignalsTable
+from .signals_table import SignalsTable, HasRegionSignalsTable
 from .xy_plot import XyPlotWidget, XyPlotTable, ContextMenuXyPlotTable, XyWindowModel
 
 
@@ -95,12 +97,24 @@ class RefGeoXyPlotWidget(XyPlotWidget):
     def _update(self) -> None:
         super()._update()  # data items drawn here
 
+        region = self._get_region()
+
+        def get_data_region(ts: npt.NDArray[np.float64], ys: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+            """Given ts and xs of a data item, return ys bounded to the input region."""
+            ts_lo, ts_hi = HasRegionSignalsTable._indices_of_region(ts, region)
+            if ts_lo is None or ts_hi is None:
+                return np.array([])
+            else:
+                return ys[ts_lo:ts_hi]
+
+        filtered_data = {name: get_data_region(ts, ys) for name, (ts, ys) in self._plots._data.items()}
+
         # draw reference geometry
         last_refgeo_err = any([err is not None for err in self._refgeo_errs])  # store last to emit on failing -> ok
         self._refgeo_errs = []
         for refgeo_expr, refgeo_parsed in self._refgeo_fns:
             self._simpleeval.names = {
-                # "data": other_data_dict,  # TODO support aligned data
+                "data": filtered_data,
             }
             try:
                 xs, ys = self._simpleeval.eval(refgeo_expr, refgeo_parsed)
@@ -162,7 +176,7 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
                 self,
                 "Add reference geometry",
                 "Function for reference geometry, as (xs, ys), for example '([0, 1], [0, 1])' for a diagonal line. \n"
-                # "Use 'data['...']' or 'data.get('...') to access the data sequence (bounded to the selected region) by name. \n"  # TODO
+                "Use 'data['...']' to access the data sequence, bounded to the selected region, by name. \n"
                 "These helper functions are available: \n" + fn_help_str + err_msg,
                 QLineEdit.EchoMode.Normal,
                 text,

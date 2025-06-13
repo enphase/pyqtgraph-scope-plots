@@ -49,16 +49,13 @@ class BaseXyPlot(HasSaveLoadConfig):
 
 
 class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
-    FADE_SEGMENTS = 16
+    _FADE_SEGMENTS = 16
 
     sigXyDataItemsChanged = Signal()
 
     def __init__(self, plots: MultiPlotWidget):
         super().__init__(plots)
         self._xys: List[Tuple[str, str]] = []
-
-        self._drag_overlays: List[DragTargetOverlay] = []
-        self.setAcceptDrops(True)
 
         plots.sigDataUpdated.connect(self._update)
         if isinstance(self._plots, LinkedMultiPlotWidget):
@@ -97,6 +94,13 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             self._update()
         self.sigXyDataItemsChanged.emit()
 
+    def _get_region(self) -> Tuple[float, float]:
+        """Gets the currently selected region from the plot, or (-inf, inf) by default."""
+        if isinstance(self._plots, LinkedMultiPlotWidget) and isinstance(self._plots._last_region, tuple):
+            return self._plots._last_region
+        else:
+            return (-float("inf"), float("inf"))
+
     @staticmethod
     def _get_correlated_indices(
         x_ts: npt.NDArray[np.float64], y_ts: npt.NDArray[np.float64], start: float, end: float
@@ -108,17 +112,6 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         if xt_lo is None or xt_hi is None or yt_lo is None or yt_hi is None or xt_hi - xt_lo < 2:
             return None
 
-        # correct for floating point imprecision in indices
-        if (xt_hi - xt_lo) == (yt_hi - yt_lo) + 1:  # delete an extra x-point
-            if abs(y_ts[yt_lo] - x_ts[xt_lo]) > abs(y_ts[yt_hi - 1] - x_ts[xt_hi - 1]):  # larger delta on low point
-                xt_lo = xt_lo + 1
-            else:
-                xt_hi = xt_hi - 1
-        elif (xt_hi - xt_lo) + 1 == (yt_hi - yt_lo):  # delete an extra y-point
-            if abs(y_ts[yt_lo] - x_ts[xt_lo]) > abs(y_ts[yt_hi - 1] - x_ts[xt_hi - 1]):  # larger delta on low point
-                yt_lo = yt_lo + 1
-            else:
-                yt_hi = yt_hi - 1
         if (xt_hi - xt_lo) != (yt_hi - yt_lo):
             return None
         x_indices = x_ts[xt_lo:xt_hi]
@@ -131,10 +124,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         for data_item in self.listDataItems():  # clear existing
             self.removeItem(data_item)
 
-        region = (-float("inf"), float("inf"))
-        if isinstance(self._plots, LinkedMultiPlotWidget) and isinstance(self._plots._last_region, tuple):
-            region = self._plots._last_region  # get region from plot
-
+        region = self._get_region()
         data = self._plots._data
         for x_name, y_name in self._xys:
             x_ts, x_ys = data.get(x_name, (None, None))
@@ -154,7 +144,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
             y_color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
             fade_segments = min(
-                self.FADE_SEGMENTS, xt_hi - xt_lo
+                self._FADE_SEGMENTS, xt_hi - xt_lo
             )  # keep track of the x time indices, apply offset for y time indices
             last_segment_end = xt_lo
             for i in range(fade_segments):

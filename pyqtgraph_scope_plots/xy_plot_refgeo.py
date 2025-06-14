@@ -169,8 +169,9 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
         text = ""
         if index is not None:
             text = self._xy_plots._refgeo_fns[index][0]
-        err_msg = ""
         fn_help_str = "\n".join([f"- {fn.__doc__}" for fn_name, fn in self._xy_plots._SIMPLEEVAL_FNS.items()])
+
+        err_msg = ""
         while True:
             text, ok = QInputDialog().getText(
                 self,
@@ -183,9 +184,9 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
             )
             if not ok:
                 return
-            else:
-                try:
-                    self._xy_plots.set_ref_geometry_fn(text, index)
-                    return
-                except SyntaxError as exc:
-                    err_msg = f"\n\n{exc.__class__.__name__}: {exc}"
+
+            try:
+                self._xy_plots.set_ref_geometry_fn(text, index)
+                return
+            except SyntaxError as exc:
+                err_msg = f"\n\n{exc.__class__.__name__}: {exc}"

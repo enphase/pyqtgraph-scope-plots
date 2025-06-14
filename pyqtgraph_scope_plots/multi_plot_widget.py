@@ -88,7 +88,8 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         self._new_data_action = new_data_action
 
         self._data_items: Mapping[str, Tuple[QColor, MultiPlotWidget.PlotType]] = {}  # ordered
-        self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}  # post-transforms
+        self._raw_data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]] = {}  # pre-transforms, immutable
+        self._data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]] = {}  # post-transforms
 
         self.setOrientation(Qt.Orientation.Vertical)
         default_plot_item = self._init_plot_item(self._create_plot_item(self.PlotType.DEFAULT))
@@ -323,10 +324,26 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         self._update_plots_x_axis()
         self.sigDataItemsUpdated.emit()
 
+    def _to_array(self, x: npt.ArrayLike) -> npt.NDArray:
+        if isinstance(x, np.ndarray) and x.flags.writeable == False:
+            return x
+        else:
+            arr = np.array(x)
+            arr.flags.writeable = False
+            return arr
+
+    def _transform_data(
+        self, data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]]
+    ) -> Mapping[str, Tuple[npt.NDArray, npt.NDArray]]:
+        """Optional function to transform data between the input of set_data and when it is plotted.
+        Data is guaranteed to be a numpy array"""
+        return data
+
     def set_data(self, data: Mapping[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]]) -> None:
         """Sets the data to be plotted as data name -> (xs, ys). Data names must have been previously set with
         set_data_items, missing items will log an error."""
-        self._data = {name: (np.array(xs), np.array(ys)) for name, (xs, ys) in data.items()}
+        self._raw_data = {name: (self._to_array(xs), self._to_array(ys)) for name, (xs, ys) in data.items()}
+        self._data = self._transform_data(self._raw_data)
         self._update_plots()
         self.sigDataUpdated.emit()
 

@@ -82,14 +82,6 @@ class PlotsTableWidget(QSplitter):
         self._plots.show_data_items(new_data_items, no_create=len(new_data_items) > 8)
         self._table.set_data_items([(data_name, color) for data_name, color, _ in new_data_items])
 
-    def _to_array(self, x: npt.ArrayLike) -> npt.NDArray[np.float64]:
-        if isinstance(x, np.ndarray) and x.flags.writeable == False:
-            return x
-        else:
-            arr = np.array(x)
-            arr.flags.writeable = False
-            return arr
-
     def _transform_data(
         self,
         data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],

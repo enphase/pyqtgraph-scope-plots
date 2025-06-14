@@ -23,6 +23,7 @@ from PySide6.QtWidgets import QTableWidgetItem, QMenu, QInputDialog, QLineEdit
 from pydantic import BaseModel
 
 from .cache_dict import IdentityCacheDict
+from .multi_plot_widget import MultiPlotWidget
 from .save_restore_model import DataTopModel, HasSaveLoadDataConfig, BaseTopModel
 from .signals_table import ContextMenuSignalsTable
 from .util import not_none
@@ -32,60 +33,58 @@ class TransformsDataStateModel(DataTopModel):
     transform: Optional[str] = None
 
 
-class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
-    """Mixin into SignalsTable that adds a UI for the user to specify a transform using a subset of Python code.
-    This parses the user input and provides a get_transform."""
+class AllDataDict:
+    """Takes in multiple series of (xs, ys) and returns the value at exactly the current x.
+    Mimicks the behavior of a dict that contains all the y values, but more efficient since it doesn't
+    do the indexing calculation until a value is requested.
+    Requires x to be monotonically increasing. Optimized for the case where gets are done on almost every element,
+    but robust to sequences that have wildly different xs."""
 
-    COL_TRANSFORM = -1
+    def __init__(
+        self,
+        data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
+    ):
+        self._x = float("NaN")
+        self._data = data
+        self._data_indices: Dict[str, int] = {}  # last index at the data name
+
+    def _set_x(self, x: float) -> None:
+        """Updates the x value for the next get"""
+        self._x = x
+
+    def __getitem__(self, key: str) -> Any:
+        elt = self.get(key)
+        if elt is None:
+            raise KeyError
+        else:
+            return elt
+
+    def get(self, key: str, default: Any = None) -> Any:
+        xs, ys = self._data[key]
+        while True:
+            prev_index = self._data_indices.get(key, 0)
+            if prev_index >= len(xs):  # exceeded length of array
+                return default
+            elif xs[prev_index] == self._x:
+                return ys[prev_index]
+            elif xs[prev_index] > self._x:  # past the x being searched for
+                return default
+            else:  # before the x being searched for, advance to the next elt
+                self._data_indices[key] = prev_index + 1
+
+
+class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
+    """MultiPlotWidget that adds a user-defined data transform."""
+
     _DATA_MODEL_BASES = [TransformsDataStateModel]
-
-    class AllDataDict:
-        """Takes in multiple series of (xs, ys) and returns the value at exactly the current x.
-        Mimicks the behavior of a dict that contains all the y values, but more efficient since it doesn't
-        do the indexing calculation until a value is requested.
-        Requires x to be monotonically increasing. Optimized for the case where gets are done on almost every element,
-        but robust to sequences that have wildly different xs."""
-
-        def __init__(
-            self,
-            data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
-        ):
-            self._x = float("NaN")
-            self._data = data
-            self._data_indices: Dict[str, int] = {}  # last index at the data name
-
-        def _set_x(self, x: float) -> None:
-            """Updates the x value for the next get"""
-            self._x = x
-
-        def __getitem__(self, key: str) -> Any:
-            elt = self.get(key)
-            if elt is None:
-                raise KeyError
-            else:
-                return elt
-
-        def get(self, key: str, default: Any = None) -> Any:
-            xs, ys = self._data[key]
-            while True:
-                prev_index = self._data_indices.get(key, 0)
-                if prev_index >= len(xs):  # exceeded length of array
-                    return default
-                elif xs[prev_index] == self._x:
-                    return ys[prev_index]
-                elif xs[prev_index] > self._x:  # past the x being searched for
-                    return default
-                else:  # before the x being searched for, advance to the next elt
-                    self._data_indices[key] = prev_index + 1
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self._set_transform_action = QAction("Set Function", self)
-        self._set_transform_action.triggered.connect(self._on_set_transform)
-        self.cellDoubleClicked.connect(self._on_transform_double_click)
+
+        self._simpleeval = simpleeval.SimpleEval()
 
         self._transforms: Dict[str, Tuple[str, Any]] = {}  # (expr str, parsed)
-        self._simpleeval = simpleeval.SimpleEval()
+        self._transforms_errs: Dict[str, Optional[Exception]] = {}
         self._cached_results = IdentityCacheDict[
             npt.NDArray[np.float64], npt.NDArray[np.float64]
         ]()  # src data -> output data
@@ -126,7 +125,7 @@ class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
         if cached_result is not None:
             return cached_result
 
-        other_data_dict = self.AllDataDict(all_data)
+        other_data_dict = AllDataDict(all_data)
         new_ys = []
         for x, y in zip(xs, ys):
             try:
@@ -142,15 +141,58 @@ class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
                     raise TypeError(f"returned {new_y} of type {type(new_y)} != original type {type(y)}")
                 new_ys.append(new_y)
             except Exception as e:
-                data_name_to_row = {data_name: i for i, data_name in enumerate(self._data_items.keys())}
-                exc_text = f"at ({x}, {y}): {e.__class__.__name__}: {e}"
-                not_none(self.item(data_name_to_row[data_name], self.COL_TRANSFORM)).setText(exc_text)
-                not_none(self.item(data_name_to_row[data_name], self.COL_TRANSFORM)).setToolTip(exc_text)
                 return e
         result = np.array(new_ys)
         result.flags.writeable = ys.flags.writeable
         self._cached_results.set(ys, expr, input_all_data_refs, result)
         return result
+
+    def _transform_data(
+        self, data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]]
+    ) -> Mapping[str, Tuple[npt.NDArray, npt.NDArray]]:
+        transformed_data = {}
+        for data_name in data.keys():
+            transformed = self._table.apply_transform(data_name, data)
+            if isinstance(transformed, Exception):
+                continue
+            transformed_data[data_name] = data[data_name][0], transformed
+        return transformed_data
+
+    def set_transform(self, data_names: List[str], transform_expr: str, update: bool = True) -> None:
+        """Sets the transform on a particular data and applies it.
+        Raises SyntaxError (from simpleeval) on a parsing failure. Does not do any other processing / checks.
+        Optionally, updating can be disabled for performance, for example to batch-update after a bunch of ops."""
+        if len(transform_expr) > 0:
+            parsed = self._simpleeval.parse(transform_expr)
+        else:
+            parsed = None
+
+        for data_name in data_names:
+            if parsed is None:
+                if data_name in self._transforms:
+                    del self._transforms[data_name]
+            else:
+                self._transforms[data_name] = (transform_expr, parsed)
+
+        if update:
+            self.sigDataUpdated.emit()
+            self.sigDataItemsUpdated.emit()
+
+
+class TransformsSignalsTable(ContextMenuSignalsTable):
+    """Mixin into SignalsTable that adds a UI for the user to specify a transform using a subset of Python code.
+    Only provides UI items into the APIs in TransformsPlotWidget"""
+
+    COL_TRANSFORM = -1
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        assert isinstance(self._plots, TransformsPlotWidget)
+
+        self._set_transform_action = QAction("Set Function", self)
+        self._set_transform_action.triggered.connect(self._on_set_transform)
+        self.cellDoubleClicked.connect(self._on_transform_double_click)
+        self._plots.sigDataItemsUpdated.connect(self._on_transforms_update)
 
     def _post_cols(self) -> int:
         self.COL_TRANSFORM = super()._post_cols()
@@ -169,11 +211,12 @@ class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
             self._on_set_transform()
 
     def _on_set_transform(self) -> None:
-        data_names = list(self._data_items.keys())
+        assert isinstance(self._plots, TransformsPlotWidget)
+        data_names = list(self._plots._data_items.keys())
         selected_data_names = [data_names[item.row()] for item in self.selectedItems()]
         text = ""
         for data_name in selected_data_names:  # collect the first previously-specified transform
-            prev_str = self._transforms.get(data_name, (None, None))[0]
+            prev_str, _ = self._plots._transforms.get(data_name, (None, None))
             if prev_str is not None and not text:
                 text = prev_str
 
@@ -189,45 +232,27 @@ class TransformsSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
             )
             if not ok:
                 return
-            if not text:
-                self.set_transform(selected_data_names, "")
+
+            try:
+                self._plots.set_transform(selected_data_names, text)
                 return
-            else:
-                try:
-                    self.set_transform(selected_data_names, text)
-                    return
-                except SyntaxError as e:
-                    err_msg = f"\n\n{e.__class__.__name__}: {e}"
+            except SyntaxError as exc:
+                err_msg = f"\n\n{exc.__class__.__name__}: {exc}"
 
-    def set_transform(self, data_names: List[str], transform_expr: str, update: bool = True) -> None:
-        """Sets the transform on a particular data and applies it.
-        Raises SyntaxError (from simpleeval) on a parsing failure. Does not do any other processing / checks.
-        Optionally, updating can be disabled for performance, for example to batch-update after a bunch of ops."""
-        if len(transform_expr) > 0:
-            parsed = self._simpleeval.parse(transform_expr)
-        else:
-            parsed = None
+    def _on_transforms_update(self) -> None:
+        assert isinstance(self._plots, TransformsPlotWidget)
 
-        for data_name in data_names:
-            if parsed is None:
-                if data_name in self._transforms:
-                    del self._transforms[data_name]
-            else:
-                self._transforms[data_name] = (transform_expr, parsed)
+        # TODO INTEGRATE EXC HANDLIGN CODE
+        data_name_to_row = {data_name: i for i, data_name in enumerate(self._data_items.keys())}
+        exc_text = f"at ({x}, {y}): {e.__class__.__name__}: {e}"
+        not_none(self.item(data_name_to_row[data_name], self.COL_TRANSFORM)).setText(exc_text)
+        not_none(self.item(data_name_to_row[data_name], self.COL_TRANSFORM)).setToolTip(exc_text)
 
-            for item in self.selectedItems():
-                not_none(self.item(item.row(), self.COL_TRANSFORM)).setText(transform_expr)
-                not_none(self.item(item.row(), self.COL_TRANSFORM)).setToolTip(transform_expr)
-        if update:
-            self.sigTransformChanged.emit(data_names)
-
-    def set_data_items(self, new_data_items: List[Tuple[str, QColor]]) -> None:
-        super().set_data_items(new_data_items)
         for row, (name, color) in enumerate(self._data_items.items()):
-            transform = self._transforms.get(name)
-            if transform is not None:
-                not_none(self.item(row, self.COL_TRANSFORM)).setText(transform[0])
-                not_none(self.item(row, self.COL_TRANSFORM)).setToolTip(transform[0])
+            expr, _ = self._plots._transforms.get(name, (None, None))
+            if expr is not None:
+                not_none(self.item(row, self.COL_TRANSFORM)).setText(expr)
+                not_none(self.item(row, self.COL_TRANSFORM)).setToolTip(expr)
             else:
                 not_none(self.item(row, self.COL_TRANSFORM)).setText("")
                 not_none(self.item(row, self.COL_TRANSFORM)).setToolTip("")

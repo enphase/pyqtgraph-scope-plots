@@ -90,21 +90,23 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
         ]()  # src data -> output data
 
     def _write_model(self, model: BaseModel) -> None:
-        assert isinstance(model, BaseTopModel)
         super()._write_model(model)
+        assert isinstance(model, BaseTopModel)
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, TransformsDataStateModel)
             transform, _ = self._transforms.get(data_name, ("", None))
             data_model.transform = transform
 
     def _load_model(self, model: BaseModel) -> None:
-        assert isinstance(model, BaseTopModel)
         super()._load_model(model)
+        assert isinstance(model, BaseTopModel)
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, TransformsDataStateModel)
-            # TODO improve robustness to SyntaxError
             if data_model.transform is not None:
-                self.set_transform([data_name], data_model.transform, update=False)
+                try:
+                    self.set_transform([data_name], data_model.transform, update=False)
+                except Exception as e:
+                    pass  # TODO some kind of logging / warning
 
     def apply_transform(
         self,

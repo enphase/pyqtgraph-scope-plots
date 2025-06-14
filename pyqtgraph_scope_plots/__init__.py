@@ -29,7 +29,7 @@ from .signals_table import (
 )
 from .stats_signals_table import StatsSignalsTable
 from .timeshift_signals_table import TimeshiftSignalsTable
-from .transforms_signal_table import TransformsSignalsTable
+from .transforms_signal_table import TransformsPlotWidget, TransformsSignalsTable
 from .search_signals_table import SearchSignalsTable
 from .xy_plot_table import XyTable
 from .xy_plot import XyPlotWidget, XyDragDroppable, XyPlotTable

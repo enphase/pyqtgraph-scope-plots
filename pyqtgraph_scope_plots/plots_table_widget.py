@@ -28,12 +28,12 @@ from .multi_plot_widget import (
 )
 from .signals_table import DraggableSignalsTable
 from .stats_signals_table import StatsSignalsTable
-from .transforms_signal_table import TransformsSignalsTable
+from .transforms_signal_table import TransformsSignalsTable, TransformsPlotWidget
 from .xy_plot_table import XyTable
 
 
 class PlotsTableWidget(QSplitter):
-    class PlotsTableMultiPlots(DroppableMultiPlotWidget, LinkedMultiPlotWidget):
+    class PlotsTableMultiPlots(TransformsPlotWidget, DroppableMultiPlotWidget, LinkedMultiPlotWidget):
         """MultiPlotWidget used in PlotsTableWidget with required mixins."""
 
     class PlotsTableSignalsTable(XyTable, DraggableSignalsTable, TransformsSignalsTable, StatsSignalsTable):

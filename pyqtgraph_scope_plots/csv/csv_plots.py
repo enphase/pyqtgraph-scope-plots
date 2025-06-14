@@ -166,16 +166,17 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._table._load_model(model)
         self._plots._load_model(model)
 
-    def _transform_data(
-        self,
-        data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
-    ) -> Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
-        # apply time-shift before function transform
-        transformed_data = {}
-        for data_name in data.keys():
-            transformed = self._table.apply_timeshifts(data_name, data)
-            transformed_data[data_name] = transformed, data[data_name][1]
-        return super()._transform_data(transformed_data)
+    # TODO apply timeshift in plot/signaltable
+    # def _transform_data(
+    #     self,
+    #     data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
+    # ) -> Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
+    #     # apply time-shift before function transform
+    #     transformed_data = {}
+    #     for data_name in data.keys():
+    #         transformed = self._table.apply_timeshifts(data_name, data)
+    #         transformed_data[data_name] = transformed, data[data_name][1]
+    #     return super()._transform_data(transformed_data)
 
     def _on_color_changed(self, items: List[Tuple[str, QColor]]) -> None:
         updated_data_items = self._data_items.copy()

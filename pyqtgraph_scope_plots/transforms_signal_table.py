@@ -152,7 +152,7 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
     ) -> Mapping[str, Tuple[npt.NDArray, npt.NDArray]]:
         transformed_data = {}
         for data_name in data.keys():
-            transformed = self._table.apply_transform(data_name, data)
+            transformed = self.apply_transform(data_name, data)
             if isinstance(transformed, Exception):
                 continue
             transformed_data[data_name] = data[data_name][0], transformed
@@ -175,6 +175,7 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
                 self._transforms[data_name] = (transform_expr, parsed)
 
         if update:
+            self._update_plots()
             self.sigDataUpdated.emit()
             self.sigDataItemsUpdated.emit()
 

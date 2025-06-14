@@ -68,11 +68,9 @@ class PlotsTableWidget(QSplitter):
         self.addWidget(bottom_widget)
 
         self._data_items: Dict[str, Tuple[QColor, "MultiPlotWidget.PlotType"]] = {}
-        self._transformed_data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
         self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
 
         self._plots.sigCursorRangeChanged.connect(self._on_region_change)
-        self._table.sigTransformChanged.connect(self._on_transform_change)
 
     def _set_data_items(
         self,
@@ -82,42 +80,25 @@ class PlotsTableWidget(QSplitter):
         self._plots.show_data_items(new_data_items, no_create=len(new_data_items) > 8)
         self._table.set_data_items([(data_name, color) for data_name, color, _ in new_data_items])
 
-    def _transform_data(
-        self,
-        data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
-    ) -> Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
-        transformed_data = {}
-        for data_name in data.keys():
-            transformed = self._table.apply_transform(data_name, data)
-            if isinstance(transformed, Exception):
-                continue
-            transformed_data[data_name] = data[data_name][0], transformed
-        return transformed_data
-
     def _set_data(
         self,
         data: Mapping[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]],
     ) -> None:
-        self._data = {data_name: (self._to_array(xs), self._to_array(ys)) for data_name, (xs, ys) in data.items()}
-        self._transformed_data = self._transform_data(self._data)
-        self._plots.set_data(self._transformed_data)
-        self._table.set_data(
-            {
-                data_name: vals
-                for data_name, vals in self._transformed_data.items()
-                if self._data_items.get(data_name, (None, MultiPlotWidget.PlotType.DEFAULT))[1]
-                != MultiPlotWidget.PlotType.ENUM_WAVEFORM
-            }
-        )
+        self._plots.set_data(data)
+        # self._table.set_data(
+        #     {
+        #         data_name: vals
+        #         for data_name, vals in self._transformed_data.items()
+        #         if self._data_items.get(data_name, (None, MultiPlotWidget.PlotType.DEFAULT))[1]
+        #         != MultiPlotWidget.PlotType.ENUM_WAVEFORM
+        #     }
+        # )
 
     def _on_region_change(self, region: Optional[Union[float, Tuple[float, float]]]) -> None:
         if isinstance(region, tuple):
             self._table.set_range(region)
         else:
             self._table.set_range((-float("inf"), float("inf")))
-
-    def _on_transform_change(self, data_names: List[str]) -> None:
-        self._set_data(self._data)  # TODO minimal changes in the future
 
     def _write_csv(self, fileio: Union[TextIO, StringIO]) -> None:
         writer = csv.writer(fileio)

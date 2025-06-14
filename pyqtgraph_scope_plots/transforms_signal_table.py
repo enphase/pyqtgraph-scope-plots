@@ -18,7 +18,7 @@ from typing import Dict, Tuple, List, Any, Mapping, Union, Optional
 import numpy as np
 import numpy.typing as npt
 import simpleeval
-from PySide6.QtGui import QColor, QAction
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QTableWidgetItem, QMenu, QInputDialog, QLineEdit
 from pydantic import BaseModel
 
@@ -154,7 +154,11 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
         for data_name in data.keys():
             transformed = self.apply_transform(data_name, data)
             if isinstance(transformed, Exception):
+                self._transforms_errs[data_name] = transformed
                 continue
+            else:
+                if data_name in self._transforms_errs:
+                    del self._transforms_errs[data_name]
             transformed_data[data_name] = data[data_name][0], transformed
         return transformed_data
 
@@ -243,17 +247,11 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
     def _on_transforms_update(self) -> None:
         assert isinstance(self._plots, TransformsPlotWidget)
 
-        # TODO INTEGRATE EXC HANDLIGN CODE
-        data_name_to_row = {data_name: i for i, data_name in enumerate(self._data_items.keys())}
-        exc_text = f"at ({x}, {y}): {e.__class__.__name__}: {e}"
-        not_none(self.item(data_name_to_row[data_name], self.COL_TRANSFORM)).setText(exc_text)
-        not_none(self.item(data_name_to_row[data_name], self.COL_TRANSFORM)).setToolTip(exc_text)
-
         for row, (name, color) in enumerate(self._data_items.items()):
-            expr, _ = self._plots._transforms.get(name, (None, None))
-            if expr is not None:
-                not_none(self.item(row, self.COL_TRANSFORM)).setText(expr)
-                not_none(self.item(row, self.COL_TRANSFORM)).setToolTip(expr)
-            else:
-                not_none(self.item(row, self.COL_TRANSFORM)).setText("")
-                not_none(self.item(row, self.COL_TRANSFORM)).setToolTip("")
+            expr_str, _ = self._plots._transforms.get(name, ("", None))
+            exc_opt = self._plots._transforms_errs.get(name, None)
+            if exc_opt is not None:
+                expr_str = f"{expr_str}: {exc_opt.__class__.__name__}: {exc_opt}"
+
+            not_none(self.item(row, self.COL_TRANSFORM)).setText(expr_str)
+            not_none(self.item(row, self.COL_TRANSFORM)).setToolTip(expr_str)

@@ -193,23 +193,24 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         if not data_names:
             return
 
-        # try to find a drag point that is near the center of the view window, and preferably at a data point
-        view_left, view_right = self._plots.view_x_range()
-        view_center = (view_left + view_right) / 2
-        data_x, data_y = self._transformed_data.get(data_names[0], (np.array([]), np.array([])))
-        index = bisect.bisect_left(data_x, view_center)
-        if index >= len(data_x):  # snap to closest point
-            index = len(data_x) - 1
-        elif index < 0:
-            index = 0
-        if len(data_x) and data_x[index] >= view_left and data_x[index] <= view_right:  # point in view
-            handle_pos = float(data_x[index])  # cast from numpy float
-        else:  # no points in view
-            handle_pos = view_center
-
-        self._drag_handle_data = data_names
-        self._drag_handle_offset = handle_pos - initial_timeshift
-        self._plots.create_drag_cursor(handle_pos)
+        # TODO migrate
+        # # try to find a drag point that is near the center of the view window, and preferably at a data point
+        # view_left, view_right = self._plots.view_x_range()
+        # view_center = (view_left + view_right) / 2
+        # data_x, data_y = self._transformed_data.get(data_names[0], (np.array([]), np.array([])))
+        # index = bisect.bisect_left(data_x, view_center)
+        # if index >= len(data_x):  # snap to closest point
+        #     index = len(data_x) - 1
+        # elif index < 0:
+        #     index = 0
+        # if len(data_x) and data_x[index] >= view_left and data_x[index] <= view_right:  # point in view
+        #     handle_pos = float(data_x[index])  # cast from numpy float
+        # else:  # no points in view
+        #     handle_pos = view_center
+        #
+        # self._drag_handle_data = data_names
+        # self._drag_handle_offset = handle_pos - initial_timeshift
+        # self._plots.create_drag_cursor(handle_pos)
 
     def _on_timeshift_change(self, data_names: List[str]) -> None:
         self._set_data(self._data)  # TODO minimal changes in the future

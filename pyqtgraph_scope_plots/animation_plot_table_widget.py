@@ -41,7 +41,7 @@ class AnimationPlotsTableWidget(PlotsTableWidget):
             full_region = self._plots._last_region
             restore_full_region = True
         else:
-            all_xs = [data[0] for data in self._transformed_data.values()]
+            all_xs = [data[0] for data in self._plots._data.values()]
             min_xs = [min(data) for data in all_xs if len(data)]
             max_xs = [max(data) for data in all_xs if len(data)]
             assert min_xs or max_xs, "no data to determine full region"

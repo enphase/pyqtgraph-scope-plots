@@ -97,7 +97,7 @@ class RefGeoXyPlotWidget(XyPlotWidget):
     def _update(self) -> None:
         super()._update()  # data items drawn here
 
-        region = self._get_region()
+        region = HasRegionSignalsTable._region_of_plot(self._plots)
 
         def get_data_region(ts: npt.NDArray[np.float64], ys: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
             """Given ts and xs of a data item, return ys bounded to the input region."""

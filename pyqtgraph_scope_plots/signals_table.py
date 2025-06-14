@@ -26,7 +26,7 @@ from PySide6.QtWidgets import QTableWidgetItem, QTableWidget, QHeaderView, QMenu
 from pydantic import BaseModel
 
 from .cache_dict import IdentityCacheDict
-from .multi_plot_widget import MultiPlotWidget
+from .multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
 from .save_restore_model import BaseTopModel, DataTopModel, HasSaveLoadDataConfig
 from .util import not_none
 
@@ -103,10 +103,15 @@ class SignalsTable(QTableWidget):
 
 
 class HasRegionSignalsTable(SignalsTable):
-    """A SignalsTable that listens for a region change and provides some utilities"""
+    """Provides utilities for getting the region from a plot"""
 
-    def set_range(self, range: Tuple[float, float]) -> None:
-        self._range = range
+    @staticmethod
+    def _region_of_plot(plots: MultiPlotWidget) -> Tuple[float, float]:
+        """Returns the region of a plot, if the plot supports regions, otherwise returns (-inf, inf)."""
+        if isinstance(plots, LinkedMultiPlotWidget) and isinstance(plots._last_region, tuple):
+            return plots._last_region
+        else:
+            return (-float("inf"), float("inf"))
 
     @classmethod
     def _indices_of_region(
@@ -123,188 +128,6 @@ class HasRegionSignalsTable(SignalsTable):
             return None, None
         else:
             return low_index, high_index
-
-
-class HasDataSignalsTable(SignalsTable):
-    """A SignalsTable that stores a copy of the data"""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
-
-    def set_data(
-        self,
-        data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
-    ) -> None:
-        self._data = data
-
-
-class StatsSignalsTable(HasRegionSignalsTable, HasDataSignalsTable):
-    """Mixin into SignalsTable with statistics rows. Optional range to specify computation of statistics.
-    Values passed into set_data must all be numeric."""
-
-    COL_STAT = -1
-    COL_STAT_MIN = 0  # offset from COL_STAT
-    COL_STAT_MAX = 1
-    COL_STAT_AVG = 2
-    COL_STAT_RMS = 3
-    COL_STAT_STDEV = 4
-    STATS_COLS = [
-        COL_STAT_MIN,
-        COL_STAT_MAX,
-        COL_STAT_AVG,
-        COL_STAT_RMS,
-        COL_STAT_STDEV,
-    ]
-
-    FULL_RANGE = (-float("inf"), float("inf"))
-
-    class StatsCalculatorSignals(QObject):
-        update = Signal(object, object, object)  # input array, region, {stat (by offset col) -> value}
-
-    class StatsCalculatorThread(QThread):
-        """Stats calculated in a separate thread to avoid blocking the main GUI thread when large regions
-        are selected.
-        This thread is persistent and monitors its queue for requests to work. Requests (near)immediately
-        override whatever previous computation was in progress and are not queued.
-        Thread sleeps when current task and queue is empty."""
-
-        class Task(NamedTuple):
-            """A request for computing statistics of some ys and region (over xs, inclusive).
-            data is stored as a weakref to terminate computation early if data goes out of scope"""
-
-            data: List[Tuple[weakref.ref[npt.NDArray[np.float64]], weakref.ref[npt.NDArray[np.float64]]]]
-            region: Tuple[float, float]
-
-        def __init__(self, parent: Any):
-            super().__init__(parent)
-            self.signals = StatsSignalsTable.StatsCalculatorSignals()
-            self.queue: queue.Queue[StatsSignalsTable.StatsCalculatorThread.Task] = queue.Queue()
-
-        def run(self) -> None:
-            while True:
-                task = self.queue.get()  # get at least one task, blocking
-                while not self.queue.empty():  # but get the latest, if multiple, discarding earlier
-                    task = self.queue.get()
-
-                for xs_ys_ref in task.data:
-                    if not self.queue.empty():  # new task, drop current task
-                        break
-
-                    xs = xs_ys_ref[0]()
-                    ys = xs_ys_ref[1]()
-                    if xs is None or ys is None:  # skip objects that have been deleted
-                        continue
-                    low_index, high_index = HasRegionSignalsTable._indices_of_region(xs, task.region)
-                    if low_index is None or high_index is None:  # empty set
-                        ys_region = np.array([])
-                    else:
-                        ys_region = ys[low_index:high_index]
-                    stats_dict = self._calculate_stats(ys_region)
-                    self.signals.update.emit(ys, task.region, stats_dict)
-
-        def terminate_wait(self) -> None:
-            self.terminate()
-            self.wait()  # needed otherwise pytest fails on Linux
-
-        @classmethod
-        def _calculate_stats(cls, ys: npt.NDArray[np.float64]) -> Dict[int, float]:
-            """Calculates stats (as dict of col offset -> value) for the specified xs, ys.
-            Does not spawn a separate thread, does not affect global state."""
-            if len(ys) == 0:
-                return {}
-            stats_dict = {}
-            mean = sum(ys) / len(ys)
-            stats_dict[StatsSignalsTable.COL_STAT_MIN] = min(ys)
-            stats_dict[StatsSignalsTable.COL_STAT_MAX] = max(ys)
-            stats_dict[StatsSignalsTable.COL_STAT_AVG] = mean
-            stats_dict[StatsSignalsTable.COL_STAT_RMS] = math.sqrt(sum([x**2 for x in ys]) / len(ys))
-            stats_dict[StatsSignalsTable.COL_STAT_STDEV] = math.sqrt(sum([(x - mean) ** 2 for x in ys]) / len(ys))
-            return stats_dict
-
-    def _post_cols(self) -> int:
-        self.COL_STAT = super()._post_cols()
-        return self.COL_STAT + 5
-
-    def _init_table(self) -> None:
-        super()._init_table()
-        self.setHorizontalHeaderItem(self.COL_STAT + self.COL_STAT_MIN, QTableWidgetItem("Min"))
-        self.setHorizontalHeaderItem(self.COL_STAT + self.COL_STAT_MAX, QTableWidgetItem("Max"))
-        self.setHorizontalHeaderItem(self.COL_STAT + self.COL_STAT_AVG, QTableWidgetItem("Avg"))
-        self.setHorizontalHeaderItem(self.COL_STAT + self.COL_STAT_RMS, QTableWidgetItem("RMS"))
-        self.setHorizontalHeaderItem(self.COL_STAT + self.COL_STAT_STDEV, QTableWidgetItem("StDev"))
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        # since calculating stats across the full range is VERY EXPENSIVE, cache the results
-        self._full_range_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
-        self._region_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
-        self._range: Tuple[float, float] = self.FULL_RANGE
-
-        self._stats_compute_thread = self.StatsCalculatorThread(self)
-        self._stats_compute_thread.signals.update.connect(self._on_stats_updated)
-        self._stats_compute_thread.start(QThread.Priority.IdlePriority)
-        self.destroyed.connect(lambda: self._stats_compute_thread.terminate_wait())
-
-    def _on_stats_updated(
-        self, input_arr: npt.NDArray[np.float64], region: Tuple[float, float], stats_dict: Dict[int, float]
-    ) -> None:
-        if region == self.FULL_RANGE:
-            self._full_range_stats.set(input_arr, None, [], stats_dict)
-        elif region == self._range:
-            self._region_stats.set(input_arr, region, [], stats_dict)
-
-        if region == self._range:  # update display as needed
-            self._update_stats()
-
-    def set_data(
-        self,
-        data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
-    ) -> None:
-        """Sets the data and updates statistics"""
-        super().set_data(data)
-        self._create_stats_task()
-        self._update_stats()
-
-    def set_range(self, range: Tuple[float, float]) -> None:
-        super().set_range(range)
-        self._create_stats_task()
-        self._update_stats()
-
-    def _create_stats_task(self) -> None:
-        if self._range == self.FULL_RANGE:  # for full range, deduplicate with cache
-            needed_stats = [
-                (weakref.ref(xs), weakref.ref(ys))
-                for name, (xs, ys) in self._data.items()
-                if self._full_range_stats.get(ys, None, []) is None
-            ]
-        else:
-            needed_stats = [(weakref.ref(xs), weakref.ref(ys)) for name, (xs, ys) in self._data.items()]
-        self._stats_compute_thread.queue.put(self.StatsCalculatorThread.Task(needed_stats, self._range))
-
-    def _render_value(self, data_name: str, value: float) -> str:
-        """Float-to-string conversion for a value. Optionally override this to provide smarter precision."""
-        return self._plots.render_value(data_name, value)
-
-    def _update_stats(self) -> None:
-        for row, name in enumerate(self._data_items.keys()):
-            xs, ys = self._data.get(name, (None, None))
-            if xs is None or ys is None:
-                for col in self.STATS_COLS:
-                    not_none(self.item(row, self.COL_STAT + col)).setText("")
-                continue
-
-            if self._range == self.FULL_RANGE:  # fetch from cache if available
-                stats_dict: Dict[int, float] = self._full_range_stats.get(ys, None, [], {})
-            else:  # slice
-                stats_dict = self._region_stats.get(ys, self._range, [], {})
-
-            for col_offset in self.STATS_COLS:
-                if col_offset in stats_dict:
-                    text_value = self._render_value(name, stats_dict[col_offset])
-                else:
-                    text_value = ""
-                not_none(self.item(row, self.COL_STAT + col_offset)).setText(text_value)
 
 
 class ContextMenuSignalsTable(SignalsTable):

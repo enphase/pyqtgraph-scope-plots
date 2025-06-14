@@ -26,7 +26,8 @@ from .multi_plot_widget import (
     DroppableMultiPlotWidget,
     LinkedMultiPlotWidget,
 )
-from .signals_table import StatsSignalsTable, DraggableSignalsTable
+from .signals_table import DraggableSignalsTable
+from .stats_signals_table import StatsSignalsTable
 from .transforms_signal_table import TransformsSignalsTable
 from .xy_plot_table import XyTable
 

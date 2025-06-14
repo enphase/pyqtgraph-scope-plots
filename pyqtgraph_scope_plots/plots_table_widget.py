@@ -47,9 +47,9 @@ class PlotsTableWidget(QSplitter):
         Plots are created first, and this may reference plots."""
         return self.PlotsTableSignalsTable(self._plots)
 
-    def _make_controls(self) -> QWidget:
-        """Returns the control panel widget. Optional, defaults to nothing."""
-        return QWidget()
+    def _make_controls(self) -> Optional[QWidget]:
+        """Returns the control panel widget. Optional, defaults to empty."""
+        return None
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -58,19 +58,20 @@ class PlotsTableWidget(QSplitter):
         self._plots = self._make_plots()
         self._table = self._make_table()
 
-        bottom_layout = QHBoxLayout()
-        bottom_layout.addWidget(self._table)
-        bottom_layout.addWidget(self._controls)
-        bottom_widget = QWidget()
-        bottom_widget.setLayout(bottom_layout)
         self.setOrientation(Qt.Orientation.Vertical)
         self.addWidget(self._plots)
-        self.addWidget(bottom_widget)
+        if self._controls is not None:
+            bottom_layout = QHBoxLayout()
+            bottom_layout.addWidget(self._table)
+            bottom_layout.addWidget(self._controls)
+            bottom_widget = QWidget()
+            bottom_widget.setLayout(bottom_layout)
+            self.addWidget(bottom_widget)
+        else:
+            self.addWidget(self._table)
 
         self._data_items: Dict[str, Tuple[QColor, "MultiPlotWidget.PlotType"]] = {}
         self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
-
-        self._plots.sigCursorRangeChanged.connect(self._on_region_change)
 
     def _set_data_items(
         self,
@@ -78,27 +79,12 @@ class PlotsTableWidget(QSplitter):
     ) -> None:
         self._data_items = {name: (color, plot_type) for name, color, plot_type in new_data_items}
         self._plots.show_data_items(new_data_items, no_create=len(new_data_items) > 8)
-        self._table.set_data_items([(data_name, color) for data_name, color, _ in new_data_items])
 
     def _set_data(
         self,
         data: Mapping[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]],
     ) -> None:
         self._plots.set_data(data)
-        # self._table.set_data(
-        #     {
-        #         data_name: vals
-        #         for data_name, vals in self._transformed_data.items()
-        #         if self._data_items.get(data_name, (None, MultiPlotWidget.PlotType.DEFAULT))[1]
-        #         != MultiPlotWidget.PlotType.ENUM_WAVEFORM
-        #     }
-        # )
-
-    def _on_region_change(self, region: Optional[Union[float, Tuple[float, float]]]) -> None:
-        if isinstance(region, tuple):
-            self._table.set_range(region)
-        else:
-            self._table.set_range((-float("inf"), float("inf")))
 
     def _write_csv(self, fileio: Union[TextIO, StringIO]) -> None:
         writer = csv.writer(fileio)

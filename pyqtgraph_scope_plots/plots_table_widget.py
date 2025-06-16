@@ -26,7 +26,8 @@ from .multi_plot_widget import (
     DroppableMultiPlotWidget,
     LinkedMultiPlotWidget,
 )
-from .signals_table import DraggableSignalsTable, SignalsTable
+from .signals_table import DraggableSignalsTable
+from .signals_table import SignalsTable as OriginalSignalsTable
 
 
 class PlotsTableWidget(QSplitter):
@@ -36,14 +37,14 @@ class PlotsTableWidget(QSplitter):
     class SignalsTable(DraggableSignalsTable):
         """SignalsTable used in PlotsTableWidget with required mixins."""
 
-    _PLOT_TYPE: Type[LinkedMultiPlotWidget] = Plots
-    _TABLE_TYPE: Type[SignalsTable] = SignalsTable
+    _PLOT_TYPE: Type[MultiPlotWidget] = Plots
+    _TABLE_TYPE: Type[OriginalSignalsTable] = SignalsTable
 
-    def _make_plots(self) -> LinkedMultiPlotWidget:
+    def _make_plots(self) -> MultiPlotWidget:
         """Returns the plots widget. Optionally override to use a different plots widget."""
         return self._PLOT_TYPE()
 
-    def _make_table(self) -> SignalsTable:
+    def _make_table(self) -> OriginalSignalsTable:
         """Returns the signals table widget. Optionally override to use a different signals widget.
         Plots are created first, and this may reference plots."""
         return self._TABLE_TYPE(self._plots)

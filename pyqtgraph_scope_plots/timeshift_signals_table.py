@@ -16,12 +16,12 @@ from typing import Dict, List, Any, Mapping, Tuple, Optional
 
 import numpy as np
 import numpy.typing as npt
-from PySide6.QtGui import QAction, QColor
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QTableWidgetItem, QMenu
 from pydantic import BaseModel
 
 from .cache_dict import IdentityCacheDict
-from .multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
+from .multi_plot_widget import LinkedMultiPlotWidget
 from .save_restore_model import DataTopModel, HasSaveLoadDataConfig, BaseTopModel
 from .signals_table import ContextMenuSignalsTable
 from .util import not_none

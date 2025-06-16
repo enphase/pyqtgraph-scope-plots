@@ -12,12 +12,11 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-import bisect
 import itertools
 import os.path
 import time
 from functools import partial
-from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable, Sequence, cast, Set, Iterable
+from typing import Dict, Tuple, Any, List, Optional, Callable, Sequence, cast, Set, Iterable
 
 import numpy as np
 import numpy.typing as npt
@@ -40,6 +39,7 @@ from PySide6.QtWidgets import (
 from pydantic import BaseModel
 from pydantic._internal._model_construction import ModelMetaclass
 
+from ..xy_plot_table import XyTable
 from ..animation_plot_table_widget import AnimationPlotsTableWidget
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
@@ -48,8 +48,8 @@ from ..search_signals_table import SearchSignalsTable
 from ..signals_table import ColorPickerSignalsTable
 from ..stats_signals_table import StatsSignalsTable
 from ..time_axis import TimeAxisItem
-from ..timeshift_signals_table import TimeshiftSignalsTable
-from ..transforms_signal_table import TransformsSignalsTable
+from ..timeshift_signals_table import TimeshiftSignalsTable, TimeshiftPlotWidget
+from ..transforms_signal_table import TransformsSignalsTable, TransformsPlotWidget
 from ..util import int_color
 
 
@@ -75,7 +75,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
     WATCH_INTERVAL_MS = 333  # polls the filesystem metadata for changes this frequently
 
-    class Plots(PlotsTableWidget.PlotsTableMultiPlots):
+    class Plots(TimeshiftPlotWidget, TransformsPlotWidget, PlotsTableWidget.PlotsTableMultiPlots):
         """Adds legend add functionality"""
 
         def __init__(self, outer: "CsvLoaderPlotsTableWidget", **kwargs: Any) -> None:
@@ -93,12 +93,13 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             self._outer._apply_line_width()
 
     class CsvSignalsTable(
+        XyTable,
         ColorPickerSignalsTable,
-        PlotsTableWidget.PlotsTableSignalsTable,
-        TransformsSignalsTable,
         TimeshiftSignalsTable,
+        TransformsSignalsTable,
         SearchSignalsTable,
         StatsSignalsTable,
+        PlotsTableWidget.PlotsTableSignalsTable,
     ):
         """Adds a hook for item hide"""
 
@@ -131,11 +132,6 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
         self._table: CsvLoaderPlotsTableWidget.CsvSignalsTable
         self._table.sigColorChanged.connect(self._on_color_changed)
-        self._drag_handle_data: List[str] = []
-        self._drag_handle_offset = 0.0
-        self._table.sigTimeshiftHandle.connect(self._on_timeshift_handle)
-        self._table.sigTimeshiftChanged.connect(self._on_timeshift_change)
-        self._plots.sigDragCursorChanged.connect(self._on_drag_cursor_drag)
 
         self._csv_data_items: Dict[str, Set[str]] = {}  # csv path -> data name
         self._csv_time: Dict[str, float] = {}  # csv path -> load time
@@ -167,18 +163,6 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._table._load_model(model)
         self._plots._load_model(model)
 
-    # TODO apply timeshift in plot/signaltable
-    # def _transform_data(
-    #     self,
-    #     data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
-    # ) -> Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
-    #     # apply time-shift before function transform
-    #     transformed_data = {}
-    #     for data_name in data.keys():
-    #         transformed = self._table.apply_timeshifts(data_name, data)
-    #         transformed_data[data_name] = transformed, data[data_name][1]
-    #     return super()._transform_data(transformed_data)
-
     def _on_color_changed(self, items: List[Tuple[str, QColor]]) -> None:
         updated_data_items = self._data_items.copy()
         for name, new_color in items:
@@ -189,35 +173,6 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
                 )
         self._set_data_items([(name, color, plot_type) for name, (color, plot_type) in updated_data_items.items()])
         self._set_data(self._data)
-
-    def _on_timeshift_handle(self, data_names: List[str], initial_timeshift: float) -> None:
-        if not data_names:
-            return
-
-        # TODO migrate
-        # # try to find a drag point that is near the center of the view window, and preferably at a data point
-        # view_left, view_right = self._plots.view_x_range()
-        # view_center = (view_left + view_right) / 2
-        # data_x, data_y = self._transformed_data.get(data_names[0], (np.array([]), np.array([])))
-        # index = bisect.bisect_left(data_x, view_center)
-        # if index >= len(data_x):  # snap to closest point
-        #     index = len(data_x) - 1
-        # elif index < 0:
-        #     index = 0
-        # if len(data_x) and data_x[index] >= view_left and data_x[index] <= view_right:  # point in view
-        #     handle_pos = float(data_x[index])  # cast from numpy float
-        # else:  # no points in view
-        #     handle_pos = view_center
-        #
-        # self._drag_handle_data = data_names
-        # self._drag_handle_offset = handle_pos - initial_timeshift
-        # self._plots.create_drag_cursor(handle_pos)
-
-    def _on_timeshift_change(self, data_names: List[str]) -> None:
-        self._set_data(self._data)  # TODO minimal changes in the future
-
-    def _on_drag_cursor_drag(self, pos: float) -> None:
-        self._table.set_timeshift(self._drag_handle_data, pos - self._drag_handle_offset)
 
     def _on_legend_checked(self) -> None:
         self._legend_action.setDisabled(True)  # pyqtgraph doesn't support deleting legends

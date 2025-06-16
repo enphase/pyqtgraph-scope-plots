@@ -14,7 +14,7 @@
 
 import csv
 from io import StringIO
-from typing import Dict, Tuple, List, Any, Mapping, Union, Optional, TextIO
+from typing import Tuple, List, Any, Mapping, Union, Optional, TextIO
 
 import numpy as np
 import numpy.typing as npt
@@ -27,16 +27,13 @@ from .multi_plot_widget import (
     LinkedMultiPlotWidget,
 )
 from .signals_table import DraggableSignalsTable
-from .stats_signals_table import StatsSignalsTable
-from .transforms_signal_table import TransformsSignalsTable, TransformsPlotWidget
-from .xy_plot_table import XyTable
 
 
 class PlotsTableWidget(QSplitter):
-    class PlotsTableMultiPlots(TransformsPlotWidget, DroppableMultiPlotWidget, LinkedMultiPlotWidget):
+    class PlotsTableMultiPlots(DroppableMultiPlotWidget, LinkedMultiPlotWidget):
         """MultiPlotWidget used in PlotsTableWidget with required mixins."""
 
-    class PlotsTableSignalsTable(XyTable, DraggableSignalsTable, TransformsSignalsTable, StatsSignalsTable):
+    class PlotsTableSignalsTable(DraggableSignalsTable):
         """SignalsTable used in PlotsTableWidget with required mixins."""
 
     def _make_plots(self) -> PlotsTableMultiPlots:

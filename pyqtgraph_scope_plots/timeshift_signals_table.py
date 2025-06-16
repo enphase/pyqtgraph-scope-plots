@@ -11,7 +11,7 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-
+import bisect
 from typing import Dict, List, Any, Mapping, Tuple, Optional
 
 import numpy as np
@@ -21,7 +21,7 @@ from PySide6.QtWidgets import QTableWidgetItem, QMenu
 from pydantic import BaseModel
 
 from .cache_dict import IdentityCacheDict
-from .multi_plot_widget import MultiPlotWidget
+from .multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
 from .save_restore_model import DataTopModel, HasSaveLoadDataConfig, BaseTopModel
 from .signals_table import ContextMenuSignalsTable
 from .util import not_none
@@ -31,7 +31,7 @@ class TimeshiftDataStateModel(DataTopModel):
     timeshift: Optional[float] = None
 
 
-class TimeshiftPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
+class TimeshiftPlotWidget(LinkedMultiPlotWidget, HasSaveLoadDataConfig):
     """MultiPlotWidget that adds a user-defined data transform."""
 
     _DATA_MODEL_BASES = [TimeshiftDataStateModel]
@@ -43,6 +43,12 @@ class TimeshiftPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
         self._timeshifts_cached_results = IdentityCacheDict[
             npt.NDArray[np.float64], npt.NDArray[np.float64]
         ]()  # src x-values -> output x-values
+
+        # state variables for timeshift drag handle
+        self._timeshifts_drag_data_items: List[str] = []
+        self._timeshifts_drag_offset: float = 0
+        self.sigDragCursorChanged.connect(self._on_timeshift_drag)
+        self.sigDragCursorCleared.connect(self._on_timeshift_drag_clear)
 
     def _write_model(self, model: BaseModel) -> None:
         assert isinstance(model, BaseTopModel)
@@ -68,7 +74,6 @@ class TimeshiftPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
         if update:
             self._update_plots()
             self.sigDataUpdated.emit()
-            self.sigDataItemsUpdated.emit()
 
     def _apply_timeshift(
         self, data_name: str, all_data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]]
@@ -94,9 +99,39 @@ class TimeshiftPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
         data = super()._transform_data(data)
         transformed_data = {}
         for data_name in data.keys():
-            xs, ys = data[data_name][0]
+            xs, ys = data[data_name]
             transformed_data[data_name] = (self._apply_timeshift(data_name, data), ys)
         return transformed_data
+
+    def start_timeshift_drag(self, data_names: List[str]) -> None:
+        """Creates a timeshift drag handle to allow the user to visually drag a timeshift"""
+        if not data_names:
+            return
+
+        # try to find a drag point that is near the center of the view window, and preferably at a data point
+        view_left, view_right = self.view_x_range()
+        view_center = (view_left + view_right) / 2
+        data_x, data_y = self._data.get(data_names[0], (np.array([]), np.array([])))
+        index = bisect.bisect_left(data_x, view_center)
+        if index >= len(data_x):  # snap to closest point
+            index = len(data_x) - 1
+        elif index < 0:
+            index = 0
+        if len(data_x) and data_x[index] >= view_left and data_x[index] <= view_right:  # point in view
+            handle_pos = float(data_x[index])  # cast from numpy float
+        else:  # no points in view
+            handle_pos = view_center
+
+        self._timeshifts_drag_data_items = data_names
+        self._timeshifts_drag_offset = handle_pos - self._timeshifts.get(data_names[0], 0)
+        self.create_drag_cursor(handle_pos)
+
+    def _on_timeshift_drag(self, pos: float) -> None:
+        print(pos)
+        self.set_timeshift(self._timeshifts_drag_data_items, pos - self._timeshifts_drag_offset)
+
+    def _on_timeshift_drag_clear(self) -> None:
+        self._timeshifts_drag_data_items = []
 
 
 class TimeshiftSignalsTable(ContextMenuSignalsTable):
@@ -112,6 +147,7 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable):
         self._drag_timeshift_action = QAction("Drag Timeshift", self)
         self._drag_timeshift_action.triggered.connect(self._on_drag_timeshift)
         self.cellDoubleClicked.connect(self._on_timeshift_cell)
+        self._plots.sigDataUpdated.connect(self._update_timeshifts)
 
     def _post_cols(self) -> int:
         self.COL_TIMESHIFT = super()._post_cols()
@@ -123,6 +159,9 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable):
 
     def _update(self) -> None:
         super()._update()
+        self._update_timeshifts()
+
+    def _update_timeshifts(self) -> None:
         assert isinstance(self._plots, TimeshiftPlotWidget)
         for row, (name, color) in enumerate(self._data_items.items()):
             timeshift = self._plots._timeshifts.get(name)
@@ -140,12 +179,7 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable):
             self._on_drag_timeshift()
 
     def _on_drag_timeshift(self) -> None:
+        assert isinstance(self._plots, TimeshiftPlotWidget)
         data_names = list(self._data_items.keys())
         selected_data_names = [data_names[item.row()] for item in self.selectedItems()]
-        if len(selected_data_names) == 0:
-            return
-        if selected_data_names[0] in self._timeshifts:
-            initial_timeshift = self._timeshifts[selected_data_names[0]]
-        else:
-            initial_timeshift = 0
-        self.sigTimeshiftHandle.emit(selected_data_names, initial_timeshift)
+        self._plots.start_timeshift_drag(selected_data_names)

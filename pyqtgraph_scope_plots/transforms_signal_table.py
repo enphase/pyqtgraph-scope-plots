@@ -184,7 +184,6 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
         if update:
             self._update_plots()
             self.sigDataUpdated.emit()
-            self.sigDataItemsUpdated.emit()
 
 
 class TransformsSignalsTable(ContextMenuSignalsTable):
@@ -200,7 +199,7 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
         self._set_transform_action = QAction("Set Function", self)
         self._set_transform_action.triggered.connect(self._on_set_transform)
         self.cellDoubleClicked.connect(self._on_transform_double_click)
-        self._plots.sigDataItemsUpdated.connect(self._on_transforms_update)
+        self._plots.sigDataUpdated.connect(self._update_transforms)
 
     def _post_cols(self) -> int:
         self.COL_TRANSFORM = super()._post_cols()
@@ -209,6 +208,22 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
     def _init_table(self) -> None:
         super()._init_table()
         self.setHorizontalHeaderItem(self.COL_TRANSFORM, QTableWidgetItem("Function"))
+
+    def _update(self) -> None:
+        super()._update()
+        self._update_transforms()
+
+    def _update_transforms(self) -> None:
+        assert isinstance(self._plots, TransformsPlotWidget)
+
+        for row, (name, color) in enumerate(self._data_items.items()):
+            expr_str, _ = self._plots._transforms.get(name, ("", None))
+            exc_opt = self._plots._transforms_errs.get(name, None)
+            if exc_opt is not None:
+                expr_str = f"{expr_str}: {exc_opt.__class__.__name__}: {exc_opt}"
+
+            not_none(self.item(row, self.COL_TRANSFORM)).setText(expr_str)
+            not_none(self.item(row, self.COL_TRANSFORM)).setToolTip(expr_str)
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)
@@ -246,15 +261,3 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
                 return
             except SyntaxError as exc:
                 err_msg = f"\n\n{exc.__class__.__name__}: {exc}"
-
-    def _on_transforms_update(self) -> None:
-        assert isinstance(self._plots, TransformsPlotWidget)
-
-        for row, (name, color) in enumerate(self._data_items.items()):
-            expr_str, _ = self._plots._transforms.get(name, ("", None))
-            exc_opt = self._plots._transforms_errs.get(name, None)
-            if exc_opt is not None:
-                expr_str = f"{expr_str}: {exc_opt.__class__.__name__}: {exc_opt}"
-
-            not_none(self.item(row, self.COL_TRANSFORM)).setText(expr_str)
-            not_none(self.item(row, self.COL_TRANSFORM)).setToolTip(expr_str)

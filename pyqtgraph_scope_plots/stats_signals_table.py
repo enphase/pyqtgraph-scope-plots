@@ -128,12 +128,12 @@ class StatsSignalsTable(HasRegionSignalsTable):
         self._full_range_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
         self._region_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
 
-        self._plots.sigDataUpdated.connect(self._create_stats_task)
-        self._plots.sigCursorRangeChanged.connect(self._create_stats_task)
+        self._plots.sigDataUpdated.connect(self._update_stats_task)
+        self._plots.sigCursorRangeChanged.connect(self._update_stats_task)
 
         self._stats_compute_thread = self.StatsCalculatorThread(self)
         self._stats_compute_thread.signals.update.connect(self._on_stats_updated)
-        self._stats_compute_thread.start(QThread.Priority.IdlePriority)
+        self._stats_compute_thread.start(QThread.Priority.LowestPriority)
         self.destroyed.connect(lambda: self._stats_compute_thread.terminate_wait())
 
     def _on_stats_updated(
@@ -147,7 +147,7 @@ class StatsSignalsTable(HasRegionSignalsTable):
         if input_region == region:  # update display as needed
             self._update_stats_display()
 
-    def _create_stats_task(self) -> None:
+    def _update_stats_task(self) -> None:
         region = HasRegionSignalsTable._region_of_plot(self._plots)
         data_items = [  # filter out enum types
             (name, (xs, ys)) for name, (xs, ys) in self._plots._data.items() if np.issubdtype(ys.dtype, np.number)
@@ -164,7 +164,7 @@ class StatsSignalsTable(HasRegionSignalsTable):
             self._stats_compute_thread.queue.get(block=False, timeout=0)  # clear a prior element
         except queue.Empty:
             pass
-        self._stats_compute_thread.queue.put(self.StatsCalculatorThread.Task(needed_stats, region))
+        self._stats_compute_thread.queue.put(self.StatsCalculatorThread.Task(needed_stats, region), block=False)
 
         self._update_stats_display()
 

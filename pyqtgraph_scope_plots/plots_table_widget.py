@@ -36,7 +36,7 @@ class PlotsTableWidget(QSplitter):
     class SignalsTable(DraggableSignalsTable):
         """SignalsTable used in PlotsTableWidget with required mixins."""
 
-    _PLOT_TYPE: Type[MultiPlotWidget] = Plots
+    _PLOT_TYPE: Type[Plots] = Plots
     _TABLE_TYPE: Type[SignalsTable] = SignalsTable
 
     def _make_plots(self) -> Plots:

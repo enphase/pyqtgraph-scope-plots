@@ -78,19 +78,30 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
     class Plots(TimeshiftPlotWidget, TransformsPlotWidget, PlotsTableWidget.Plots):
         """Adds legend add functionality"""
 
-        def __init__(self, outer: "CsvLoaderPlotsTableWidget", **kwargs: Any) -> None:
-            self._outer = outer
-            super().__init__(**kwargs)
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            self._thickness: float = 1
+            self._show_legend: bool = False
+            super().__init__(*args, **kwargs)
 
         def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
             plot_item = super()._init_plot_item(plot_item)
-            if self._outer._legend_action.isChecked():
+            if self._show_legend:
                 plot_item.addLegend()
             return plot_item
 
         def _update_plots(self) -> None:
             super()._update_plots()
-            self._outer._apply_line_width()
+            for plot_item, _ in self._plot_item_data.items():
+                for item in plot_item.items:
+                    if isinstance(item, pg.PlotCurveItem):
+                        item.setPen(color=item.opts["pen"].color(), width=self._thickness)
+
+        def set_thickness(self, thickness: float) -> None:
+            self._thickness = thickness
+            self._update_plots()
+
+        def show_legends(self) -> None:
+            self._show_legend = True
 
     class SignalsTable(
         XyTable,
@@ -118,12 +129,11 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             super()._populate_context_menu(menu)
             menu.addAction(self._remove_row_action)
 
-    _PLOT_TYPE: Type[MultiPlotWidget] = Plots
+    _PLOT_TYPE: Type[PlotsTableWidget.Plots] = Plots
     _TABLE_TYPE: Type[SignalsTable] = SignalsTable
 
     def __init__(self, x_axis: Optional[Callable[[], pg.AxisItem]] = None) -> None:
         self._x_axis = x_axis
-        self._thickness: float = 1
 
         super().__init__()
 
@@ -173,22 +183,18 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
     def _on_legend_checked(self) -> None:
         self._legend_action.setDisabled(True)  # pyqtgraph doesn't support deleting legends
-        for plot_item, _ in self._plots._plot_item_data.items():
-            plot_item.addLegend()
-            self._plots._update_plots()
+        assert isinstance(self._plots, self.Plots)
+        self._plots.show_legends()
 
     def _on_line_width_action(self) -> None:
-        value, ok = QInputDialog().getDouble(self, "Set thickness", "Line thickness", self._thickness, minValue=0)
+        assert isinstance(self._plots, self.Plots)
+        value, ok = QInputDialog().getDouble(
+            self, "Set thickness", "Line thickness", self._plots._thickness, minValue=0
+        )
         if not ok:
             return
-        self._thickness = value
-        self._apply_line_width()
-
-    def _apply_line_width(self) -> None:
-        for plot_item, _ in self._plots._plot_item_data.items():
-            for item in plot_item.items:
-                if isinstance(item, pg.PlotCurveItem):
-                    item.setPen(color=item.opts["pen"].color(), width=self._thickness)
+        assert isinstance(self._plots, self.Plots)
+        self._plots.set_thickness(value)
 
     def _make_controls(self) -> QWidget:
         button_load = QToolButton()

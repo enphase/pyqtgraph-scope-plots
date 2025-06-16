@@ -14,7 +14,7 @@
 
 import csv
 from io import StringIO
-from typing import Tuple, List, Any, Mapping, Union, Optional, TextIO
+from typing import Tuple, List, Any, Mapping, Union, Optional, TextIO, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -26,24 +26,27 @@ from .multi_plot_widget import (
     DroppableMultiPlotWidget,
     LinkedMultiPlotWidget,
 )
-from .signals_table import DraggableSignalsTable
+from .signals_table import DraggableSignalsTable, SignalsTable
 
 
 class PlotsTableWidget(QSplitter):
-    class PlotsTableMultiPlots(DroppableMultiPlotWidget, LinkedMultiPlotWidget):
+    class Plots(DroppableMultiPlotWidget, LinkedMultiPlotWidget):
         """MultiPlotWidget used in PlotsTableWidget with required mixins."""
 
-    class PlotsTableSignalsTable(DraggableSignalsTable):
+    class SignalsTable(DraggableSignalsTable):
         """SignalsTable used in PlotsTableWidget with required mixins."""
 
-    def _make_plots(self) -> PlotsTableMultiPlots:
-        """Returns the plots widget. Optionally override to use a different plots widget."""
-        return self.PlotsTableMultiPlots()
+    _PLOT_TYPE: Type[MultiPlotWidget] = Plots
+    _TABLE_TYPE: Type[SignalsTable] = SignalsTable
 
-    def _make_table(self) -> PlotsTableSignalsTable:
+    def _make_plots(self) -> Plots:
+        """Returns the plots widget. Optionally override to use a different plots widget."""
+        return self._PLOT_TYPE()
+
+    def _make_table(self) -> SignalsTable:
         """Returns the signals table widget. Optionally override to use a different signals widget.
         Plots are created first, and this may reference plots."""
-        return self.PlotsTableSignalsTable(self._plots)
+        return self._TABLE_TYPE(self._plots)
 
     def _make_controls(self) -> Optional[QWidget]:
         """Returns the control panel widget. Optional, defaults to empty."""

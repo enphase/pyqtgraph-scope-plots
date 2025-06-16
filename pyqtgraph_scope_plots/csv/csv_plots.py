@@ -16,7 +16,7 @@ import itertools
 import os.path
 import time
 from functools import partial
-from typing import Dict, Tuple, Any, List, Optional, Callable, Sequence, cast, Set, Iterable
+from typing import Dict, Tuple, Any, List, Optional, Callable, Sequence, cast, Set, Iterable, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -45,7 +45,7 @@ from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
 from ..save_restore_model import BaseTopModel, HasSaveLoadDataConfig
 from ..search_signals_table import SearchSignalsTable
-from ..signals_table import ColorPickerSignalsTable
+from ..signals_table import ColorPickerSignalsTable, SignalsTable
 from ..stats_signals_table import StatsSignalsTable
 from ..time_axis import TimeAxisItem
 from ..timeshift_signals_table import TimeshiftSignalsTable, TimeshiftPlotWidget
@@ -75,7 +75,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
     WATCH_INTERVAL_MS = 333  # polls the filesystem metadata for changes this frequently
 
-    class Plots(TimeshiftPlotWidget, TransformsPlotWidget, PlotsTableWidget.PlotsTableMultiPlots):
+    class Plots(TimeshiftPlotWidget, TransformsPlotWidget, PlotsTableWidget.Plots):
         """Adds legend add functionality"""
 
         def __init__(self, outer: "CsvLoaderPlotsTableWidget", **kwargs: Any) -> None:
@@ -92,14 +92,14 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             super()._update_plots()
             self._outer._apply_line_width()
 
-    class CsvSignalsTable(
+    class SignalsTable(
         XyTable,
         ColorPickerSignalsTable,
         TimeshiftSignalsTable,
         TransformsSignalsTable,
         SearchSignalsTable,
         StatsSignalsTable,
-        PlotsTableWidget.PlotsTableSignalsTable,
+        PlotsTableWidget.SignalsTable,
     ):
         """Adds a hook for item hide"""
 
@@ -118,11 +118,8 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             super()._populate_context_menu(menu)
             menu.addAction(self._remove_row_action)
 
-    def _make_plots(self) -> "CsvLoaderPlotsTableWidget.Plots":
-        return self.Plots(self, x_axis=self._x_axis)
-
-    def _make_table(self) -> "CsvLoaderPlotsTableWidget.CsvSignalsTable":
-        return self.CsvSignalsTable(self._plots)
+    _PLOT_TYPE: Type[MultiPlotWidget] = Plots
+    _TABLE_TYPE: Type[SignalsTable] = SignalsTable
 
     def __init__(self, x_axis: Optional[Callable[[], pg.AxisItem]] = None) -> None:
         self._x_axis = x_axis
@@ -130,7 +127,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
         super().__init__()
 
-        self._table: CsvLoaderPlotsTableWidget.CsvSignalsTable
+        self._table: CsvLoaderPlotsTableWidget.SignalsTable
         self._table.sigColorChanged.connect(self._on_color_changed)
 
         self._csv_data_items: Dict[str, Set[str]] = {}  # csv path -> data name
@@ -143,14 +140,14 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
     def _get_model_bases(cls) -> List[ModelMetaclass]:
         bases = super()._get_model_bases()
         plot_bases = cls.Plots._get_model_bases()
-        table_bases = cls.CsvSignalsTable._get_model_bases()
+        table_bases = cls.SignalsTable._get_model_bases()
         return bases + plot_bases + table_bases
 
     @classmethod
     def _get_data_model_bases(cls) -> List[ModelMetaclass]:
         bases = super()._get_data_model_bases()
         plot_bases = cls.Plots._get_data_model_bases()
-        table_bases = cls.CsvSignalsTable._get_data_model_bases()
+        table_bases = cls.SignalsTable._get_data_model_bases()
         return bases + plot_bases + table_bases
 
     def _write_model(self, model: BaseModel) -> None:

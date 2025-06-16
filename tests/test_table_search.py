@@ -23,8 +23,15 @@ from pyqtgraph_scope_plots.search_signals_table import SearchSignalsTable
 @pytest.fixture()
 def search_table(qtbot: QtBot) -> SearchSignalsTable:
     """Creates a signals plot with multiple data items"""
-    table = SearchSignalsTable(MultiPlotWidget())
-    table.set_data_items([("aaa", QColor("yellow")), ("abC", QColor("orange")), ("abd", QColor("blue"))])
+    plots = MultiPlotWidget()
+    table = SearchSignalsTable(plots)
+    plots.show_data_items(
+        [
+            ("aaa", QColor("yellow"), MultiPlotWidget.PlotType.DEFAULT),
+            ("abC", QColor("orange"), MultiPlotWidget.PlotType.DEFAULT),
+            ("abd", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
+        ]
+    )
     qtbot.addWidget(table)
     table.show()
     qtbot.waitExposed(table)

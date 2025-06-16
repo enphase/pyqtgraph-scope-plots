@@ -18,6 +18,7 @@ from PySide6 import QtGui
 from PySide6.QtWidgets import QInputDialog, QFileDialog, QWidget
 from PIL import Image
 
+from .multi_plot_widget import LinkedMultiPlotWidget
 from .xy_plot_table import XyTable
 from .plots_table_widget import PlotsTableWidget
 
@@ -25,12 +26,16 @@ from .plots_table_widget import PlotsTableWidget
 class AnimationPlotsTableWidget(PlotsTableWidget):
     """A PlotTableWidget that provides a function for generating an animation from the plot windows.
     This function handles the UI flow for generating an animation, but does not provide the controls
-    to initiate this flow (which is left up to the subclass to implement)"""
+    to initiate this flow (which is left up to the subclass to implement).
+
+    Plots must be LinkedMultiPlotWidget"""
 
     FRAMES_PER_SEGMENT = 8  # TODO these should be user-configurable
     MS_PER_FRAME = 50
 
     def _start_animation_ui_flow(self, default_filename: str = "") -> None:
+        assert isinstance(self._plots, LinkedMultiPlotWidget)
+
         region_percentage, ok = QInputDialog().getDouble(
             self, "Animation", "Region percentage per frame", 10, minValue=0, maxValue=100
         )
@@ -41,7 +46,7 @@ class AnimationPlotsTableWidget(PlotsTableWidget):
             full_region = self._plots._last_region
             restore_full_region = True
         else:
-            all_xs = [data[0] for data in self._transformed_data.values()]
+            all_xs = [data[0] for data in self._plots._data.values()]
             min_xs = [min(data) for data in all_xs if len(data)]
             max_xs = [max(data) for data in all_xs if len(data)]
             assert min_xs or max_xs, "no data to determine full region"

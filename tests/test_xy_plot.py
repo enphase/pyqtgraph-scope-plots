@@ -19,27 +19,26 @@ import pytest
 from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.plots_table_widget import PlotsTableWidget
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
 from pyqtgraph_scope_plots.util import not_none
-from pyqtgraph_scope_plots.xy_plot import XyPlotWidget, XyWindowModel
+from pyqtgraph_scope_plots.xy_plot import XyPlotWidget
 from pyqtgraph_scope_plots.xy_plot_refgeo import XyRefGeoModel
 from pyqtgraph_scope_plots.xy_plot_splitter import XyPlotSplitter
-from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel
+from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel, XyTable
 
 
 @pytest.fixture()
-def plot(qtbot: QtBot) -> PlotsTableWidget:
+def xy_table(qtbot: QtBot) -> XyTable:
     """Creates a signals plot with multiple data items"""
-    plot = PlotsTableWidget()
-    plot._set_data_items(
+    table = XyTable(MultiPlotWidget())
+    table._plots.show_data_items(
         [
             ("0", QColor("yellow"), MultiPlotWidget.PlotType.DEFAULT),
             ("1", QColor("orange"), MultiPlotWidget.PlotType.DEFAULT),
             ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
         ]
     )
-    plot._set_data(
+    table._plots.set_data(
         {
             "0": ([0, 1, 2], [0, 1, 2]),
             "1": ([0, 1, 2], [2, 1, 0]),
@@ -47,10 +46,10 @@ def plot(qtbot: QtBot) -> PlotsTableWidget:
             "X": ([0, 1, 4], [0, 1, 2]),  # not evenly spaced
         }
     )
-    qtbot.addWidget(plot)
-    plot.show()
-    qtbot.waitExposed(plot)
-    return plot
+    qtbot.addWidget(table)
+    table.show()
+    qtbot.waitExposed(table)
+    return table
 
 
 def test_correlated_indices() -> None:
@@ -86,19 +85,19 @@ def test_correlated_indices() -> None:
     assert XyPlotWidget._get_correlated_indices(np.array([0, 20, 30]), np.array([0, 10, 20, 30]), 0, 20) is None
 
 
-def test_xy_create_ui(qtbot: QtBot, plot: PlotsTableWidget) -> None:
+def test_xy_create_ui(qtbot: QtBot, xy_table: XyTable) -> None:
     # test that xy creation doesn't error out and follows the user order
-    plot._table.item(1, 0).setSelected(True)
-    plot._table.item(0, 0).setSelected(True)
-    xy_plot = cast(XyPlotSplitter, plot._table._on_create_xy())
+    xy_table.item(1, 0).setSelected(True)
+    xy_table.item(0, 0).setSelected(True)
+    xy_plot = cast(XyPlotSplitter, xy_table._on_create_xy())
     qtbot.waitSignal(xy_plot._xy_plots.sigXyDataItemsChanged)
     assert xy_plot is not None
     assert xy_plot._xy_plots._xys == [("1", "0")]
 
-    plot._table.clearSelection()
-    plot._table.item(0, 0).setSelected(True)
-    plot._table.item(1, 0).setSelected(True)
-    xy_plot = cast(XyPlotSplitter, plot._table._on_create_xy())
+    xy_table.clearSelection()
+    xy_table.item(0, 0).setSelected(True)
+    xy_table.item(1, 0).setSelected(True)
+    xy_plot = cast(XyPlotSplitter, xy_table._on_create_xy())
     qtbot.waitSignal(xy_plot._xy_plots.sigXyDataItemsChanged)
     assert xy_plot is not None
     assert xy_plot._xy_plots._xys == [("0", "1")]
@@ -106,16 +105,16 @@ def test_xy_create_ui(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     qtbot.wait(10)  # wait for rendering to happen
 
 
-def test_xy_close_cleanup(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    xy_plot = cast(XyPlotSplitter, plot._table.create_xy())
+def test_xy_close_cleanup(qtbot: QtBot, xy_table: XyTable) -> None:
+    xy_plot = cast(XyPlotSplitter, xy_table.create_xy())
     xy_plot.add_xy("0", "2")
-    qtbot.waitUntil(lambda: len(plot._table._xy_plots) > 0)
+    qtbot.waitUntil(lambda: len(xy_table._xy_plots) > 0)
     xy_plot.close()
-    qtbot.waitUntil(lambda: not plot._table._xy_plots)
+    qtbot.waitUntil(lambda: not xy_table._xy_plots)
 
 
-def test_xy_offset(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    xy_plot = cast(XyPlotSplitter, plot._table.create_xy())
+def test_xy_offset(qtbot: QtBot, xy_table: XyTable) -> None:
+    xy_plot = cast(XyPlotSplitter, xy_table.create_xy())
     xy_plot.add_xy("0", "2")
     xy_plot.add_xy("2", "0")
     assert xy_plot._xy_plots._xys == [("0", "2"), ("2", "0")]
@@ -123,26 +122,26 @@ def test_xy_offset(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     qtbot.wait(10)  # wait for rendering to happen to ensure it doesn't error
 
 
-def test_xy_save(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    xy_plot = plot._table.create_xy()
+def test_xy_save(qtbot: QtBot, xy_table: XyTable) -> None:
+    xy_plot = xy_table.create_xy()
     xy_plot.add_xy("0", "1")
     xy_plot.add_xy("1", "0")
-    qtbot.waitUntil(lambda: len(not_none(cast(XyTableStateModel, plot._table._dump_data_model([])).xy_windows)) == 1)
-    model = cast(XyTableStateModel, plot._table._dump_data_model([]))
+    qtbot.waitUntil(lambda: len(not_none(cast(XyTableStateModel, xy_table._dump_data_model([])).xy_windows)) == 1)
+    model = cast(XyTableStateModel, xy_table._dump_data_model([]))
     assert not_none(model.xy_windows)[0].xy_data_items == [("0", "1"), ("1", "0")]
 
 
-def test_xy_load(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    model = cast(XyTableStateModel, plot._table._dump_data_model([]))
+def test_xy_load(qtbot: QtBot, xy_table: XyTable) -> None:
+    model = cast(XyTableStateModel, xy_table._dump_data_model([]))
 
     model.xy_windows = [XyRefGeoModel(xy_data_items=[("1", "0")])]
-    plot._table._load_model(model)
-    qtbot.waitUntil(lambda: len(plot._table._xy_plots) == 1)
-    assert cast(XyPlotSplitter, plot._table._xy_plots[0])._xy_plots._xys == [("1", "0")]
+    xy_table._load_model(model)
+    qtbot.waitUntil(lambda: len(xy_table._xy_plots) == 1)
+    assert cast(XyPlotSplitter, xy_table._xy_plots[0])._xy_plots._xys == [("1", "0")]
 
 
-def test_xy_table(qtbot: QtBot, plot: PlotsTableWidget) -> None:
-    xy_plot = cast(XyPlotSplitter, plot._table.create_xy())
+def test_xy_table(qtbot: QtBot, xy_table: XyTable) -> None:
+    xy_plot = cast(XyPlotSplitter, xy_table.create_xy())
     xy_plot.add_xy("0", "1")
     qtbot.waitUntil(lambda: xy_plot._table.rowCount() == 1)
     assert xy_plot._table.item(0, 0).text() == "0"

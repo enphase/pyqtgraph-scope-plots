@@ -67,7 +67,7 @@ class RefGeoXyPlotWidget(XyPlotWidget):
             try:
                 self.set_ref_geometry_fn(expr, update=False)
             except Exception as e:
-                pass  # ignore
+                print(f"failed to restore ref geometry fn {expr}: {e}")  # TODO better logging
 
         # bulk update
         self._update()
@@ -97,7 +97,7 @@ class RefGeoXyPlotWidget(XyPlotWidget):
     def _update(self) -> None:
         super()._update()  # data items drawn here
 
-        region = self._get_region()
+        region = HasRegionSignalsTable._region_of_plot(self._plots)
 
         def get_data_region(ts: npt.NDArray[np.float64], ys: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
             """Given ts and xs of a data item, return ys bounded to the input region."""
@@ -169,8 +169,9 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
         text = ""
         if index is not None:
             text = self._xy_plots._refgeo_fns[index][0]
-        err_msg = ""
         fn_help_str = "\n".join([f"- {fn.__doc__}" for fn_name, fn in self._xy_plots._SIMPLEEVAL_FNS.items()])
+
+        err_msg = ""
         while True:
             text, ok = QInputDialog().getText(
                 self,
@@ -183,9 +184,9 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
             )
             if not ok:
                 return
-            else:
-                try:
-                    self._xy_plots.set_ref_geometry_fn(text, index)
-                    return
-                except SyntaxError as exc:
-                    err_msg = f"\n\n{exc.__class__.__name__}: {exc}"
+
+            try:
+                self._xy_plots.set_ref_geometry_fn(text, index)
+                return
+            except SyntaxError as exc:
+                err_msg = f"\n\n{exc.__class__.__name__}: {exc}"

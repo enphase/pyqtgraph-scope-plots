@@ -12,12 +12,11 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-import bisect
 import itertools
 import os.path
 import time
 from functools import partial
-from typing import Dict, Tuple, Any, List, Mapping, Optional, Callable, Sequence, cast, Set, Iterable
+from typing import Dict, Tuple, Any, List, Optional, Callable, Sequence, cast, Set, Iterable, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -26,7 +25,7 @@ import pyqtgraph as pg
 import yaml
 from PySide6 import QtWidgets
 from PySide6.QtCore import QKeyCombination, QTimer
-from PySide6.QtGui import QAction, QColor, Qt
+from PySide6.QtGui import QAction, Qt
 from PySide6.QtWidgets import (
     QWidget,
     QPushButton,
@@ -41,15 +40,17 @@ from pydantic import BaseModel
 from pydantic._internal._model_construction import ModelMetaclass
 
 from ..animation_plot_table_widget import AnimationPlotsTableWidget
+from ..color_signals_table import ColorPickerSignalsTable, ColorPickerPlotWidget
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
 from ..save_restore_model import BaseTopModel, HasSaveLoadDataConfig
 from ..search_signals_table import SearchSignalsTable
-from ..signals_table import ColorPickerSignalsTable, StatsSignalsTable
+from ..stats_signals_table import StatsSignalsTable
 from ..time_axis import TimeAxisItem
-from ..timeshift_signals_table import TimeshiftSignalsTable
-from ..transforms_signal_table import TransformsSignalsTable
+from ..timeshift_signals_table import TimeshiftSignalsTable, TimeshiftPlotWidget
+from ..transforms_signal_table import TransformsSignalsTable, TransformsPlotWidget
 from ..util import int_color
+from ..xy_plot_table import XyTable
 
 
 class TupleSafeLoader(yaml.SafeLoader):
@@ -74,30 +75,42 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
     WATCH_INTERVAL_MS = 333  # polls the filesystem metadata for changes this frequently
 
-    class Plots(PlotsTableWidget.PlotsTableMultiPlots):
+    class Plots(ColorPickerPlotWidget, TimeshiftPlotWidget, TransformsPlotWidget, PlotsTableWidget.Plots):
         """Adds legend add functionality"""
 
-        def __init__(self, outer: "CsvLoaderPlotsTableWidget", **kwargs: Any) -> None:
-            self._outer = outer
-            super().__init__(**kwargs)
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            self._thickness: float = 1
+            self._show_legend: bool = False
+            super().__init__(*args, **kwargs)
 
         def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
             plot_item = super()._init_plot_item(plot_item)
-            if self._outer._legend_action.isChecked():
+            if self._show_legend:
                 plot_item.addLegend()
             return plot_item
 
         def _update_plots(self) -> None:
             super()._update_plots()
-            self._outer._apply_line_width()
+            for plot_item, _ in self._plot_item_data.items():
+                for item in plot_item.items:
+                    if isinstance(item, pg.PlotCurveItem):
+                        item.setPen(color=item.opts["pen"].color(), width=self._thickness)
 
-    class CsvSignalsTable(
+        def set_thickness(self, thickness: float) -> None:
+            self._thickness = thickness
+            self._update_plots()
+
+        def show_legends(self) -> None:
+            self._show_legend = True
+
+    class SignalsTable(
+        XyTable,
         ColorPickerSignalsTable,
-        PlotsTableWidget.PlotsTableSignalsTable,
-        TransformsSignalsTable,
         TimeshiftSignalsTable,
+        TransformsSignalsTable,
         SearchSignalsTable,
         StatsSignalsTable,
+        PlotsTableWidget.SignalsTable,
     ):
         """Adds a hook for item hide"""
 
@@ -116,26 +129,19 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             super()._populate_context_menu(menu)
             menu.addAction(self._remove_row_action)
 
-    def _make_plots(self) -> "CsvLoaderPlotsTableWidget.Plots":
-        return self.Plots(self, x_axis=self._x_axis)
-
-    def _make_table(self) -> "CsvLoaderPlotsTableWidget.CsvSignalsTable":
-        return self.CsvSignalsTable(self._plots)
+    _PLOT_TYPE: Type[PlotsTableWidget.Plots] = Plots
+    _TABLE_TYPE: Type[SignalsTable] = SignalsTable
 
     def __init__(self, x_axis: Optional[Callable[[], pg.AxisItem]] = None) -> None:
         self._x_axis = x_axis
-        self._thickness: float = 1
 
         super().__init__()
 
-        self._table: CsvLoaderPlotsTableWidget.CsvSignalsTable
-        self._table.sigColorChanged.connect(self._on_color_changed)
-        self._drag_handle_data: List[str] = []
-        self._drag_handle_offset = 0.0
-        self._table.sigTimeshiftHandle.connect(self._on_timeshift_handle)
-        self._table.sigTimeshiftChanged.connect(self._on_timeshift_change)
-        self._plots.sigDragCursorChanged.connect(self._on_drag_cursor_drag)
+        self._table: CsvLoaderPlotsTableWidget.SignalsTable
 
+        # since this can load multiple CSVs simultaneously, store the data here
+        self._data_items: Dict[str, MultiPlotWidget.PlotType] = {}  # col header -> plot type IF NOT Default
+        self._data: Dict[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]] = {}  # col header -> xs, ys
         self._csv_data_items: Dict[str, Set[str]] = {}  # csv path -> data name
         self._csv_time: Dict[str, float] = {}  # csv path -> load time
         self._watch_timer = QTimer()
@@ -146,14 +152,14 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
     def _get_model_bases(cls) -> List[ModelMetaclass]:
         bases = super()._get_model_bases()
         plot_bases = cls.Plots._get_model_bases()
-        table_bases = cls.CsvSignalsTable._get_model_bases()
+        table_bases = cls.SignalsTable._get_model_bases()
         return bases + plot_bases + table_bases
 
     @classmethod
     def _get_data_model_bases(cls) -> List[ModelMetaclass]:
         bases = super()._get_data_model_bases()
         plot_bases = cls.Plots._get_data_model_bases()
-        table_bases = cls.CsvSignalsTable._get_data_model_bases()
+        table_bases = cls.SignalsTable._get_data_model_bases()
         return bases + plot_bases + table_bases
 
     def _write_model(self, model: BaseModel) -> None:
@@ -166,74 +172,20 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._table._load_model(model)
         self._plots._load_model(model)
 
-    def _transform_data(
-        self,
-        data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
-    ) -> Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
-        # apply time-shift before function transform
-        transformed_data = {}
-        for data_name in data.keys():
-            transformed = self._table.apply_timeshifts(data_name, data)
-            transformed_data[data_name] = transformed, data[data_name][1]
-        return super()._transform_data(transformed_data)
-
-    def _on_color_changed(self, items: List[Tuple[str, QColor]]) -> None:
-        updated_data_items = self._data_items.copy()
-        for name, new_color in items:
-            if name in updated_data_items:
-                updated_data_items[name] = (
-                    new_color,
-                    self._data_items[name][1],
-                )
-        self._set_data_items([(name, color, plot_type) for name, (color, plot_type) in updated_data_items.items()])
-        self._set_data(self._data)
-
-    def _on_timeshift_handle(self, data_names: List[str], initial_timeshift: float) -> None:
-        if not data_names:
-            return
-
-        # try to find a drag point that is near the center of the view window, and preferably at a data point
-        view_left, view_right = self._plots.view_x_range()
-        view_center = (view_left + view_right) / 2
-        data_x, data_y = self._transformed_data.get(data_names[0], (np.array([]), np.array([])))
-        index = bisect.bisect_left(data_x, view_center)
-        if index >= len(data_x):  # snap to closest point
-            index = len(data_x) - 1
-        elif index < 0:
-            index = 0
-        if len(data_x) and data_x[index] >= view_left and data_x[index] <= view_right:  # point in view
-            handle_pos = float(data_x[index])  # cast from numpy float
-        else:  # no points in view
-            handle_pos = view_center
-
-        self._drag_handle_data = data_names
-        self._drag_handle_offset = handle_pos - initial_timeshift
-        self._plots.create_drag_cursor(handle_pos)
-
-    def _on_timeshift_change(self, data_names: List[str]) -> None:
-        self._set_data(self._data)  # TODO minimal changes in the future
-
-    def _on_drag_cursor_drag(self, pos: float) -> None:
-        self._table.set_timeshift(self._drag_handle_data, pos - self._drag_handle_offset)
-
     def _on_legend_checked(self) -> None:
         self._legend_action.setDisabled(True)  # pyqtgraph doesn't support deleting legends
-        for plot_item, _ in self._plots._plot_item_data.items():
-            plot_item.addLegend()
-            self._plots._update_plots()
+        assert isinstance(self._plots, self.Plots)
+        self._plots.show_legends()
 
     def _on_line_width_action(self) -> None:
-        value, ok = QInputDialog().getDouble(self, "Set thickness", "Line thickness", self._thickness, minValue=0)
+        assert isinstance(self._plots, self.Plots)
+        value, ok = QInputDialog().getDouble(
+            self, "Set thickness", "Line thickness", self._plots._thickness, minValue=0
+        )
         if not ok:
             return
-        self._thickness = value
-        self._apply_line_width()
-
-    def _apply_line_width(self) -> None:
-        for plot_item, _ in self._plots._plot_item_data.items():
-            for item in plot_item.items:
-                if isinstance(item, pg.PlotCurveItem):
-                    item.setPen(color=item.opts["pen"].color(), width=self._thickness)
+        assert isinstance(self._plots, self.Plots)
+        self._plots.set_thickness(value)
 
     def _make_controls(self) -> QWidget:
         button_load = QToolButton()
@@ -366,9 +318,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         data_dict: Dict[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]] = {}  # col header -> xs, ys
         csv_data_items_dict: Dict[str, Set[str]] = {}
         if append:
-            data_type_dict.update(
-                {data_name: data_type for data_name, (data_color, data_type) in self._data_items.items()}
-            )
+            data_type_dict.update(self._data_items)
             data_dict.update(self._data)
             csv_data_items_dict.update(self._csv_data_items)
 
@@ -432,7 +382,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             f.write(yaml.dump(model.model_dump(), sort_keys=False))
 
     def _do_save_config(self, filename: str) -> CsvLoaderStateModel:
-        model = self._dump_data_model(self._table._data_items.keys())
+        model = self._dump_data_model(self._plots._data_items.keys())
         assert isinstance(model, CsvLoaderStateModel)
 
         if len(self._csv_data_items) == 0:

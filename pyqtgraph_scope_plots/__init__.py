@@ -22,15 +22,12 @@ from .interactivity_mixins import (
 )
 from .enum_waveform_plotitem import EnumWaveformPlot
 from .plots_table_widget import PlotsTableWidget
-from .signals_table import (
-    DeleteableSignalsTable,
-    HasDataSignalsTable,
-    StatsSignalsTable,
-    ColorPickerSignalsTable,
-    DraggableSignalsTable,
-)
-from .timeshift_signals_table import TimeshiftSignalsTable
-from .transforms_signal_table import TransformsSignalsTable
+from .multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
+from .signals_table import DeleteableSignalsTable, DraggableSignalsTable
+from .stats_signals_table import StatsSignalsTable
+from .color_signals_table import ColorPickerPlotWidget, ColorPickerSignalsTable
+from .timeshift_signals_table import TimeshiftPlotWidget, TimeshiftSignalsTable
+from .transforms_signal_table import TransformsPlotWidget, TransformsSignalsTable
 from .search_signals_table import SearchSignalsTable
 from .xy_plot_table import XyTable
 from .xy_plot import XyPlotWidget, XyDragDroppable, XyPlotTable

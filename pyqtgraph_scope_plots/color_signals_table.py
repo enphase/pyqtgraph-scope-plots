@@ -70,8 +70,8 @@ class ColorPickerPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
     def set_colors(self, data_names: List[str], color: QColor, update: bool = True) -> None:
         for data_name in data_names:
             self._colors[data_name] = color
+        self._update_data_item_colors()
         if update:
-            self._update_data_item_colors()
             self._update_plots()
             self.sigDataItemsUpdated.emit()
 

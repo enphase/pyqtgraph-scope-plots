@@ -79,8 +79,6 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
     _DATA_MODEL_BASES = [TransformsDataStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
-
         self._simpleeval = simpleeval.SimpleEval()
 
         self._transforms: Dict[str, Tuple[str, Any]] = {}  # (expr str, parsed)
@@ -88,6 +86,8 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
         self._transforms_cached_results = IdentityCacheDict[
             npt.NDArray[np.float64], npt.NDArray[np.float64]
         ]()  # src data -> output data
+
+        super().__init__(*args, **kwargs)
 
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)

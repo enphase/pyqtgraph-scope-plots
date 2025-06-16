@@ -37,12 +37,12 @@ class TimeshiftPlotWidget(LinkedMultiPlotWidget, HasSaveLoadDataConfig):
     _DATA_MODEL_BASES = [TimeshiftDataStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
-
         self._timeshifts: Dict[str, float] = {}  # data name -> time delay
         self._timeshifts_cached_results = IdentityCacheDict[
             npt.NDArray[np.float64], npt.NDArray[np.float64]
         ]()  # src x-values -> output x-values
+
+        super().__init__(*args, **kwargs)
 
         # state variables for timeshift drag handle
         self._timeshifts_drag_data_items: List[str] = []

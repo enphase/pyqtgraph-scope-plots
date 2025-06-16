@@ -17,14 +17,14 @@ from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots import StatsSignalsTable
-from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
+from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
 from .test_transforms import DATA
 
 
 @pytest.fixture()
 def table(qtbot: QtBot) -> StatsSignalsTable:
     """Creates a signals plot with multiple data items"""
-    plots = MultiPlotWidget()
+    plots = LinkedMultiPlotWidget()
     table = StatsSignalsTable(plots)
     plots.show_data_items(
         [
@@ -41,11 +41,59 @@ def table(qtbot: QtBot) -> StatsSignalsTable:
 
 
 def test_full_range(qtbot: QtBot, table: StatsSignalsTable) -> None:
-    qtbot.waitUntil(lambda: table.rowCount() == 3)
-
     qtbot.waitUntil(lambda: table.item(0, table.COL_STAT + table.COL_STAT_MIN).text() != "")
     assert float(table.item(0, table.COL_STAT + table.COL_STAT_MIN).text()) == 0
     assert float(table.item(0, table.COL_STAT + table.COL_STAT_MAX).text()) == 1
-    assert float(table.item(0, table.COL_STAT + table.COL_STAT_AVG).text()) == 0.5025
+    assert float(table.item(0, table.COL_STAT + table.COL_STAT_AVG).text()) == pytest.approx(0.5025, 0.01)
     assert float(table.item(0, table.COL_STAT + table.COL_STAT_RMS).text()) == pytest.approx(0.707, 0.01)
-    assert float(table.item(0, table.COL_STAT + table.COL_STAT_STDEV).text()) == pytest.approx(0, 0.01)  # TODO
+    assert float(table.item(0, table.COL_STAT + table.COL_STAT_STDEV).text()) == pytest.approx(0.4975, 0.01)
+
+    qtbot.waitUntil(lambda: table.item(1, table.COL_STAT + table.COL_STAT_MIN).text() != "")
+    assert float(table.item(1, table.COL_STAT + table.COL_STAT_MIN).text()) == 0.25
+    assert float(table.item(1, table.COL_STAT + table.COL_STAT_MAX).text()) == 0.5
+    assert float(table.item(1, table.COL_STAT + table.COL_STAT_AVG).text()) == pytest.approx(0.4166, 0.01)
+    assert float(table.item(1, table.COL_STAT + table.COL_STAT_RMS).text()) == pytest.approx(0.4330, 0.01)
+    assert float(table.item(1, table.COL_STAT + table.COL_STAT_STDEV).text()) == pytest.approx(0.1178, 0.01)
+
+    qtbot.waitUntil(lambda: table.item(2, table.COL_STAT + table.COL_STAT_MIN).text() != "")
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_MIN).text()) == 0.5
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_MAX).text()) == 0.7
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_AVG).text()) == pytest.approx(0.6, 0.01)
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_RMS).text()) == pytest.approx(0.6055, 0.01)
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_STDEV).text()) == pytest.approx(0.0816, 0.01)
+
+
+def test_region(qtbot: QtBot, table: StatsSignalsTable) -> None:
+    plots = table._plots
+    assert isinstance(plots, LinkedMultiPlotWidget)
+    plots._on_region_change(None, (0.5, 2.5))
+    qtbot.waitUntil(lambda: table.item(2, table.COL_STAT + table.COL_STAT_MIN).text() != "")
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_MIN).text()) == 0.5
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_MAX).text()) == 0.6
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_AVG).text()) == pytest.approx(0.55, 0.01)
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_RMS).text()) == pytest.approx(0.5522, 0.01)
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_STDEV).text()) == pytest.approx(0.05, 0.01)
+
+
+def test_region_single(qtbot: QtBot, table: StatsSignalsTable) -> None:
+    plots = table._plots
+    assert isinstance(plots, LinkedMultiPlotWidget)
+    plots._on_region_change(None, (1.5, 2.5))
+    qtbot.waitUntil(lambda: table.item(2, table.COL_STAT + table.COL_STAT_MIN).text() != "")
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_MIN).text()) == 0.5
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_MAX).text()) == 0.5
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_AVG).text()) == 0.5
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_RMS).text()) == 0.5
+    assert float(table.item(2, table.COL_STAT + table.COL_STAT_STDEV).text()) == 0.0
+
+
+def test_region_empty(qtbot: QtBot, table: StatsSignalsTable) -> None:
+    plots = table._plots
+    assert isinstance(plots, LinkedMultiPlotWidget)
+    plots._on_region_change(None, (2.5, 1000))
+    qtbot.wait(10)
+    assert table.item(2, table.COL_STAT + table.COL_STAT_MIN).text() == ""
+    assert table.item(2, table.COL_STAT + table.COL_STAT_MAX).text() == ""
+    assert table.item(2, table.COL_STAT + table.COL_STAT_AVG).text() == ""
+    assert table.item(2, table.COL_STAT + table.COL_STAT_RMS).text() == ""
+    assert table.item(2, table.COL_STAT + table.COL_STAT_STDEV).text() == ""

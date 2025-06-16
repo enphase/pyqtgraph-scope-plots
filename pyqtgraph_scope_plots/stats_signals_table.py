@@ -160,6 +160,8 @@ class StatsSignalsTable(HasRegionSignalsTable):
         self._stats_compute_thread.queue.put(self.StatsCalculatorThread.Task(needed_stats, region))
 
     def _update_stats(self) -> None:
+        self._create_stats_task()
+
         for row, name in enumerate(self._data_items.keys()):
             xs, ys = self._plots._data.get(name, (None, None))
             if xs is None or ys is None:

@@ -28,6 +28,9 @@ class ColorPickerDataStateModel(DataTopModel):
 
 
 class ColorPickerPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
+
+    _DATA_MODEL_BASES = [ColorPickerDataStateModel]
+
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._colors: Dict[str, QColor] = {}  # only for save state

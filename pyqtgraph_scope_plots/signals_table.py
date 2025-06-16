@@ -19,11 +19,9 @@ import numpy as np
 import numpy.typing as npt
 from PySide6.QtCore import QMimeData, QPoint, Signal
 from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
-from PySide6.QtWidgets import QTableWidgetItem, QTableWidget, QHeaderView, QMenu, QLabel, QColorDialog
-from pydantic import BaseModel
+from PySide6.QtWidgets import QTableWidgetItem, QTableWidget, QHeaderView, QMenu, QLabel
 
 from .multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
-from .save_restore_model import BaseTopModel, DataTopModel, HasSaveLoadDataConfig
 from .util import not_none
 
 
@@ -36,10 +34,6 @@ class SignalsTable(QTableWidget):
     sigDataDeleted = Signal(
         list, list
     )  # list[int] rows, list[str] strings TODO: signals don't play well with multiple inheritance
-    sigColorChanged = Signal(object)  # List[(str, QColor)] of color changed
-    sigTransformChanged = Signal(object)  # List[str] of data names of changed transforms
-    sigTimeshiftHandle = Signal(object, float)  # List[str] of data names, initial (prior) timeshift
-    sigTimeshiftChanged = Signal(object)  # List[str] of data names
 
     @classmethod
     def _create_noneditable_table_item(cls, *args: Any) -> QTableWidgetItem:
@@ -167,55 +161,6 @@ class DeleteableSignalsTable(ContextMenuSignalsTable):
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)
         menu.addAction(self._delete_row_action)
-
-
-class ColorPickerDataStateModel(DataTopModel):
-    color: Optional[str] = None  # QColor name, e.g., '#ffea70' or 'red'
-
-
-class ColorPickerSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
-    """Mixin into SignalsTable that adds a context menu item for the user to change the color.
-    This gets sent as a signal, and an upper must handle plumbing the colors through.
-    """
-
-    _DATA_MODEL_BASES = [ColorPickerDataStateModel]
-
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
-        self._colors: Dict[str, QColor] = {}  # only for save state
-        self._set_color_action = QAction("Set Color", self)
-        self._set_color_action.triggered.connect(self._on_set_color)
-
-    def _write_model(self, model: BaseModel) -> None:
-        assert isinstance(model, BaseTopModel)
-        super()._write_model(model)
-        for data_name, data_model in model.data.items():
-            assert isinstance(data_model, ColorPickerDataStateModel)
-            color = self._colors.get(data_name, None)
-            if color is not None:
-                data_model.color = color.name()
-
-    def _load_model(self, model: BaseModel) -> None:
-        assert isinstance(model, BaseTopModel)
-        super()._load_model(model)
-        data_name_colors = []
-        for data_name, data_model in model.data.items():
-            assert isinstance(data_model, ColorPickerDataStateModel)
-            if data_model.color is not None:
-                data_name_colors.append((data_name, QColor(data_model.color)))
-        self.sigColorChanged.emit(data_name_colors)
-
-    def _populate_context_menu(self, menu: QMenu) -> None:
-        super()._populate_context_menu(menu)
-        menu.addAction(self._set_color_action)
-
-    def _on_set_color(self) -> None:
-        data_names = list(self._data_items.keys())
-        selected_data_names = [data_names[item.row()] for item in self.selectedItems()]
-        color = QColorDialog.getColor()
-        for data_name in selected_data_names:
-            self._colors[data_name] = color
-        self.sigColorChanged.emit([(data_name, color) for data_name in selected_data_names])
 
 
 class DraggableSignalsTable(SignalsTable):

@@ -25,7 +25,7 @@ import pyqtgraph as pg
 import yaml
 from PySide6 import QtWidgets
 from PySide6.QtCore import QKeyCombination, QTimer
-from PySide6.QtGui import QAction, QColor, Qt
+from PySide6.QtGui import QAction, Qt
 from PySide6.QtWidgets import (
     QWidget,
     QPushButton,
@@ -39,18 +39,18 @@ from PySide6.QtWidgets import (
 from pydantic import BaseModel
 from pydantic._internal._model_construction import ModelMetaclass
 
-from ..xy_plot_table import XyTable
 from ..animation_plot_table_widget import AnimationPlotsTableWidget
+from ..color_signals_table import ColorPickerSignalsTable, ColorPickerPlotWidget
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
 from ..save_restore_model import BaseTopModel, HasSaveLoadDataConfig
 from ..search_signals_table import SearchSignalsTable
-from ..signals_table import ColorPickerSignalsTable, SignalsTable
 from ..stats_signals_table import StatsSignalsTable
 from ..time_axis import TimeAxisItem
 from ..timeshift_signals_table import TimeshiftSignalsTable, TimeshiftPlotWidget
 from ..transforms_signal_table import TransformsSignalsTable, TransformsPlotWidget
 from ..util import int_color
+from ..xy_plot_table import XyTable
 
 
 class TupleSafeLoader(yaml.SafeLoader):
@@ -75,7 +75,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
     WATCH_INTERVAL_MS = 333  # polls the filesystem metadata for changes this frequently
 
-    class Plots(TimeshiftPlotWidget, TransformsPlotWidget, PlotsTableWidget.Plots):
+    class Plots(ColorPickerPlotWidget, TimeshiftPlotWidget, TransformsPlotWidget, PlotsTableWidget.Plots):
         """Adds legend add functionality"""
 
         def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -138,7 +138,6 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         super().__init__()
 
         self._table: CsvLoaderPlotsTableWidget.SignalsTable
-        self._table.sigColorChanged.connect(self._on_color_changed)
 
         self._csv_data_items: Dict[str, Set[str]] = {}  # csv path -> data name
         self._csv_time: Dict[str, float] = {}  # csv path -> load time
@@ -169,17 +168,6 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         super()._load_model(model)
         self._table._load_model(model)
         self._plots._load_model(model)
-
-    def _on_color_changed(self, items: List[Tuple[str, QColor]]) -> None:
-        updated_data_items = self._data_items.copy()
-        for name, new_color in items:
-            if name in updated_data_items:
-                updated_data_items[name] = (
-                    new_color,
-                    self._data_items[name][1],
-                )
-        self._set_data_items([(name, color, plot_type) for name, (color, plot_type) in updated_data_items.items()])
-        self._set_data(self._data)
 
     def _on_legend_checked(self) -> None:
         self._legend_action.setDisabled(True)  # pyqtgraph doesn't support deleting legends
@@ -393,7 +381,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             f.write(yaml.dump(model.model_dump(), sort_keys=False))
 
     def _do_save_config(self, filename: str) -> CsvLoaderStateModel:
-        model = self._dump_data_model(self._table._data_items.keys())
+        model = self._dump_data_model(self._plots._data_items.keys())
         assert isinstance(model, CsvLoaderStateModel)
 
         if len(self._csv_data_items) == 0:

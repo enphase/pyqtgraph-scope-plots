@@ -24,10 +24,10 @@ from .enum_waveform_plotitem import EnumWaveformPlot
 from .plots_table_widget import PlotsTableWidget
 from .signals_table import (
     DeleteableSignalsTable,
-    ColorPickerSignalsTable,
     DraggableSignalsTable,
 )
 from .stats_signals_table import StatsSignalsTable
+from .color_signals_table import ColorPickerPlotWidget, ColorPickerSignalsTable
 from .timeshift_signals_table import TimeshiftPlotWidget, TimeshiftSignalsTable
 from .transforms_signal_table import TransformsPlotWidget, TransformsSignalsTable
 from .search_signals_table import SearchSignalsTable

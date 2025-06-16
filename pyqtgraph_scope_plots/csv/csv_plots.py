@@ -139,6 +139,9 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
         self._table: CsvLoaderPlotsTableWidget.SignalsTable
 
+        # since this can load multiple CSVs simultaneously, store the data here
+        self._data_items: Dict[str, MultiPlotWidget.PlotType] = {}  # col header -> plot type IF NOT Default
+        self._data: Dict[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]] = {}  # col header -> xs, ys
         self._csv_data_items: Dict[str, Set[str]] = {}  # csv path -> data name
         self._csv_time: Dict[str, float] = {}  # csv path -> load time
         self._watch_timer = QTimer()
@@ -315,9 +318,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         data_dict: Dict[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]] = {}  # col header -> xs, ys
         csv_data_items_dict: Dict[str, Set[str]] = {}
         if append:
-            data_type_dict.update(
-                {data_name: data_type for data_name, (data_color, data_type) in self._data_items.items()}
-            )
+            data_type_dict.update(self._data_items)
             data_dict.update(self._data)
             csv_data_items_dict.update(self._csv_data_items)
 

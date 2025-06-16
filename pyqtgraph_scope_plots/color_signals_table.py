@@ -50,6 +50,8 @@ class ColorPickerPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
                 self.set_colors([data_name], QColor(data_model.color), update=False)
 
     def _update_data_item_colors(self) -> None:
+        # TODO: not needed right now, but a better architecture might be to store the raw data items
+        # and have a _transform_data_items function
         new_data_items = {}
         for data_item_name, (color, plot_type) in self._data_items.items():
             changed_color = self._colors.get(data_item_name, None)

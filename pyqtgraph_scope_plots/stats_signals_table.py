@@ -128,8 +128,8 @@ class StatsSignalsTable(HasRegionSignalsTable):
         self._full_range_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
         self._region_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
 
-        self._plots.sigDataUpdated.connect(self._update_stats)
-        self._plots.sigCursorRangeChanged.connect(self._update_stats)
+        self._plots.sigDataUpdated.connect(self._create_stats_task)
+        self._plots.sigCursorRangeChanged.connect(self._create_stats_task)
 
         self._stats_compute_thread = self.StatsCalculatorThread(self)
         self._stats_compute_thread.signals.update.connect(self._on_stats_updated)
@@ -145,23 +145,30 @@ class StatsSignalsTable(HasRegionSignalsTable):
         elif input_region == region:
             self._region_stats.set(input_arr, region, [], stats_dict)
         if input_region == region:  # update display as needed
-            self._update_stats()
+            self._update_stats_display()
 
     def _create_stats_task(self) -> None:
         region = HasRegionSignalsTable._region_of_plot(self._plots)
+        data_items = [  # filter out enum types
+            (name, (xs, ys)) for name, (xs, ys) in self._plots._data.items() if np.issubdtype(ys.dtype, np.number)
+        ]
         if region == self._FULL_RANGE:  # for full range, deduplicate with cache
             needed_stats = [
                 (weakref.ref(xs), weakref.ref(ys))
-                for name, (xs, ys) in self._plots._data.items()
+                for name, (xs, ys) in data_items
                 if self._full_range_stats.get(ys, None, []) is None
             ]
         else:
-            needed_stats = [(weakref.ref(xs), weakref.ref(ys)) for name, (xs, ys) in self._plots._data.items()]
+            needed_stats = [(weakref.ref(xs), weakref.ref(ys)) for name, (xs, ys) in data_items]
+        try:
+            self._stats_compute_thread.queue.get(block=False, timeout=0)  # clear a prior element
+        except queue.Empty:
+            pass
         self._stats_compute_thread.queue.put(self.StatsCalculatorThread.Task(needed_stats, region))
 
-    def _update_stats(self) -> None:
-        self._create_stats_task()
+        self._update_stats_display()
 
+    def _update_stats_display(self) -> None:
         for row, name in enumerate(self._data_items.keys()):
             xs, ys = self._plots._data.get(name, (None, None))
             if xs is None or ys is None:

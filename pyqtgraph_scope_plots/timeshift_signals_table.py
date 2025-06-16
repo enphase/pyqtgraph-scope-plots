@@ -127,7 +127,6 @@ class TimeshiftPlotWidget(LinkedMultiPlotWidget, HasSaveLoadDataConfig):
         self.create_drag_cursor(handle_pos)
 
     def _on_timeshift_drag(self, pos: float) -> None:
-        print(pos)
         self.set_timeshift(self._timeshifts_drag_data_items, pos - self._timeshifts_drag_offset)
 
     def _on_timeshift_drag_clear(self) -> None:

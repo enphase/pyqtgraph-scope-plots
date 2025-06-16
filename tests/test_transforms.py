@@ -100,6 +100,7 @@ def test_transform_multiple(qtbot: QtBot, transforms_plots: TransformsPlotWidget
 def test_transform_ui(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> None:
     """Basic test of transforms driven from the UI"""
     transforms_table = TransformsSignalsTable(transforms_plots)
+    transforms_table._update()
     target = transforms_table.visualItemRect(
         not_none(transforms_table.item(1, transforms_table.COL_TRANSFORM))
     ).center()
@@ -112,6 +113,7 @@ def test_transform_ui(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> N
 def test_transform_ui_syntaxerror(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> None:
     """Tests that syntax errors repeatedly prompt"""
     transforms_table = TransformsSignalsTable(transforms_plots)
+    transforms_table._update()
     target = transforms_table.visualItemRect(
         not_none(transforms_table.item(0, transforms_table.COL_TRANSFORM))
     ).center()
@@ -131,6 +133,7 @@ def test_transform_ui_syntaxerror(qtbot: QtBot, transforms_plots: TransformsPlot
 
 def test_transform_ui_error(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> None:
     transforms_table = TransformsSignalsTable(transforms_plots)
+    transforms_table._update()
     target = transforms_table.visualItemRect(
         not_none(transforms_table.item(0, transforms_table.COL_TRANSFORM))
     ).center()

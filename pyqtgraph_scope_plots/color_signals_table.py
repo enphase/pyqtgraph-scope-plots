@@ -28,7 +28,6 @@ class ColorPickerDataStateModel(DataTopModel):
 
 
 class ColorPickerPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
-
     _DATA_MODEL_BASES = [ColorPickerDataStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):

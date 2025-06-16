@@ -150,8 +150,11 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
                 # but only as far as the beginning of this segment
                 last_segment_end = max(last_segment_end, this_end - 1)
 
-                segment_color = QColor(y_color)
-                segment_color.setAlpha(int(i / (fade_segments - 1) * 255))
+                segment_color = QColor(
+                    y_color.red() * (i + 1) / self._FADE_SEGMENTS,
+                    y_color.green() * (i + 1) / self._FADE_SEGMENTS,
+                    y_color.blue() * (i + 1) / self._FADE_SEGMENTS,
+                )
                 curve.setPen(color=segment_color, width=1)
                 self.addItem(curve)
 

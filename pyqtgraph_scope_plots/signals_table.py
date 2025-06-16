@@ -13,19 +13,15 @@
 #    limitations under the License.
 
 import bisect
-import math
-import queue
-import weakref
-from typing import Dict, Tuple, List, Any, Mapping, Optional, NamedTuple
+from typing import Dict, Tuple, List, Any, Optional
 
 import numpy as np
 import numpy.typing as npt
-from PySide6.QtCore import QMimeData, QPoint, Signal, QObject, QThread
+from PySide6.QtCore import QMimeData, QPoint, Signal
 from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
 from PySide6.QtWidgets import QTableWidgetItem, QTableWidget, QHeaderView, QMenu, QLabel, QColorDialog
 from pydantic import BaseModel
 
-from .cache_dict import IdentityCacheDict
 from .multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
 from .save_restore_model import BaseTopModel, DataTopModel, HasSaveLoadDataConfig
 from .util import not_none
@@ -88,9 +84,10 @@ class SignalsTable(QTableWidget):
             header.setSectionResizeMode(col, QHeaderView.ResizeMode.Interactive)
 
         self._data_items: Dict[str, QColor] = {}
+        self._plots.sigDataItemsUpdated.connect(self._update)
 
-    def set_data_items(self, new_data_items: List[Tuple[str, QColor]]) -> None:
-        self._data_items = {data_name: color for data_name, color in new_data_items}
+    def _update(self) -> None:
+        self._data_items = {data_name: color for data_name, (color, _) in self._plots._data_items.items()}
 
         self.setRowCount(0)  # clear the existing table, other resizing becomes really expensive
         self.setRowCount(len(self._data_items))  # create new items

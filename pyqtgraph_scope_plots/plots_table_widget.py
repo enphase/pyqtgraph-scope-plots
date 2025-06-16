@@ -71,14 +71,10 @@ class PlotsTableWidget(QSplitter):
         else:
             self.addWidget(self._table)
 
-        self._data_items: Dict[str, Tuple[QColor, "MultiPlotWidget.PlotType"]] = {}
-        self._data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {}
-
     def _set_data_items(
         self,
         new_data_items: List[Tuple[str, QColor, "MultiPlotWidget.PlotType"]],
     ) -> None:
-        self._data_items = {name: (color, plot_type) for name, color, plot_type in new_data_items}
         self._plots.show_data_items(new_data_items, no_create=len(new_data_items) > 8)
 
     def _set_data(
@@ -89,10 +85,10 @@ class PlotsTableWidget(QSplitter):
 
     def _write_csv(self, fileio: Union[TextIO, StringIO]) -> None:
         writer = csv.writer(fileio)
-        writer.writerow(["# time"] + [name for name, _ in self._data.items()])
+        writer.writerow(["# time"] + [name for name, _ in self._plots._data.items()])
 
-        indices = [0] * len(self._data.items())  # indices to examine on current iteration, in self._data order
-        ordered_data_items = list(self._data.values())
+        indices = [0] * len(self._plots._data.items())  # indices to examine on current iteration, in self._data order
+        ordered_data_items = list(self._plots._data.values())
         while True:  # iterate each row
             xs_at_index = [
                 ordered_data_items[data_index][0][point_index]
@@ -114,8 +110,6 @@ class PlotsTableWidget(QSplitter):
 
     def _save_csv_dialog(self) -> None:
         """Utility function to open a dialog to export the current data to a CSV with a shared x-axis column."""
-        if self._data is None:
-            return
         filename, filter = QFileDialog.getSaveFileName(self, f"Save Data", "", "CSV (*.csv)")
         if not filename:
             return

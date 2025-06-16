@@ -12,22 +12,17 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-import bisect
 import math
 import queue
 import weakref
-from typing import Dict, Tuple, List, Any, Mapping, Optional, NamedTuple
+from typing import Dict, Tuple, List, Any, NamedTuple
 
 import numpy as np
 import numpy.typing as npt
-from PySide6.QtCore import QMimeData, QPoint, Signal, QObject, QThread
-from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
-from PySide6.QtWidgets import QTableWidgetItem, QTableWidget, QHeaderView, QMenu, QLabel, QColorDialog
-from pydantic import BaseModel
+from PySide6.QtCore import Signal, QObject, QThread
+from PySide6.QtWidgets import QTableWidgetItem
 
 from .cache_dict import IdentityCacheDict
-from .multi_plot_widget import MultiPlotWidget
-from .save_restore_model import BaseTopModel, DataTopModel, HasSaveLoadDataConfig
 from .signals_table import HasRegionSignalsTable
 from .util import not_none
 

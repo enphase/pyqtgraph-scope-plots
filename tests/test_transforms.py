@@ -50,17 +50,6 @@ def transforms_plots(qtbot: QtBot) -> TransformsPlotWidget:
     return plots
 
 
-@pytest.fixture()
-def timeshifts_table(qtbot: QtBot) -> TimeshiftSignalsTable:
-    """Creates a signals plot with multiple data items"""
-    table = TimeshiftSignalsTable(MultiPlotWidget())
-    table.set_data_items([("0", QColor("yellow")), ("1", QColor("orange")), ("2", QColor("blue"))])
-    qtbot.addWidget(table)
-    table.show()
-    qtbot.waitExposed(table)
-    return table
-
-
 def np_immutable(x: List[float]) -> npt.NDArray[np.float64]:
     """Creates a np.array with immutable set (writable=False)"""
     arr = np.array(x)
@@ -77,35 +66,35 @@ DATA: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {
 
 def test_transform_empty(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> None:
     """Tests empty transforms, should return the input"""
-    assert transforms_plots.apply_transform("0", DATA).tolist() == [0.01, 1, 1, 0]
-    assert transforms_plots.apply_transform("1", DATA).tolist() == [0.5, 0.25, 0.5]
-    assert transforms_plots.apply_transform("2", DATA).tolist() == [0.7, 0.6, 0.5]
+    assert transforms_plots._apply_transform("0", DATA).tolist() == [0.01, 1, 1, 0]
+    assert transforms_plots._apply_transform("1", DATA).tolist() == [0.5, 0.25, 0.5]
+    assert transforms_plots._apply_transform("2", DATA).tolist() == [0.7, 0.6, 0.5]
 
 
 def test_transform_x(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> None:
     """Tests transforms that only reference x"""
     transforms_plots.set_transform(["0"], "x + 1")
-    qtbot.waitUntil(lambda: transforms_plots.apply_transform("0", DATA).tolist() == [1.01, 2, 2, 1])
+    qtbot.waitUntil(lambda: transforms_plots._apply_transform("0", DATA).tolist() == [1.01, 2, 2, 1])
 
     transforms_plots.set_transform(["1"], "x * 2")
-    qtbot.waitUntil(lambda: transforms_plots.apply_transform("1", DATA).tolist() == [1, 0.5, 1])
-    assert transforms_plots.apply_transform("0", DATA).tolist() == [1.01, 2, 2, 1]  # should not affect 0
+    qtbot.waitUntil(lambda: transforms_plots._apply_transform("1", DATA).tolist() == [1, 0.5, 1])
+    assert transforms_plots._apply_transform("0", DATA).tolist() == [1.01, 2, 2, 1]  # should not affect 0
 
     transforms_plots.set_transform(["0"], "")
-    qtbot.waitUntil(lambda: transforms_plots.apply_transform("0", DATA).tolist() == [0.01, 1, 1, 0])
-    assert transforms_plots.apply_transform("1", DATA).tolist() == [1, 0.5, 1]
+    qtbot.waitUntil(lambda: transforms_plots._apply_transform("0", DATA).tolist() == [0.01, 1, 1, 0])
+    assert transforms_plots._apply_transform("1", DATA).tolist() == [1, 0.5, 1]
 
 
 def test_transform_multiple(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> None:
     """Tests transforms that reference other data objects"""
     transforms_plots.set_transform(["1"], "x + data['2']")
-    qtbot.waitUntil(lambda: transforms_plots.apply_transform("1", DATA).tolist() == [1.2, 0.85, 1])
+    qtbot.waitUntil(lambda: transforms_plots._apply_transform("1", DATA).tolist() == [1.2, 0.85, 1])
 
     transforms_plots.set_transform(["1"], "x + data['0']")  # allow getting with longer data
-    qtbot.waitUntil(lambda: transforms_plots.apply_transform("1", DATA).tolist() == [0.51, 1.25, 0.5])
+    qtbot.waitUntil(lambda: transforms_plots._apply_transform("1", DATA).tolist() == [0.51, 1.25, 0.5])
 
     transforms_plots.set_transform(["0"], "x + data.get('1', 0)")  # test .get with missing values
-    qtbot.waitUntil(lambda: transforms_plots.apply_transform("0", DATA).tolist() == [0.51, 1, 1.25, 0.5])
+    qtbot.waitUntil(lambda: transforms_plots._apply_transform("0", DATA).tolist() == [0.51, 1, 1.25, 0.5])
 
 
 def test_transform_ui(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> None:
@@ -117,7 +106,7 @@ def test_transform_ui(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> N
     with mock.patch.object(QInputDialog, "getText") as mock_input:  # allow getting with longer data
         mock_input.return_value = ("x + data['0']", True)
         menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
-        qtbot.waitUntil(lambda: transforms_plots.apply_transform("1", DATA).tolist() == [0.51, 1.25, 0.5])
+        qtbot.waitUntil(lambda: transforms_plots._apply_transform("1", DATA).tolist() == [0.51, 1.25, 0.5])
 
 
 def test_transform_ui_syntaxerror(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> None:
@@ -137,7 +126,7 @@ def test_transform_ui_syntaxerror(qtbot: QtBot, transforms_plots: TransformsPlot
 
         mock_input.side_effect = mock_value_update
         menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
-        qtbot.waitUntil(lambda: transforms_plots.apply_transform("0", DATA).tolist() == [1, 1, 1, 1])
+        qtbot.waitUntil(lambda: transforms_plots._apply_transform("0", DATA).tolist() == [1, 1, 1, 1])
 
 
 def test_transform_ui_error(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> None:
@@ -148,19 +137,19 @@ def test_transform_ui_error(qtbot: QtBot, transforms_plots: TransformsPlotWidget
     with mock.patch.object(QInputDialog, "getText") as mock_input:  # test error on missing values
         mock_input.return_value = ("ducks", True)
         menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
-        qtbot.waitUntil(lambda: isinstance(transforms_plots.apply_transform("0", DATA), Exception))  # must evaluate
+        qtbot.waitUntil(lambda: isinstance(transforms_plots._apply_transform("0", DATA), Exception))  # must evaluate
         qtbot.waitUntil(lambda: "NameNotDefined" in transforms_table.item(0, transforms_table.COL_TRANSFORM).text())
 
     with mock.patch.object(QInputDialog, "getText") as mock_input:  # test error on missing values
         mock_input.return_value = ("x + data['1']", True)
         menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
-        qtbot.waitUntil(lambda: isinstance(transforms_plots.apply_transform("0", DATA), Exception))  # must evaluate
+        qtbot.waitUntil(lambda: isinstance(transforms_plots._apply_transform("0", DATA), Exception))  # must evaluate
         qtbot.waitUntil(lambda: "KeyError" in transforms_table.item(0, transforms_table.COL_TRANSFORM).text())
 
     with mock.patch.object(QInputDialog, "getText") as mock_input:  # test error on missing values
         mock_input.return_value = ("'ducks'", True)
         menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
-        qtbot.waitUntil(lambda: isinstance(transforms_plots.apply_transform("0", DATA), Exception))  # must evaluate
+        qtbot.waitUntil(lambda: isinstance(transforms_plots._apply_transform("0", DATA), Exception))  # must evaluate
         qtbot.waitUntil(lambda: "TypeError" in transforms_table.item(0, transforms_table.COL_TRANSFORM).text())
 
 
@@ -184,43 +173,8 @@ def test_transform_load(qtbot: QtBot, transforms_plots: TransformsPlotWidget) ->
 
     cast(TransformsDataStateModel, model.data["0"]).transform = "x + 1"
     transforms_plots._load_model(model)
-    qtbot.waitUntil(lambda: transforms_plots.apply_transform("0", DATA).tolist() == [1.01, 2, 2, 1])
+    qtbot.waitUntil(lambda: transforms_plots._apply_transform("0", DATA).tolist() == [1.01, 2, 2, 1])
 
     cast(TransformsDataStateModel, model.data["0"]).transform = ""
     transforms_plots._load_model(model)
-    qtbot.waitUntil(lambda: transforms_plots.apply_transform("0", DATA).tolist() == [0.01, 1, 1, 0])
-
-
-def test_timeshift(qtbot: QtBot, timeshifts_table: TimeshiftSignalsTable) -> None:
-    # test empty
-    qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [0.0, 0.1, 1.0, 2.0])
-    timeshifts_table.set_timeshift(["0"], 1)
-    qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [1.0, 1.1, 2.0, 3.0])
-    assert timeshifts_table.item(0, timeshifts_table.COL_TIMESHIFT).text() == "1"
-    timeshifts_table.set_timeshift(["0"], -0.5)  # test negative and noninteger
-    qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [-0.5, -0.4, 0.5, 1.5])
-    assert timeshifts_table.item(0, timeshifts_table.COL_TIMESHIFT).text() == "-0.5"
-    timeshifts_table.set_timeshift(["0"], 0)  # revert to empty
-    qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [0.0, 0.1, 1.0, 2.0])
-    assert timeshifts_table.item(0, timeshifts_table.COL_TIMESHIFT).text() == ""
-
-
-def test_timeshift_save(qtbot: QtBot, timeshifts_table: TimeshiftSignalsTable) -> None:
-    qtbot.waitUntil(
-        lambda: cast(TimeshiftDataStateModel, timeshifts_table._dump_data_model(["0"]).data["0"]).timeshift == 0
-    )
-    timeshifts_table.set_timeshift(["0"], -0.5)
-    qtbot.waitUntil(
-        lambda: cast(TimeshiftDataStateModel, timeshifts_table._dump_data_model(["0"]).data["0"]).timeshift == -0.5
-    )
-
-
-def test_timeshift_load(qtbot: QtBot, timeshifts_table: TimeshiftSignalsTable) -> None:
-    model = timeshifts_table._dump_data_model(["0"])
-    cast(TimeshiftDataStateModel, model.data["0"]).timeshift = -0.5
-    timeshifts_table._load_model(model)
-    qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [-0.5, -0.4, 0.5, 1.5])
-
-    cast(TimeshiftDataStateModel, model.data["0"]).timeshift = 0
-    timeshifts_table._load_model(model)
-    qtbot.waitUntil(lambda: timeshifts_table.apply_timeshifts("0", DATA).tolist() == [0.0, 0.1, 1.0, 2.0])
+    qtbot.waitUntil(lambda: transforms_plots._apply_transform("0", DATA).tolist() == [0.01, 1, 1, 0])

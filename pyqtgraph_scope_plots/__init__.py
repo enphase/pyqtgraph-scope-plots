@@ -28,7 +28,7 @@ from .signals_table import (
     DraggableSignalsTable,
 )
 from .stats_signals_table import StatsSignalsTable
-from .timeshift_signals_table import TimeshiftSignalsTable
+from .timeshift_signals_table import TimeshiftPlotWidget, TimeshiftSignalsTable
 from .transforms_signal_table import TransformsPlotWidget, TransformsSignalsTable
 from .search_signals_table import SearchSignalsTable
 from .xy_plot_table import XyTable

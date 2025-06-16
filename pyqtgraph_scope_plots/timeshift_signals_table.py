@@ -21,6 +21,7 @@ from PySide6.QtWidgets import QTableWidgetItem, QMenu
 from pydantic import BaseModel
 
 from .cache_dict import IdentityCacheDict
+from .multi_plot_widget import MultiPlotWidget
 from .save_restore_model import DataTopModel, HasSaveLoadDataConfig, BaseTopModel
 from .signals_table import ContextMenuSignalsTable
 from .util import not_none
@@ -30,23 +31,16 @@ class TimeshiftDataStateModel(DataTopModel):
     timeshift: Optional[float] = None
 
 
-class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
-    """Mixin into SignalsTable that adds a UI to time-shift a signal.
-    This acts as the data store and transformer to apply the time-shift, but the actual
-    values are set externally (by a function call, typically from the top-level coordinator
-    that gets its data from the user dragging a plot line)."""
+class TimeshiftPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
+    """MultiPlotWidget that adds a user-defined data transform."""
 
-    COL_TIMESHIFT = -1
     _DATA_MODEL_BASES = [TimeshiftDataStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self._set_timeshift_action = QAction("Set Timeshift", self)
-        self._set_timeshift_action.triggered.connect(self._on_set_timeshift)
-        self.cellDoubleClicked.connect(self._on_timeshift_double_click)
 
         self._timeshifts: Dict[str, float] = {}  # data name -> time delay
-        self._cached_results = IdentityCacheDict[
+        self._timeshifts_cached_results = IdentityCacheDict[
             npt.NDArray[np.float64], npt.NDArray[np.float64]
         ]()  # src x-values -> output x-values
 
@@ -66,6 +60,59 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
             if data_model.timeshift is not None:
                 self.set_timeshift([data_name], data_model.timeshift, update=False)
 
+    def set_timeshift(self, data_names: List[str], timeshift: float, update: bool = True) -> None:
+        """Called externally (eg, by handle drag) to set the timeshift for the specified data names.
+        Optionally, updating can be disabled for performance, for example to batch-update after a bunch of ops."""
+        for data_name in data_names:
+            self._timeshifts[data_name] = timeshift
+        if update:
+            self._update_plots()
+            self.sigDataUpdated.emit()
+            self.sigDataItemsUpdated.emit()
+
+    def _apply_timeshift(
+        self, data_name: str, all_data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]]
+    ) -> npt.NDArray[np.float64]:
+        """Applies timeshift on the specified data_name and returns the x points."""
+        xs, _ = all_data[data_name]
+        timeshift = self._timeshifts.get(data_name, 0)
+        if timeshift == 0:  # no timeshift applied
+            return xs
+        result = self._timeshifts_cached_results.get(xs, timeshift, [], None)
+        if result is None:
+            result = np.add(xs, timeshift)
+            self._timeshifts_cached_results.set(xs, timeshift, [], result)
+        return result
+
+    def _transform_data(
+        self, data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]]
+    ) -> Mapping[str, Tuple[npt.NDArray, npt.NDArray]]:
+        """Applies timeshifts to the specified data_name and data. Returns the transformed X values (time values, data is not used),
+        which may be the input data if no timeshift is specified.
+        Returns identical objects for identical inputs and consecutive identical timeshifts (results are cached).
+        """
+        data = super()._transform_data(data)
+        transformed_data = {}
+        for data_name in data.keys():
+            xs, ys = data[data_name][0]
+            transformed_data[data_name] = (self._apply_timeshift(data_name, data), ys)
+        return transformed_data
+
+
+class TimeshiftSignalsTable(ContextMenuSignalsTable):
+    """Mixin into SignalsTable that adds a UI to time-shift a signal.
+    This acts as the data store and transformer to apply the time-shift, but the actual
+    values are set externally (by a function call, typically from the top-level coordinator
+    that gets its data from the user dragging a plot line)."""
+
+    COL_TIMESHIFT = -1
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self._drag_timeshift_action = QAction("Drag Timeshift", self)
+        self._drag_timeshift_action.triggered.connect(self._on_drag_timeshift)
+        self.cellDoubleClicked.connect(self._on_timeshift_cell)
+
     def _post_cols(self) -> int:
         self.COL_TIMESHIFT = super()._post_cols()
         return self.COL_TIMESHIFT + 1
@@ -74,10 +121,11 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
         super()._init_table()
         self.setHorizontalHeaderItem(self.COL_TIMESHIFT, QTableWidgetItem("Timeshift"))
 
-    def set_data_items(self, new_data_items: List[Tuple[str, QColor]]) -> None:
-        super().set_data_items(new_data_items)
+    def _update(self) -> None:
+        super()._update()
+        assert isinstance(self._plots, TimeshiftPlotWidget)
         for row, (name, color) in enumerate(self._data_items.items()):
-            timeshift = self._timeshifts.get(name)
+            timeshift = self._plots._timeshifts.get(name)
             if timeshift is not None and timeshift != 0:
                 not_none(self.item(row, self.COL_TIMESHIFT)).setText(str(timeshift))
             else:
@@ -85,13 +133,13 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)
-        menu.addAction(self._set_timeshift_action)
+        menu.addAction(self._drag_timeshift_action)
 
-    def _on_timeshift_double_click(self, row: int, col: int) -> None:
+    def _on_timeshift_cell(self, row: int, col: int) -> None:
         if col == self.COL_TIMESHIFT:
-            self._on_set_timeshift()
+            self._on_drag_timeshift()
 
-    def _on_set_timeshift(self) -> None:
+    def _on_drag_timeshift(self) -> None:
         data_names = list(self._data_items.keys())
         selected_data_names = [data_names[item.row()] for item in self.selectedItems()]
         if len(selected_data_names) == 0:
@@ -101,38 +149,3 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable, HasSaveLoadDataConfig):
         else:
             initial_timeshift = 0
         self.sigTimeshiftHandle.emit(selected_data_names, initial_timeshift)
-
-    def set_timeshift(self, data_names: List[str], timeshift: float, update: bool = True) -> None:
-        """Called externally (eg, by handle drag) to set the timeshift for the specified data names.
-        Optionally, updating can be disabled for performance, for example to batch-update after a bunch of ops."""
-        index_by_data_name = {data_name: i for i, data_name in enumerate(self._data_items.keys())}
-        for data_name in data_names:
-            self._timeshifts[data_name] = timeshift
-            if timeshift == 0:
-                timeshift_str = ""
-            else:
-                timeshift_str = str(timeshift)
-            if data_name in index_by_data_name:
-                not_none(self.item(index_by_data_name[data_name], self.COL_TIMESHIFT)).setText(timeshift_str)
-        if update:
-            self.sigTimeshiftChanged.emit(data_names)
-
-    def apply_timeshifts(
-        self,
-        data_name: str,
-        all_data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
-    ) -> npt.NDArray[np.float64]:
-        """Applies timeshifts to the specified data_name and data. Returns the transformed X values (time values, data is not used),
-        which may be the input data if no timeshift is specified.
-        Returns identical objects for identical inputs and consecutive identical timeshifts (results are cached).
-        """
-        xs = all_data[data_name][0]
-        timeshift = self._timeshifts.get(data_name, 0)
-        if timeshift == 0:  # no timeshift applied
-            return xs
-        cached_result = self._cached_results.get(xs, timeshift, [], None)
-        if cached_result is not None:
-            return cached_result
-        result = np.add(xs, timeshift)
-        self._cached_results.set(xs, timeshift, [], result)
-        return result

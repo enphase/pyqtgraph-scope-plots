@@ -85,7 +85,7 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
 
         self._transforms: Dict[str, Tuple[str, Any]] = {}  # (expr str, parsed)
         self._transforms_errs: Dict[str, Optional[Exception]] = {}
-        self._cached_results = IdentityCacheDict[
+        self._transforms_cached_results = IdentityCacheDict[
             npt.NDArray[np.float64], npt.NDArray[np.float64]
         ]()  # src data -> output data
 
@@ -108,7 +108,7 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
                 except Exception as e:
                     pass  # TODO some kind of logging / warning
 
-    def apply_transform(
+    def _apply_transform(
         self,
         data_name: str,
         all_data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
@@ -123,7 +123,7 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
         expr, parsed = transform
 
         input_all_data_refs = [elt for arrs in all_data.values() for elt in arrs]
-        cached_result = self._cached_results.get(ys, expr, input_all_data_refs)
+        cached_result = self._transforms_cached_results.get(ys, expr, input_all_data_refs)
         if cached_result is not None:
             return cached_result
 
@@ -146,15 +146,16 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
                 return e
         result = np.array(new_ys)
         result.flags.writeable = ys.flags.writeable
-        self._cached_results.set(ys, expr, input_all_data_refs, result)
+        self._transforms_cached_results.set(ys, expr, input_all_data_refs, result)
         return result
 
     def _transform_data(
         self, data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]]
     ) -> Mapping[str, Tuple[npt.NDArray, npt.NDArray]]:
+        data = super()._transform_data(data)
         transformed_data = {}
         for data_name in data.keys():
-            transformed = self.apply_transform(data_name, data)
+            transformed = self._apply_transform(data_name, data)
             if isinstance(transformed, Exception):
                 self._transforms_errs[data_name] = transformed
                 continue

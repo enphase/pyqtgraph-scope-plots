@@ -33,23 +33,6 @@ from pyqtgraph_scope_plots.util import not_none
 from .test_util import context_menu, menu_action_by_name
 
 
-@pytest.fixture()
-def transforms_plots(qtbot: QtBot) -> TransformsPlotWidget:
-    """Creates a signals plot with multiple data items"""
-    plots = TransformsPlotWidget()
-    plots.show_data_items(
-        [
-            ("0", QColor("yellow"), MultiPlotWidget.PlotType.DEFAULT),
-            ("1", QColor("orange"), MultiPlotWidget.PlotType.DEFAULT),
-            ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
-        ]
-    )
-    qtbot.addWidget(plots)
-    plots.show()
-    qtbot.waitExposed(plots)
-    return plots
-
-
 def np_immutable(x: List[float]) -> npt.NDArray[np.float64]:
     """Creates a np.array with immutable set (writable=False)"""
     arr = np.array(x)
@@ -62,6 +45,24 @@ DATA: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {
     "1": (np_immutable([0, 1, 2]), np_immutable([0.5, 0.25, 0.5])),
     "2": (np_immutable([0, 1, 2]), np_immutable([0.7, 0.6, 0.5])),
 }
+
+
+@pytest.fixture()
+def transforms_plots(qtbot: QtBot) -> TransformsPlotWidget:
+    """Creates a signals plot with multiple data items"""
+    plots = TransformsPlotWidget()
+    plots.show_data_items(
+        [
+            ("0", QColor("yellow"), MultiPlotWidget.PlotType.DEFAULT),
+            ("1", QColor("orange"), MultiPlotWidget.PlotType.DEFAULT),
+            ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
+        ]
+    )
+    plots.set_data(DATA)
+    qtbot.addWidget(plots)
+    plots.show()
+    qtbot.waitExposed(plots)
+    return plots
 
 
 def test_transform_empty(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> None:

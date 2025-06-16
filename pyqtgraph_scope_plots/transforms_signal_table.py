@@ -154,6 +154,7 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
     ) -> Mapping[str, Tuple[npt.NDArray, npt.NDArray]]:
         data = super()._transform_data(data)
         transformed_data = {}
+        last_transform_errs = self._transforms_errs
         for data_name in data.keys():
             transformed = self._apply_transform(data_name, data)
             if isinstance(transformed, Exception):
@@ -163,6 +164,8 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
                 if data_name in self._transforms_errs:
                     del self._transforms_errs[data_name]
             transformed_data[data_name] = data[data_name][0], transformed
+        if len(last_transform_errs) > 0 or len(self._transforms_errs) > 0:
+            self.sigDataUpdated.emit()  # error counts as a transform update
         return transformed_data
 
     def set_transform(self, data_names: List[str], transform_expr: str, update: bool = True) -> None:

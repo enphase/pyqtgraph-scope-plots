@@ -343,11 +343,11 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         """Sets the data to be plotted as data name -> (xs, ys). Data names must have been previously set with
         set_data_items, missing items will log an error."""
         self._raw_data = {name: (self._to_array(xs), self._to_array(ys)) for name, (xs, ys) in data.items()}
-        self._data = self._transform_data(self._raw_data)
         self._update_plots()
         self.sigDataUpdated.emit()
 
     def _update_plots(self) -> None:
+        self._data = self._transform_data(self._raw_data)
         for plot_item, data_names in self._plot_item_data.items():
             if isinstance(plot_item, EnumWaveformPlot):  # TODO: enum plots have a different API, this should be unified
                 data_name = data_names[0]

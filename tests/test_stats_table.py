@@ -16,8 +16,9 @@ import pytest
 from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots import StatsSignalsTable
+
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
+from pyqtgraph_scope_plots.stats_signals_table import StatsSignalsTable
 from .test_transforms import DATA
 
 

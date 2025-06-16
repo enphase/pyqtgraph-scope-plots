@@ -23,7 +23,6 @@ from PySide6.QtWidgets import QInputDialog
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
-from pyqtgraph_scope_plots.timeshift_signals_table import TimeshiftSignalsTable, TimeshiftDataStateModel
 from pyqtgraph_scope_plots.transforms_signal_table import (
     TransformsSignalsTable,
     TransformsDataStateModel,

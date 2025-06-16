@@ -106,7 +106,7 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
                 try:
                     self.set_transform([data_name], data_model.transform, update=False)
                 except Exception as e:
-                    pass  # TODO some kind of logging / warning
+                    print(f"failed to restore transform fn {data_model.transform}: {e}")  # TODO better logging
 
     def _apply_transform(
         self,

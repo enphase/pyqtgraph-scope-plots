@@ -67,7 +67,7 @@ class RefGeoXyPlotWidget(XyPlotWidget):
             try:
                 self.set_ref_geometry_fn(expr, update=False)
             except Exception as e:
-                pass  # TODO some kind of logging / warning
+                print(f"failed to restore ref geometry fn {expr}: {e}")  # TODO better logging
 
         # bulk update
         self._update()

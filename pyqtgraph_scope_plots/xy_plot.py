@@ -47,6 +47,10 @@ class BaseXyPlot(HasSaveLoadConfig):
         """Adds a XY plot to the widget"""
         ...
 
+    def remove_xy(self, x_name: str, y_name: str) -> None:
+        """Removes a XY plot from the widget. Asserts out if the plot doesn't exist."""
+        ...
+
 
 class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     _FADE_SEGMENTS = 16
@@ -92,6 +96,11 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         if (x_name, y_name) not in self._xys:
             self._xys.append((x_name, y_name))
             self._update()
+            self.sigXyDataItemsChanged.emit()
+
+    def remove_xy(self, x_name: str, y_name: str) -> None:
+        self._xys.remove((x_name, y_name))
+        self._update()
         self.sigXyDataItemsChanged.emit()
 
     @staticmethod
@@ -151,9 +160,9 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
                 last_segment_end = max(last_segment_end, this_end - 1)
 
                 segment_color = QColor(
-                    y_color.red() * (i + 1) / self._FADE_SEGMENTS,
-                    y_color.green() * (i + 1) / self._FADE_SEGMENTS,
-                    y_color.blue() * (i + 1) / self._FADE_SEGMENTS,
+                    y_color.red() * (i + 1) // self._FADE_SEGMENTS,
+                    y_color.green() * (i + 1) // self._FADE_SEGMENTS,
+                    y_color.blue() * (i + 1) // self._FADE_SEGMENTS,
                 )
                 curve.setPen(color=segment_color, width=1)
                 self.addItem(curve)

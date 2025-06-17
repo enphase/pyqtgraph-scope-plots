@@ -46,10 +46,17 @@ def test_load_multiple_csv(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> Non
     plot._load_csv(
         [
             os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv"),
-            os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data_sparse.csv"),
+            os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data_diffcols.csv"),
         ]
     )
-    qtbot.waitUntil(lambda: plot._plots.count() == 3)  # just make sure it loads
+    qtbot.waitUntil(lambda: plot._plots.count() == 4)
+
+
+def test_append_csv(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
+    plot._load_csv([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")])
+    qtbot.waitUntil(lambda: plot._plots.count() == 3)
+    plot._load_csv([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data_diffcols.csv")], append=True)
+    qtbot.waitUntil(lambda: plot._plots.count() == 4)  # test that the new data is appended
 
 
 def test_watch_stability(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:

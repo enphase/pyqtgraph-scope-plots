@@ -19,21 +19,18 @@ from PySide6.QtWidgets import QSplitter
 from pydantic import BaseModel
 
 from .multi_plot_widget import MultiPlotWidget
-from .xy_plot import BaseXyPlot, XyPlotWidget, XyDragDroppable, XyPlotTable, DeleteableXyPlotTable
-from .xy_plot_refgeo import RefGeoXyPlotTable, RefGeoXyPlotWidget
+from .xy_plot import (
+    BaseXyPlot,
+    XyPlotWidget,
+    XyPlotTable,
+)
 
 
 class XyPlotSplitter(BaseXyPlot, QSplitter):
     """XY plot splitter with a table that otherwise delegates the BaseXyPlot interface items to its plot."""
 
-    class FullXyPlotWidget(RefGeoXyPlotWidget, XyDragDroppable, XyPlotWidget):  # only for mixin composition
-        pass
-
-    class FullXyPlotTable(RefGeoXyPlotTable, DeleteableXyPlotTable, XyPlotTable):  # only for mixin composition
-        pass
-
-    _XY_PLOT_TYPE: Type[XyPlotWidget] = FullXyPlotWidget
-    _XY_PLOT_TABLE_TYPE: Type[XyPlotTable] = FullXyPlotTable
+    _XY_PLOT_TYPE: Type[XyPlotWidget] = XyPlotWidget
+    _XY_PLOT_TABLE_TYPE: Type[XyPlotTable] = XyPlotTable
 
     def _make_xy_plots(self) -> XyPlotWidget:
         """Creates the XyPlot widget. self._plots is initialized by this time.

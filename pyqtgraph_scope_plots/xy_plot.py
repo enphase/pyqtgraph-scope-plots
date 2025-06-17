@@ -292,9 +292,19 @@ class DeleteableXyPlotTable(ContextMenuXyPlotTable):
         self.addAction(self._delete_row_action)
 
     def _rows_deleted_event(self, rows: List[int]) -> None:
-        """IMPLEMENT ME. Called when the user does a delete action. Include a super() call."""
+        """IMPLEMENT ME. Called when the user does a delete action."""
         pass
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)
         menu.addAction(self._delete_row_action)
+
+
+class SignalRemovalXyPlotTable(DeleteableXyPlotTable):
+    """Provides a removal function to remove an XY"""
+
+    def _rows_deleted_event(self, rows: List[int]) -> None:
+        super()._rows_deleted_event(rows)
+        for row in rows:
+            if row < len(self._xy_plots._xys):
+                self._xy_plots.remove_xy(*self._xy_plots._xys[row])

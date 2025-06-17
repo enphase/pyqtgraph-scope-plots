@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (
 from pydantic import BaseModel
 from pydantic._internal._model_construction import ModelMetaclass
 
+from .. import VisibilityToggleSignalsTable, VisibilityPlotWidget
 from ..animation_plot_table_widget import AnimationPlotsTableWidget
 from ..color_signals_table import ColorPickerSignalsTable, ColorPickerPlotWidget
 from ..multi_plot_widget import MultiPlotWidget
@@ -82,7 +83,9 @@ class FullXySplitter(XyPlotSplitter):
     _XY_PLOT_TABLE_TYPE = FullXyPlotTable
 
 
-class FullPlots(ColorPickerPlotWidget, TimeshiftPlotWidget, TransformsPlotWidget, PlotsTableWidget.Plots):
+class FullPlots(
+    VisibilityPlotWidget, ColorPickerPlotWidget, TimeshiftPlotWidget, TransformsPlotWidget, PlotsTableWidget.Plots
+):
     """Adds legend add functionality"""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -115,6 +118,7 @@ class FullPlots(ColorPickerPlotWidget, TimeshiftPlotWidget, TransformsPlotWidget
 
 
 class FullSignalsTable(
+    VisibilityToggleSignalsTable,
     XyTable,
     ColorPickerSignalsTable,
     TimeshiftSignalsTable,

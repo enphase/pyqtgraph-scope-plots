@@ -134,6 +134,13 @@ def test_table_deletion(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
     qtbot.waitUntil(lambda: splitter._table.rowCount() == 1)
     assert splitter._table.item(0, 0).text() == "([-1, 2], [-1, -1])"
 
+    splitter._table.selectRow(0)
+    qtbot.keyClick(splitter._table.viewport(), Qt.Key.Key_Delete)
+    qtbot.waitUntil(lambda: splitter._table.rowCount() == 0)
+
+    qtbot.keyClick(splitter._table.viewport(), Qt.Key.Key_Delete)  # no-op
+    qtbot.wait(10)  # test empty deletion doesn't crash
+
 
 def test_table_err(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
     splitter._xy_plots.set_ref_geometry_fn("abc")

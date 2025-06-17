@@ -19,11 +19,7 @@ from PySide6.QtWidgets import QSplitter
 from pydantic import BaseModel
 
 from .multi_plot_widget import MultiPlotWidget
-from .xy_plot import (
-    BaseXyPlot,
-    XyPlotWidget,
-    XyPlotTable,
-)
+from .xy_plot import BaseXyPlot, XyPlotWidget, XyPlotTable
 
 
 class XyPlotSplitter(BaseXyPlot, QSplitter):

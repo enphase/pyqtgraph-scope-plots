@@ -109,6 +109,9 @@ class FullPlots(ColorPickerPlotWidget, TimeshiftPlotWidget, TransformsPlotWidget
 
     def show_legends(self) -> None:
         self._show_legend = True
+        for plot_item, _ in self._plot_item_data.items():
+            plot_item.addLegend()
+        self._update_plots()
 
 
 class FullSignalsTable(

@@ -192,7 +192,7 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
                 err_msg = f"\n\n{exc.__class__.__name__}: {exc}"
 
     def _rows_deleted_event(self, rows: List[int]) -> None:
+        for row in reversed(sorted(rows)):
+            if row >= self._row_offset_refgeo:
+                self._xy_plots.set_ref_geometry_fn("", row - self._row_offset_refgeo)
         super()._rows_deleted_event(rows)
-        for row in rows:
-            if row < len(self._xy_plots._xys):
-                self._xy_plots.remove_xy(*self._xy_plots._xys[row])

@@ -305,6 +305,6 @@ class SignalRemovalXyPlotTable(DeleteableXyPlotTable):
 
     def _rows_deleted_event(self, rows: List[int]) -> None:
         super()._rows_deleted_event(rows)
-        for row in rows:
+        for row in reversed(sorted(rows)):
             if row < len(self._xy_plots._xys):
                 self._xy_plots.remove_xy(*self._xy_plots._xys[row])

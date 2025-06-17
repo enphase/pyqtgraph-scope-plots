@@ -23,7 +23,7 @@ import pyqtgraph as pg
 from pydantic import BaseModel
 
 from .signals_table import SignalsTable, HasRegionSignalsTable
-from .xy_plot import XyPlotWidget, XyPlotTable, ContextMenuXyPlotTable, XyWindowModel
+from .xy_plot import XyPlotWidget, XyPlotTable, ContextMenuXyPlotTable, XyWindowModel, DeleteableXyPlotTable
 
 
 class XyRefGeoModel(XyWindowModel):
@@ -128,7 +128,7 @@ class RefGeoXyPlotWidget(XyPlotWidget):
             self.sigXyDataItemsChanged.emit()
 
 
-class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
+class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTable):
     """Mixin into XyPlotTable that adds support for reference geometry construction"""
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -190,3 +190,9 @@ class RefGeoXyPlotTable(ContextMenuXyPlotTable, XyPlotTable):
                 return
             except SyntaxError as exc:
                 err_msg = f"\n\n{exc.__class__.__name__}: {exc}"
+
+    def _rows_deleted_event(self, rows: List[int]) -> None:
+        super()._rows_deleted_event(rows)
+        for row in rows:
+            if row < len(self._xy_plots._xys):
+                self._xy_plots.remove_xy(*self._xy_plots._xys[row])

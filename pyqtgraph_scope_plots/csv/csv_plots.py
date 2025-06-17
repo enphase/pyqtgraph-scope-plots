@@ -169,40 +169,41 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
     @classmethod
     def _get_model_bases(cls) -> List[ModelMetaclass]:
         bases = super()._get_model_bases()
-        plot_bases = cls.Plots._get_model_bases()
-        table_bases = cls.SignalsTable._get_model_bases()
+        plot_bases = cls._PLOT_TYPE._get_model_bases()
+        table_bases = cls._TABLE_TYPE._get_model_bases()
         return bases + plot_bases + table_bases
 
     @classmethod
     def _get_data_model_bases(cls) -> List[ModelMetaclass]:
         bases = super()._get_data_model_bases()
-        plot_bases = cls.Plots._get_data_model_bases()
-        table_bases = cls.SignalsTable._get_data_model_bases()
+        plot_bases = cls._PLOT_TYPE._get_data_model_bases()
+        table_bases = cls._TABLE_TYPE._get_data_model_bases()
         return bases + plot_bases + table_bases
 
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
+        assert isinstance(self._table, HasSaveLoadDataConfig)
         self._table._write_model(model)
         self._plots._write_model(model)
 
     def _load_model(self, model: BaseModel) -> None:
         super()._load_model(model)
+        assert isinstance(self._table, HasSaveLoadDataConfig)
         self._table._load_model(model)
         self._plots._load_model(model)
 
     def _on_legend_checked(self) -> None:
+        assert isinstance(self._plots, FullPlots)
         self._legend_action.setDisabled(True)  # pyqtgraph doesn't support deleting legends
-        assert isinstance(self._plots, self.Plots)
         self._plots.show_legends()
 
     def _on_line_width_action(self) -> None:
-        assert isinstance(self._plots, self.Plots)
+        assert isinstance(self._plots, FullPlots)
         value, ok = QInputDialog().getDouble(
             self, "Set thickness", "Line thickness", self._plots._thickness, minValue=0
         )
         if not ok:
             return
-        assert isinstance(self._plots, self.Plots)
         self._plots.set_thickness(value)
 
     def _make_controls(self) -> QWidget:

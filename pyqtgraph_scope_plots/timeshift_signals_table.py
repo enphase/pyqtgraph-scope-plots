@@ -18,7 +18,7 @@ import numpy as np
 import numpy.typing as npt
 from PySide6.QtCore import QSignalBlocker
 from PySide6.QtGui import QAction, Qt, QDoubleValidator
-from PySide6.QtWidgets import QTableWidgetItem, QMenu, QStyledItemDelegate, QLineEdit
+from PySide6.QtWidgets import QTableWidgetItem, QMenu, QStyledItemDelegate, QLineEdit, QWidget
 from pydantic import BaseModel
 
 from .cache_dict import IdentityCacheDict
@@ -135,7 +135,7 @@ class TimeshiftPlotWidget(LinkedMultiPlotWidget, HasSaveLoadDataConfig):
 
 
 class FloatValidatorDelegate(QStyledItemDelegate):
-    def createEditor(self, parent, option, index):
+    def createEditor(self, parent: QWidget, option: Any, index: Any) -> QLineEdit:
         editor = QLineEdit(parent)
         editor.setValidator(QDoubleValidator(parent))
         return editor
@@ -195,7 +195,7 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable):
         data_names = list(self._data_items.keys())
         text = self.item(row, col).text()
         if text == "":
-            timeshift = 0
+            timeshift = 0.0
         else:
             try:
                 timeshift = float(text)

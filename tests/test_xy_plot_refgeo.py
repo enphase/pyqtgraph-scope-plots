@@ -14,14 +14,25 @@
 from typing import cast
 from unittest import mock
 
-import pytest
-from PySide6.QtGui import QColor
-from pytestqt.qtbot import QtBot
 import pyqtgraph as pg
+import pytest
+from PySide6.QtGui import QColor, Qt
+from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.xy_plot_splitter import XyPlotSplitter
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
-from pyqtgraph_scope_plots.xy_plot_refgeo import RefGeoXyPlotWidget, XyRefGeoModel
+from pyqtgraph_scope_plots.xy_plot_refgeo import RefGeoXyPlotWidget, XyRefGeoModel, RefGeoXyPlotTable
+from pyqtgraph_scope_plots.xy_plot_splitter import XyPlotSplitter
+
+
+class FullXySplitter(XyPlotSplitter):
+    class FullXyPlot(RefGeoXyPlotWidget):
+        pass
+
+    class FullXyPlotTable(RefGeoXyPlotTable):
+        pass
+
+    _XY_PLOT_TYPE = FullXyPlot
+    _XY_PLOT_TABLE_TYPE = FullXyPlotTable
 
 
 @pytest.fixture()
@@ -34,8 +45,8 @@ def plot(qtbot: QtBot) -> RefGeoXyPlotWidget:
 
 
 @pytest.fixture()
-def splitter(qtbot: QtBot) -> XyPlotSplitter:
-    splitter = XyPlotSplitter(LinkedMultiPlotWidget())
+def splitter(qtbot: QtBot) -> FullXySplitter:
+    splitter = FullXySplitter(LinkedMultiPlotWidget())
     qtbot.addWidget(splitter)
     splitter.show()
     qtbot.waitExposed(splitter)
@@ -110,6 +121,25 @@ def test_table(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
     splitter._xy_plots.set_ref_geometry_fn("", 0)  # deletion
     qtbot.waitUntil(lambda: splitter._table.rowCount() == 1)
     assert splitter._table.item(0, 0).text() == "([-1, 0], [-1, -1])"
+
+
+def test_table_deletion(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
+    splitter._xy_plots.set_ref_geometry_fn("([-1, 1], [-1, -1])")
+    splitter._xy_plots.set_ref_geometry_fn("([-1, 2], [-1, -1])")  # addition
+    qtbot.waitUntil(lambda: splitter._table.rowCount() == 2)
+
+    splitter._table.setFocus()
+    splitter._table.selectRow(0)
+    qtbot.keyClick(splitter._table.viewport(), Qt.Key.Key_Delete)
+    qtbot.waitUntil(lambda: splitter._table.rowCount() == 1)
+    assert splitter._table.item(0, 0).text() == "([-1, 2], [-1, -1])"
+
+    splitter._table.selectRow(0)
+    qtbot.keyClick(splitter._table.viewport(), Qt.Key.Key_Delete)
+    qtbot.waitUntil(lambda: splitter._table.rowCount() == 0)
+
+    qtbot.keyClick(splitter._table.viewport(), Qt.Key.Key_Delete)  # no-op
+    qtbot.wait(10)  # test empty deletion doesn't crash
 
 
 def test_table_err(qtbot: QtBot, splitter: XyPlotSplitter) -> None:

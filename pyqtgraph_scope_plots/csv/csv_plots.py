@@ -50,7 +50,10 @@ from ..time_axis import TimeAxisItem
 from ..timeshift_signals_table import TimeshiftSignalsTable, TimeshiftPlotWidget
 from ..transforms_signal_table import TransformsSignalsTable, TransformsPlotWidget
 from ..util import int_color
+from ..xy_plot import XyPlotWidget, XyDragDroppable, DeleteableXyPlotTable, SignalRemovalXyPlotTable, XyPlotTable
 from ..xy_plot_table import XyTable
+from ..xy_plot_splitter import XyPlotSplitter
+from ..xy_plot_refgeo import RefGeoXyPlotWidget, RefGeoXyPlotTable
 
 
 class TupleSafeLoader(yaml.SafeLoader):
@@ -68,6 +71,75 @@ class CsvLoaderStateModel(BaseTopModel):
     csv_files: Optional[List[str]] = None  # all loaded CSV files, as relpath or abspath
 
 
+class FullXySplitter(XyPlotSplitter):
+    class FullXyPlot(RefGeoXyPlotWidget, XyDragDroppable, XyPlotWidget):
+        pass
+
+    class FullXyPlotTable(RefGeoXyPlotTable, SignalRemovalXyPlotTable, DeleteableXyPlotTable, XyPlotTable):
+        pass
+
+    _XY_PLOT_TYPE = FullXyPlot
+    _XY_PLOT_TABLE_TYPE = FullXyPlotTable
+
+
+class FullPlots(ColorPickerPlotWidget, TimeshiftPlotWidget, TransformsPlotWidget, PlotsTableWidget.Plots):
+    """Adds legend add functionality"""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self._thickness: float = 1
+        self._show_legend: bool = False
+        super().__init__(*args, **kwargs)
+
+    def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
+        plot_item = super()._init_plot_item(plot_item)
+        if self._show_legend:
+            plot_item.addLegend()
+        return plot_item
+
+    def _update_plots(self) -> None:
+        super()._update_plots()
+        for plot_item, _ in self._plot_item_data.items():
+            for item in plot_item.items:
+                if isinstance(item, pg.PlotCurveItem):
+                    item.setPen(color=item.opts["pen"].color(), width=self._thickness)
+
+    def set_thickness(self, thickness: float) -> None:
+        self._thickness = thickness
+        self._update_plots()
+
+    def show_legends(self) -> None:
+        self._show_legend = True
+
+
+class FullSignalsTable(
+    XyTable,
+    ColorPickerSignalsTable,
+    TimeshiftSignalsTable,
+    TransformsSignalsTable,
+    SearchSignalsTable,
+    StatsSignalsTable,
+    PlotsTableWidget.SignalsTable,
+):
+    """Adds a hook for item hide"""
+
+    _XY_PLOT_TYPE = FullXySplitter
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self._remove_row_action = QAction("Remove from Plot", self)
+        self._remove_row_action.triggered.connect(self._on_rows_remove)
+
+    def _on_rows_remove(self) -> None:
+        rows = list(set([item.row() for item in self.selectedItems()]))
+        ordered_names = list(self._data_items.keys())
+        data_names = [ordered_names[row] for row in rows]
+        self._plots.remove_plot_items(data_names)
+
+    def _populate_context_menu(self, menu: QMenu) -> None:
+        super()._populate_context_menu(menu)
+        menu.addAction(self._remove_row_action)
+
+
 class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, HasSaveLoadDataConfig):
     """Example app-level widget that loads CSV files into the plotter"""
 
@@ -75,62 +147,8 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
     WATCH_INTERVAL_MS = 333  # polls the filesystem metadata for changes this frequently
 
-    class Plots(ColorPickerPlotWidget, TimeshiftPlotWidget, TransformsPlotWidget, PlotsTableWidget.Plots):
-        """Adds legend add functionality"""
-
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
-            self._thickness: float = 1
-            self._show_legend: bool = False
-            super().__init__(*args, **kwargs)
-
-        def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
-            plot_item = super()._init_plot_item(plot_item)
-            if self._show_legend:
-                plot_item.addLegend()
-            return plot_item
-
-        def _update_plots(self) -> None:
-            super()._update_plots()
-            for plot_item, _ in self._plot_item_data.items():
-                for item in plot_item.items:
-                    if isinstance(item, pg.PlotCurveItem):
-                        item.setPen(color=item.opts["pen"].color(), width=self._thickness)
-
-        def set_thickness(self, thickness: float) -> None:
-            self._thickness = thickness
-            self._update_plots()
-
-        def show_legends(self) -> None:
-            self._show_legend = True
-
-    class SignalsTable(
-        XyTable,
-        ColorPickerSignalsTable,
-        TimeshiftSignalsTable,
-        TransformsSignalsTable,
-        SearchSignalsTable,
-        StatsSignalsTable,
-        PlotsTableWidget.SignalsTable,
-    ):
-        """Adds a hook for item hide"""
-
-        def __init__(self, *args: Any, **kwargs: Any):
-            super().__init__(*args, **kwargs)
-            self._remove_row_action = QAction("Remove from Plot", self)
-            self._remove_row_action.triggered.connect(self._on_rows_remove)
-
-        def _on_rows_remove(self) -> None:
-            rows = list(set([item.row() for item in self.selectedItems()]))
-            ordered_names = list(self._data_items.keys())
-            data_names = [ordered_names[row] for row in rows]
-            self._plots.remove_plot_items(data_names)
-
-        def _populate_context_menu(self, menu: QMenu) -> None:
-            super()._populate_context_menu(menu)
-            menu.addAction(self._remove_row_action)
-
-    _PLOT_TYPE: Type[PlotsTableWidget.Plots] = Plots
-    _TABLE_TYPE: Type[SignalsTable] = SignalsTable
+    _PLOT_TYPE = FullPlots
+    _TABLE_TYPE = FullSignalsTable
 
     def __init__(self, x_axis: Optional[Callable[[], pg.AxisItem]] = None) -> None:
         self._x_axis = x_axis
@@ -151,40 +169,41 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
     @classmethod
     def _get_model_bases(cls) -> List[ModelMetaclass]:
         bases = super()._get_model_bases()
-        plot_bases = cls.Plots._get_model_bases()
-        table_bases = cls.SignalsTable._get_model_bases()
+        plot_bases = cls._PLOT_TYPE._get_model_bases()
+        table_bases = cls._TABLE_TYPE._get_model_bases()
         return bases + plot_bases + table_bases
 
     @classmethod
     def _get_data_model_bases(cls) -> List[ModelMetaclass]:
         bases = super()._get_data_model_bases()
-        plot_bases = cls.Plots._get_data_model_bases()
-        table_bases = cls.SignalsTable._get_data_model_bases()
+        plot_bases = cls._PLOT_TYPE._get_data_model_bases()
+        table_bases = cls._TABLE_TYPE._get_data_model_bases()
         return bases + plot_bases + table_bases
 
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
+        assert isinstance(self._table, HasSaveLoadDataConfig)
         self._table._write_model(model)
         self._plots._write_model(model)
 
     def _load_model(self, model: BaseModel) -> None:
         super()._load_model(model)
+        assert isinstance(self._table, HasSaveLoadDataConfig)
         self._table._load_model(model)
         self._plots._load_model(model)
 
     def _on_legend_checked(self) -> None:
+        assert isinstance(self._plots, FullPlots)
         self._legend_action.setDisabled(True)  # pyqtgraph doesn't support deleting legends
-        assert isinstance(self._plots, self.Plots)
         self._plots.show_legends()
 
     def _on_line_width_action(self) -> None:
-        assert isinstance(self._plots, self.Plots)
+        assert isinstance(self._plots, FullPlots)
         value, ok = QInputDialog().getDouble(
             self, "Set thickness", "Line thickness", self._plots._thickness, minValue=0
         )
         if not ok:
             return
-        assert isinstance(self._plots, self.Plots)
         self._plots.set_thickness(value)
 
     def _make_controls(self) -> QWidget:

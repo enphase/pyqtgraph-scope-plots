@@ -17,7 +17,7 @@ from typing import List, Tuple, Optional, Literal, Union, cast, Any, Dict, Seque
 import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QSize, Signal, QPoint
-from PySide6.QtGui import QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent, Qt
+from PySide6.QtGui import QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent, Qt, QAction
 from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidget, QTableWidgetItem, QMenu
 from numpy import typing as npt
 from pydantic import BaseModel
@@ -45,6 +45,10 @@ class BaseXyPlot(HasSaveLoadConfig):
 
     def add_xy(self, x_name: str, y_name: str) -> None:
         """Adds a XY plot to the widget"""
+        ...
+
+    def remove_xy(self, x_name: str, y_name: str) -> None:
+        """Removes a XY plot from the widget. Asserts out if the plot doesn't exist."""
         ...
 
 
@@ -92,6 +96,11 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         if (x_name, y_name) not in self._xys:
             self._xys.append((x_name, y_name))
             self._update()
+            self.sigXyDataItemsChanged.emit()
+
+    def remove_xy(self, x_name: str, y_name: str) -> None:
+        self._xys.remove((x_name, y_name))
+        self._update()
         self.sigXyDataItemsChanged.emit()
 
     @staticmethod
@@ -150,8 +159,11 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
                 # but only as far as the beginning of this segment
                 last_segment_end = max(last_segment_end, this_end - 1)
 
-                segment_color = QColor(y_color)
-                segment_color.setAlpha(int(i / (fade_segments - 1) * 255))
+                segment_color = QColor(
+                    y_color.red() * (i + 1) // self._FADE_SEGMENTS,
+                    y_color.green() * (i + 1) // self._FADE_SEGMENTS,
+                    y_color.blue() * (i + 1) // self._FADE_SEGMENTS,
+                )
                 curve.setPen(color=segment_color, width=1)
                 self.addItem(curve)
 
@@ -257,5 +269,42 @@ class ContextMenuXyPlotTable(XyPlotTable):
         menu.popup(self.mapToGlobal(pos))
 
     def _populate_context_menu(self, menu: QMenu) -> None:
-        """Called when the context menu is created, to populate its items."""
+        """IMPLEMENT ME. Called when the context menu is created, to populate its items."""
         pass
+
+
+class DeleteableXyPlotTable(ContextMenuXyPlotTable):
+    """Mixin into XyPlotTable that adds a hook for item deletion, both as hotkey and from a context menu."""
+
+    _DELETE_ACTION_NAME = "Remove"
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self._delete_row_action = QAction(self._DELETE_ACTION_NAME or "", self)
+        self._delete_row_action.setShortcut(Qt.Key.Key_Delete)
+        self._delete_row_action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)  # require widget focus to fire
+
+        def on_delete_rows() -> None:
+            rows = list(set([item.row() for item in self.selectedItems()]))
+            self._rows_deleted_event(rows)
+
+        self._delete_row_action.triggered.connect(on_delete_rows)
+        self.addAction(self._delete_row_action)
+
+    def _rows_deleted_event(self, rows: List[int]) -> None:
+        """IMPLEMENT ME. Called when the user does a delete action."""
+        pass
+
+    def _populate_context_menu(self, menu: QMenu) -> None:
+        super()._populate_context_menu(menu)
+        menu.addAction(self._delete_row_action)
+
+
+class SignalRemovalXyPlotTable(DeleteableXyPlotTable):
+    """Provides a removal function to remove an XY"""
+
+    def _rows_deleted_event(self, rows: List[int]) -> None:
+        super()._rows_deleted_event(rows)
+        for row in reversed(sorted(rows)):
+            if row < len(self._xy_plots._xys):
+                self._xy_plots.remove_xy(*self._xy_plots._xys[row])

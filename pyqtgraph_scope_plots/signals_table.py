@@ -31,10 +31,6 @@ class SignalsTable(QTableWidget):
     COL_NAME: int = -1  # dynamically init'd
     COL_COUNT: int = 0
 
-    sigDataDeleted = Signal(
-        list, list
-    )  # list[int] rows, list[str] strings TODO: signals don't play well with multiple inheritance
-
     @classmethod
     def _create_noneditable_table_item(cls, *args: Any) -> QTableWidgetItem:
         """Creates a non-editable QTableWidgetItem (table cell)"""
@@ -144,19 +140,24 @@ class ContextMenuSignalsTable(SignalsTable):
 class DeleteableSignalsTable(ContextMenuSignalsTable):
     """Mixin into SignalsTable that adds a hook for item deletion, both as hotkey and from a context menu."""
 
+    _DELETE_ACTION_NAME = "Remove"
+
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self._delete_row_action = QAction("Remove", self)
+        self._delete_row_action = QAction(self._DELETE_ACTION_NAME, self)
         self._delete_row_action.setShortcut(Qt.Key.Key_Delete)
         self._delete_row_action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)  # require widget focus to fire
-        self._delete_row_action.triggered.connect(self._on_data_items_delete)
+
+        def on_delete_rows() -> None:
+            rows = list(set([item.row() for item in self.selectedItems()]))
+            self._rows_deleted_event(rows)
+
+        self._delete_row_action.triggered.connect(on_delete_rows)
         self.addAction(self._delete_row_action)
 
-    def _on_data_items_delete(self) -> None:
-        """Called when data items are deleted, to actually execute the deletion. Optional if supported."""
-        data_names = list(self._data_items.keys())
-        rows = list(set([item.row() for item in self.selectedItems()]))
-        self.sigDataDeleted.emit(rows, [data_names[row] for row in rows])
+    def _rows_deleted_event(self, rows: List[int]) -> None:
+        """IMPLEMENT ME. Called when the user does a delete action. Include a super() call."""
+        pass
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)

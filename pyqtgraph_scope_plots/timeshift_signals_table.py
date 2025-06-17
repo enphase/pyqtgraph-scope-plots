@@ -16,8 +16,9 @@ from typing import Dict, List, Any, Mapping, Tuple, Optional
 
 import numpy as np
 import numpy.typing as npt
-from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QTableWidgetItem, QMenu
+from PySide6.QtCore import QSignalBlocker
+from PySide6.QtGui import QAction, Qt, QDoubleValidator
+from PySide6.QtWidgets import QTableWidgetItem, QMenu, QStyledItemDelegate, QLineEdit, QWidget
 from pydantic import BaseModel
 
 from .cache_dict import IdentityCacheDict
@@ -133,6 +134,13 @@ class TimeshiftPlotWidget(LinkedMultiPlotWidget, HasSaveLoadDataConfig):
         self._timeshifts_drag_data_items = []
 
 
+class FloatValidatorDelegate(QStyledItemDelegate):
+    def createEditor(self, parent: QWidget, option: Any, index: Any) -> QLineEdit:
+        editor = QLineEdit(parent)
+        editor.setValidator(QDoubleValidator(parent))
+        return editor
+
+
 class TimeshiftSignalsTable(ContextMenuSignalsTable):
     """Mixin into SignalsTable that adds a UI to time-shift a signal.
     This acts as the data store and transformer to apply the time-shift, but the actual
@@ -145,8 +153,9 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable):
         super().__init__(*args, **kwargs)
         self._drag_timeshift_action = QAction("Drag Timeshift", self)
         self._drag_timeshift_action.triggered.connect(self._on_drag_timeshift)
-        self.cellDoubleClicked.connect(self._on_timeshift_cell)
         self._plots.sigDataUpdated.connect(self._update_timeshifts)
+        self._update_timeshifts()
+        self.cellChanged.connect(self._on_timeshift_cell)
 
     def _post_cols(self) -> int:
         self.COL_TIMESHIFT = super()._post_cols()
@@ -155,27 +164,45 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable):
     def _init_table(self) -> None:
         super()._init_table()
         self.setHorizontalHeaderItem(self.COL_TIMESHIFT, QTableWidgetItem("Timeshift"))
+        self.setItemDelegateForColumn(self.COL_TIMESHIFT, FloatValidatorDelegate(self))
 
     def _update(self) -> None:
-        super()._update()
-        self._update_timeshifts()
+        with QSignalBlocker(self):  # prevent self update from triggering timeshift edited
+            super()._update()  # including when the table items are created
+            for row in range(self.rowCount()):
+                item = self.item(row, self.COL_TIMESHIFT)
+                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
 
     def _update_timeshifts(self) -> None:
         assert isinstance(self._plots, TimeshiftPlotWidget)
-        for row, (name, color) in enumerate(self._data_items.items()):
-            timeshift = self._plots._timeshifts.get(name)
-            if timeshift is not None and timeshift != 0:
-                not_none(self.item(row, self.COL_TIMESHIFT)).setText(str(timeshift))
-            else:
-                not_none(self.item(row, self.COL_TIMESHIFT)).setText("")
+        with QSignalBlocker(self):  # prevent self update from triggering timeshift edited
+            for row, (name, color) in enumerate(self._data_items.items()):
+                timeshift = self._plots._timeshifts.get(name)
+                item = not_none(self.item(row, self.COL_TIMESHIFT))
+                if timeshift is not None and timeshift != 0:
+                    item.setText(str(timeshift))
+                else:
+                    item.setText("")
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)
         menu.addAction(self._drag_timeshift_action)
 
     def _on_timeshift_cell(self, row: int, col: int) -> None:
-        if col == self.COL_TIMESHIFT:
-            self._on_drag_timeshift()
+        if col != self.COL_TIMESHIFT:
+            return
+        assert isinstance(self._plots, TimeshiftPlotWidget)
+        data_names = list(self._data_items.keys())
+        text = self.item(row, col).text()
+        if text == "":
+            timeshift = 0.0
+        else:
+            try:
+                timeshift = float(text)
+            except ValueError:
+                self._update_timeshifts()  # reassign to actual value
+                return
+        self._plots.set_timeshift([data_names[row]], timeshift)
 
     def _on_drag_timeshift(self) -> None:
         assert isinstance(self._plots, TimeshiftPlotWidget)

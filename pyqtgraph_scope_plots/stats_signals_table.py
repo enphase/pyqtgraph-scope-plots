@@ -15,7 +15,7 @@
 import math
 import queue
 import weakref
-from typing import Dict, Tuple, List, Any, NamedTuple
+from typing import Dict, Tuple, List, Any, NamedTuple, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -71,9 +71,18 @@ class StatsSignalsTable(HasRegionSignalsTable):
 
         def run(self) -> None:
             while True:
-                task = self.queue.get()  # get at least one task, blocking
-                while not self.queue.empty():  # but get the latest, if multiple, discarding earlier
-                    task = self.queue.get()
+                task = self.queue.get()  # always get a task
+
+                stable: bool = False
+                while not stable:
+                    stable = True
+                    QThread.msleep(100)  # add a delay to filter out fast updates, e.g. moving cursor
+                    while True:  # get the latest task, clobbering earlier ones
+                        try:
+                            task = self.queue.get(timeout=0)
+                            stable = False
+                        except queue.Empty:
+                            break
 
                 for xs_ys_ref in task.data:
                     if not self.queue.empty():  # new task, drop current task
@@ -90,6 +99,7 @@ class StatsSignalsTable(HasRegionSignalsTable):
                         ys_region = ys[low_index:high_index]
                     stats_dict = self._calculate_stats(ys_region)
                     self.signals.update.emit(ys, task.region, stats_dict)
+                    QThread.msleep(1)  # yield the thread to ensure this is low priority
 
         def terminate_wait(self) -> None:
             self.terminate()

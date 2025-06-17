@@ -59,6 +59,22 @@ def test_timeshift(qtbot: QtBot, timeshifts_plots: TimeshiftPlotWidget) -> None:
     assert timeshifts_table.item(0, timeshifts_table.COL_TIMESHIFT).text() == ""
 
 
+def test_timeshift_table(qtbot: QtBot, timeshifts_plots: TimeshiftPlotWidget) -> None:
+    timeshifts_table = TimeshiftSignalsTable(timeshifts_plots)
+    timeshifts_table.item(0, timeshifts_table.COL_TIMESHIFT).setText("1")
+    timeshifts_table.cellChanged.emit(0, timeshifts_table.COL_TIMESHIFT)
+    qtbot.waitUntil(lambda: timeshifts_plots._apply_timeshift("0", DATA).tolist() == [1.0, 1.1, 2.0, 3.0])
+    assert timeshifts_table.item(0, timeshifts_table.COL_TIMESHIFT).text() == "1.0"
+    timeshifts_table.item(0, timeshifts_table.COL_TIMESHIFT).setText("-0.5")  # test negative and noninteger
+    timeshifts_table.cellChanged.emit(0, timeshifts_table.COL_TIMESHIFT)
+    qtbot.waitUntil(lambda: timeshifts_plots._apply_timeshift("0", DATA).tolist() == [-0.5, -0.4, 0.5, 1.5])
+    assert timeshifts_table.item(0, timeshifts_table.COL_TIMESHIFT).text() == "-0.5"
+    timeshifts_table.item(0, timeshifts_table.COL_TIMESHIFT).setText("")
+    timeshifts_table.cellChanged.emit(0, timeshifts_table.COL_TIMESHIFT)
+    qtbot.waitUntil(lambda: timeshifts_plots._apply_timeshift("0", DATA).tolist() == [0.0, 0.1, 1.0, 2.0])
+    assert timeshifts_table.item(0, timeshifts_table.COL_TIMESHIFT).text() == ""
+
+
 def test_timeshift_save(qtbot: QtBot, timeshifts_plots: TimeshiftPlotWidget) -> None:
     qtbot.waitUntil(
         lambda: cast(TimeshiftDataStateModel, timeshifts_plots._dump_data_model(["0"]).data["0"]).timeshift == 0

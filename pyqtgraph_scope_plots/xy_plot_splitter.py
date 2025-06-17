@@ -19,7 +19,7 @@ from PySide6.QtWidgets import QSplitter
 from pydantic import BaseModel
 
 from .multi_plot_widget import MultiPlotWidget
-from .xy_plot import BaseXyPlot, XyPlotWidget, XyDragDroppable, XyPlotTable
+from .xy_plot import BaseXyPlot, XyPlotWidget, XyDragDroppable, XyPlotTable, DeleteableXyPlotTable
 from .xy_plot_refgeo import RefGeoXyPlotTable, RefGeoXyPlotWidget
 
 
@@ -29,7 +29,7 @@ class XyPlotSplitter(BaseXyPlot, QSplitter):
     class FullXyPlotWidget(RefGeoXyPlotWidget, XyDragDroppable, XyPlotWidget):  # only for mixin composition
         pass
 
-    class FullXyPlotTable(RefGeoXyPlotTable, XyPlotTable):  # only for mixin composition
+    class FullXyPlotTable(RefGeoXyPlotTable, DeleteableXyPlotTable, XyPlotTable):  # only for mixin composition
         pass
 
     _XY_PLOT_TYPE: Type[XyPlotWidget] = FullXyPlotWidget

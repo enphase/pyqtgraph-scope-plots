@@ -30,7 +30,7 @@ from .timeshift_signals_table import TimeshiftPlotWidget, TimeshiftSignalsTable
 from .transforms_signal_table import TransformsPlotWidget, TransformsSignalsTable
 from .search_signals_table import SearchSignalsTable
 from .xy_plot_table import XyTable
-from .xy_plot import XyPlotWidget, XyDragDroppable, XyPlotTable
+from .xy_plot import XyPlotWidget, XyDragDroppable, XyPlotTable, DeleteableXyPlotTable
 from .xy_plot_splitter import XyPlotSplitter
 from .xy_plot_refgeo import RefGeoXyPlotWidget, RefGeoXyPlotTable
 

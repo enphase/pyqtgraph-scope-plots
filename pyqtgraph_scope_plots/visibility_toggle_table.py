@@ -42,10 +42,8 @@ class VisibilityPlotWidget(MultiPlotWidget):
 
 
 class VisibilityToggleSignalsTable(SignalsTable):
-    """Mixin into SignalsTable that adds a UI to time-shift a signal.
-    This acts as the data store and transformer to apply the time-shift, but the actual
-    values are set externally (by a function call, typically from the top-level coordinator
-    that gets its data from the user dragging a plot line)."""
+    """Mixin into SignalsTable that adds a visibility checkbox to a signal,
+    allowing users to quickly toggle a signal on/off."""
 
     COL_VISIBILITY = -1
 

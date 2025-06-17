@@ -21,11 +21,12 @@ from PySide6.QtCore import QMimeData, QPoint, Signal
 from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
 from PySide6.QtWidgets import QTableWidgetItem, QTableWidget, QHeaderView, QMenu, QLabel
 
+from .mixin_cols_table import MixinColsTable
 from .multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
 from .util import not_none
 
 
-class SignalsTable(QTableWidget):
+class SignalsTable(MixinColsTable):
     """Table of signals. Includes infrastructure to allow additional mixed-in classes to extend the table columns."""
 
     COL_NAME: int = -1  # dynamically init'd

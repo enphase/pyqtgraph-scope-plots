@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 import bisect
-from typing import Dict, List, Any, Mapping, Tuple, Optional
+from typing import Dict, List, Any, Mapping, Tuple, Optional, Set
 
 import numpy as np
 import numpy.typing as npt
@@ -29,7 +29,16 @@ from .util import not_none
 
 
 class VisibilityPlotWidget(MultiPlotWidget):
-    pass
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+
+        self._hidden_data: Set[str] = set()  # set of data traces that are invisible
+
+    def hide_data_item(self, data_items: List[str], hidden: bool = True) -> None:
+        self._hidden_data.update(data_items)
+        # TODO hide / unhide existing PlotItems
+
+    # TODO hook on init to hide / unhide plotitems
 
 
 class VisibilityToggleSignalsTable(SignalsTable):
@@ -55,8 +64,11 @@ class VisibilityToggleSignalsTable(SignalsTable):
 
     def _update(self) -> None:
         super()._update()
-        for row in range(self.rowCount()):
+        for row, (_, (_, plot_type)) in enumerate(self._plots._data_items.items()):
             item = self.item(row, self.COL_VISIBILITY)
-            item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+            if plot_type == MultiPlotWidget.PlotType.DEFAULT:
+                item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+            else:
+                item.setFlags(Qt.ItemFlag.ItemIsUserCheckable)  # other plots not disable-able
             item.setCheckState(Qt.CheckState.Checked)
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)

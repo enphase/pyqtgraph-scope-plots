@@ -91,6 +91,8 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         self._raw_data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]] = {}  # pre-transforms, immutable
         self._data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]] = {}  # post-transforms
 
+        self._data_curves: Dict[str, List[pg.PlotCurveItem]] = {}
+
         self.setOrientation(Qt.Orientation.Vertical)
         default_plot_item = self._init_plot_item(self._create_plot_item(self.PlotType.DEFAULT))
         default_plot_widget = pg.PlotWidget(plotItem=default_plot_item)
@@ -347,6 +349,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         self.sigDataUpdated.emit()
 
     def _update_plots(self) -> None:
+        self._data_curves = {}
         self._data = self._transform_data(self._raw_data)
         for plot_item, data_names in self._plot_item_data.items():
             if isinstance(plot_item, EnumWaveformPlot):  # TODO: enum plots have a different API, this should be unified
@@ -360,11 +363,13 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
                 for data_item in plot_item.listDataItems():  # clear existing
                     plot_item.removeItem(data_item)
                 for data_name in data_names:
-                    color = self._data_items.get(cast(str, data_name), (QColor("black"), None))[0]
-                    xs, ys = self._data.get(cast(str, data_name), ([], []))
+                    assert isinstance(data_name, str)
+                    color = self._data_items.get(data_name, (QColor("black"), None))[0]
+                    xs, ys = self._data.get(data_name, ([], []))
                     curve = pg.PlotCurveItem(x=xs, y=ys, name=data_name)
                     curve.setPen(color=color, width=1)
                     plot_item.addItem(curve)
+                    self._data_curves.setdefault(data_name, []).append(curve)
 
     def autorange(self, enable: bool) -> None:
         is_first = True

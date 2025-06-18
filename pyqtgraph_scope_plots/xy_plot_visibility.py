@@ -22,14 +22,14 @@ from .signals_table import SignalsTable
 from .xy_plot import XyPlotWidget, XyPlotTable, XyWindowModel
 
 
-class XyVisibilityModel(XyWindowModel):
+class XyVisibilityStateModel(XyWindowModel):
     hidden_data: List[Tuple[str, str]] = []  # x, y
 
 
 class VisibilityXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
     """Mixin into XyPlotWidget that allows plots to be hidden."""
 
-    _MODEL_BASES = [XyVisibilityModel]
+    _MODEL_BASES = [XyVisibilityStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -37,12 +37,12 @@ class VisibilityXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
 
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
-        assert isinstance(model, XyVisibilityModel)
+        assert isinstance(model, XyVisibilityStateModel)
         # TODO IMPLEMENT ME
 
     def _load_model(self, model: BaseModel) -> None:
         super()._load_model(model)
-        assert isinstance(model, XyVisibilityModel)
+        assert isinstance(model, XyVisibilityStateModel)
         # TODO IMPLEMENT ME
 
     def hide_xys(self, xys: List[Tuple[str, str]], hidden: bool = True) -> None:

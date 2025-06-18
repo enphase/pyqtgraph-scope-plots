@@ -26,8 +26,7 @@ from .xy_plot_splitter import XyPlotSplitter
 
 
 class XyTableStateModel(BaseTopModel):
-    # TODO: dynamic type construction, the XyRefGeoModel is too specific at this point
-    xy_windows: Optional[List[XyWindowModel]] = None
+    xy_windows: Optional[List[XyWindowModel]] = None  # this is dynamically refined to the _XY_PLOT_TYPE's model
 
 
 class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasSaveLoadDataConfig):
@@ -42,7 +41,7 @@ class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasSaveLoadDataCon
             create_model(
                 "XyTableStateModel",
                 __base__=XyTableStateModel,
-                xy_windows=(Optional[List[cls._XY_PLOT_TYPE._create_skeleton_model_type()]], None),
+                xy_windows=(Optional[List[cls._XY_PLOT_TYPE._create_skeleton_model_type()]], None),  # type: ignore
             )
         ]
 
@@ -54,7 +53,7 @@ class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasSaveLoadDataCon
 
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
-        # assert isinstance(model, XyTableStateModel)
+        assert isinstance(model, XyTableStateModel)
         model.xy_windows = []
         for xy_plot in self._xy_plots:
             model.xy_windows.append(xy_plot._dump_model())  # type: ignore

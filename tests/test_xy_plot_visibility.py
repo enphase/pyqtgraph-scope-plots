@@ -16,10 +16,16 @@ from typing import cast
 import pytest
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots import VisibilityXyPlotWidget, VisibilityXyPlotTable, XyTable
+from pyqtgraph_scope_plots.util import not_none
+from pyqtgraph_scope_plots.xy_plot_visibility import (
+    VisibilityXyPlotWidget,
+    VisibilityXyPlotTable,
+    XyVisibilityStateModel,
+)
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
 from pyqtgraph_scope_plots.visibility_toggle_table import VisibilityDataStateModel
 from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel
+from pyqtgraph_scope_plots.xy_plot_table import XyTable
 
 
 @pytest.fixture()
@@ -40,7 +46,7 @@ def test_visibility_table(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
 
 
 def test_visibility_save(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
-    qtbot.waitUntil(lambda: cast(VisibilityDataStateModel, plot._dump_model()).hidden_data == [])
+    qtbot.waitUntil(lambda: cast(XyVisibilityStateModel, plot._dump_model()).hidden_data == [])
 
     # TODO
     # plot.set_ref_geometry_fn("([-1, 1], [-1, -1])")
@@ -49,7 +55,7 @@ def test_visibility_save(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
 
 def test_visibility_load(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
     table = VisibilityXyPlotTable(plot._plots, plot)
-    model = cast(VisibilityDataStateModel, plot._dump_model())
+    model = cast(XyVisibilityStateModel, plot._dump_model())
 
     # TODO
     # model.ref_geo = ["([-1, 1], [-1, -1])"]
@@ -73,5 +79,5 @@ def test_toptable_composition(qtbot: QtBot) -> None:
     table = XyTableWithMixins(plots)
     table.create_xy()
     top_model = cast(XyTableStateModel, table._dump_data_model([]))
-    assert cast(VisibilityDataStateModel, top_model.xy_windows[0]).hidden_data == []
+    assert cast(XyVisibilityStateModel, not_none(top_model.xy_windows)[0]).hidden_data == []
     assert top_model.model_dump()["xy_windows"][0]["hidden_data"] == []  # validation to schema happens here

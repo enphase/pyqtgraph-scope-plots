@@ -54,7 +54,8 @@ class HasSaveLoadConfig:
             if issubclass(base, HasSaveLoadConfig) and "_MODEL_BASES" in base.__dict__:
                 model_bases.extend(base._MODEL_BASES)
             if issubclass(base, HasSaveLoadConfig) and "_create_class_model_bases" in base.__dict__:
-                fn_bases = base._create_class_model_bases.__func__(cls)  # call with bottommost subclass
+                # call with bottommost subclass
+                fn_bases = base._create_class_model_bases.__func__(cls)  # type: ignore
                 if fn_bases is not None:
                     model_bases.extend(fn_bases)
         return model_bases

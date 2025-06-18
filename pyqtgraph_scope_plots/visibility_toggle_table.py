@@ -11,21 +11,13 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-import bisect
-from typing import Dict, List, Any, Mapping, Tuple, Optional, Set
+from typing import List, Any, Set
 
-import numpy as np
-import numpy.typing as npt
-from PySide6.QtCore import QSignalBlocker
-from PySide6.QtGui import QAction, Qt, QDoubleValidator
-from PySide6.QtWidgets import QTableWidgetItem, QMenu, QStyledItemDelegate, QLineEdit, QWidget, QHeaderView
-from pydantic import BaseModel
+from PySide6.QtGui import Qt
+from PySide6.QtWidgets import QTableWidgetItem, QHeaderView
 
-from .cache_dict import IdentityCacheDict
-from .multi_plot_widget import LinkedMultiPlotWidget, MultiPlotWidget
-from .save_restore_model import DataTopModel, HasSaveLoadDataConfig, BaseTopModel
-from .signals_table import ContextMenuSignalsTable, SignalsTable
-from .util import not_none
+from .multi_plot_widget import MultiPlotWidget
+from .signals_table import SignalsTable
 
 
 class VisibilityPlotWidget(MultiPlotWidget):
@@ -34,9 +26,18 @@ class VisibilityPlotWidget(MultiPlotWidget):
 
         self._hidden_data: Set[str] = set()  # set of data traces that are invisible
 
-    def hide_data_item(self, data_items: List[str], hidden: bool = True) -> None:
-        self._hidden_data.update(data_items)
-        # TODO hide / unhide existing PlotItems
+    def hide_data_items(self, data_items: List[str], hidden: bool = True) -> None:
+        if hidden:
+            self._hidden_data.update(data_items)
+        else:
+            self._hidden_data.difference_update(data_items)
+
+        for data_item in data_items:
+            for curve in self._data_curves.get(data_item, []):
+                if hidden:
+                    curve.hide()
+                else:
+                    curve.show()
 
     # TODO hook on init to hide / unhide plotitems
 
@@ -59,6 +60,7 @@ class VisibilityToggleSignalsTable(SignalsTable):
         self.horizontalHeader().setSectionResizeMode(self.COL_VISIBILITY, QHeaderView.ResizeMode.Fixed)
         self.setColumnWidth(self.COL_VISIBILITY, 50)
         self.setHorizontalHeaderItem(self.COL_VISIBILITY, QTableWidgetItem("Visible"))
+        self.itemChanged.connect(self._on_visibility_toggle)
 
     def _update(self) -> None:
         super()._update()
@@ -70,3 +72,10 @@ class VisibilityToggleSignalsTable(SignalsTable):
                 item.setFlags(Qt.ItemFlag.ItemIsUserCheckable)  # other plots not disable-able
             item.setCheckState(Qt.CheckState.Checked)
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    def _on_visibility_toggle(self, item: QTableWidgetItem) -> None:
+        if item.column() != self.COL_VISIBILITY:
+            return
+        assert isinstance(self._plots, VisibilityPlotWidget)
+        data_name = list(self._data_items.keys())[item.row()]
+        self._plots.hide_data_items([data_name], item.checkState() == Qt.CheckState.Unchecked)

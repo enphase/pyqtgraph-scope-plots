@@ -45,6 +45,7 @@ class VisibilityXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         assert isinstance(model, XyVisibilityStateModel)
         if model.hidden_data is not None:
             self._hidden_data = set(model.hidden_data)
+        self.sigXyDataItemsChanged.emit()  # maybe a more lightweight signal, or a batched update later?
 
     def hide_xys(self, xys: List[Tuple[str, str]], hidden: bool = True) -> None:
         if hidden:
@@ -52,6 +53,7 @@ class VisibilityXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         else:
             self._hidden_data.difference_update(xys)
 
+        self.sigXyDataItemsChanged.emit()
         # TODO HIDE CURVES
 
     def _update(self) -> None:
@@ -85,7 +87,10 @@ class VisibilityXyPlotTable(XyPlotTable):
         for row, xy_item in enumerate(self._xy_plots._xys):
             item = SignalsTable._create_noneditable_table_item()
             item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
-            item.setCheckState(Qt.CheckState.Checked)
+            if xy_item in self._xy_plots._hidden_data:  # TODO update might be part of a faster loop
+                item.setCheckState(Qt.CheckState.Unchecked)
+            else:
+                item.setCheckState(Qt.CheckState.Checked)
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.setItem(row, self.COL_VISIBILITY, item)
 

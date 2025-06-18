@@ -27,6 +27,14 @@ from pyqtgraph_scope_plots.xy_plot_splitter import XyPlotSplitter
 from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel, XyTable
 
 
+XY_DATA = {
+    "0": ([0, 1, 2], [0, 1, 2]),
+    "1": ([0, 1, 2], [2, 1, 0]),
+    "2": ([1, 2, 3], [0, 1, 2]),  # offset in time but evenly spaced
+    "X": ([0, 1, 4], [0, 1, 2]),  # not evenly spaced
+}
+
+
 @pytest.fixture()
 def xy_table(qtbot: QtBot) -> XyTable:
     """Creates a signals plot with multiple data items"""
@@ -38,14 +46,7 @@ def xy_table(qtbot: QtBot) -> XyTable:
             ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
         ]
     )
-    table._plots.set_data(
-        {
-            "0": ([0, 1, 2], [0, 1, 2]),
-            "1": ([0, 1, 2], [2, 1, 0]),
-            "2": ([1, 2, 3], [0, 1, 2]),  # offset in time but evenly spaced
-            "X": ([0, 1, 4], [0, 1, 2]),  # not evenly spaced
-        }
-    )
+    table._plots.set_data(XY_DATA)
     qtbot.addWidget(table)
     table.show()
     qtbot.waitExposed(table)

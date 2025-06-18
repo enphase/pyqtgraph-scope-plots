@@ -26,7 +26,7 @@ from pyqtgraph_scope_plots.xy_plot_visibility import (
     VisibilityXyPlotTable,
     XyVisibilityStateModel,
 )
-from tests.test_transforms import DATA
+from tests.test_xy_plot import XY_DATA
 
 
 @pytest.fixture()
@@ -39,6 +39,7 @@ def plot(qtbot: QtBot) -> VisibilityXyPlotWidget:
             ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
         ]
     )
+    plots.set_data(XY_DATA)
     xy_plot = VisibilityXyPlotWidget(plots)
     qtbot.addWidget(xy_plot)
     xy_plot.show()
@@ -69,12 +70,12 @@ def test_visibility_load(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
 
     model.hidden_data = [("0", "1")]
     plot._load_model(model)
-    plot._plots.set_data(DATA)  # trigger update
+    plot._plots.set_data(XY_DATA)  # trigger update
     assert table.item(0, table.COL_VISIBILITY).checkState() == Qt.CheckState.Unchecked
 
     model.hidden_data = []
     plot._load_model(model)
-    plot._plots.set_data(DATA)  # trigger update
+    plot._plots.set_data(XY_DATA)  # trigger update
     assert table.item(0, table.COL_VISIBILITY).checkState() == Qt.CheckState.Checked
 
 

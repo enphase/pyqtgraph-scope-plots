@@ -22,6 +22,7 @@ from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidget, QTableWidgetIt
 from numpy import typing as npt
 from pydantic import BaseModel
 
+from .mixin_cols_table import MixinColsTable
 from .save_restore_model import HasSaveLoadConfig
 from .multi_plot_widget import DragTargetOverlay, MultiPlotWidget, LinkedMultiPlotWidget
 from .signals_table import HasRegionSignalsTable, DraggableSignalsTable, SignalsTable
@@ -220,9 +221,19 @@ class XyDragDroppable(BaseXyPlot):
         event.accept()
 
 
-class XyPlotTable(QTableWidget):
-    COL_X_NAME: int = 0
-    COL_Y_NAME: int = 1
+class XyPlotTable(MixinColsTable):
+    COL_X_NAME: int = -1
+    COL_Y_NAME: int = -1
+
+    def _post_cols(self) -> int:  # total number of columns, including _pre_cols
+        self.COL_X_NAME = super()._post_cols()
+        self.COL_Y_NAME = self.COL_X_NAME + 1
+        return self.COL_Y_NAME + 1
+
+    def _init_table(self) -> None:
+        super()._init_table()
+        self.setHorizontalHeaderItem(self.COL_X_NAME, QTableWidgetItem("X"))
+        self.setHorizontalHeaderItem(self.COL_Y_NAME, QTableWidgetItem("Y"))
 
     def __init__(self, plots: MultiPlotWidget, xy_plots: XyPlotWidget):
         super().__init__()
@@ -231,10 +242,6 @@ class XyPlotTable(QTableWidget):
 
         self._plots.sigDataItemsUpdated.connect(self._update)
         self._xy_plots.sigXyDataItemsChanged.connect(self._update)
-
-        self.setColumnCount(2)
-        self.setHorizontalHeaderItem(self.COL_X_NAME, QTableWidgetItem("X"))
-        self.setHorizontalHeaderItem(self.COL_Y_NAME, QTableWidgetItem("Y"))
 
     def _update(self) -> None:
         self.setRowCount(0)  # clear table

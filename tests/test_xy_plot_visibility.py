@@ -59,7 +59,14 @@ def test_visibility(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
 
 
 def test_visibility_table(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
-    pass
+    table = VisibilityXyPlotTable(plot._plots, plot)
+    table._update()
+
+    table.item(0, table.COL_VISIBILITY).setCheckState(Qt.CheckState.Unchecked)
+    assert not plot._xy_curves[("0", "1")][0].isVisible()
+
+    table.item(0, table.COL_VISIBILITY).setCheckState(Qt.CheckState.Checked)
+    assert plot._xy_curves[("0", "1")][0].isVisible()
 
 
 def test_visibility_save(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:

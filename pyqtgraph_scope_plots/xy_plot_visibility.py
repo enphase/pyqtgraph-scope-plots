@@ -13,7 +13,7 @@
 #    limitations under the License.
 from typing import Any, List, Tuple, Set, Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSignalBlocker
 from PySide6.QtWidgets import QHeaderView, QTableWidgetItem
 from pydantic import BaseModel
 
@@ -91,15 +91,19 @@ class VisibilityXyPlotTable(XyPlotTable):
     def _update(self) -> None:
         super()._update()
         assert isinstance(self._xy_plots, VisibilityXyPlotWidget)
-        for row, xy_item in enumerate(self._xy_plots._xys):
-            item = SignalsTable._create_noneditable_table_item()
-            item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
-            if xy_item in self._xy_plots._hidden_data:  # TODO update might be part of a faster loop
-                item.setCheckState(Qt.CheckState.Unchecked)
-            else:
-                item.setCheckState(Qt.CheckState.Checked)
-            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.setItem(row, self.COL_VISIBILITY, item)
+        with QSignalBlocker(self):  # needed to prevent infinite-loop updating
+            for row, xy_item in enumerate(self._xy_plots._xys):
+                item = SignalsTable._create_noneditable_table_item()
+                item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+                if xy_item in self._xy_plots._hidden_data:  # TODO update might be part of a faster loop
+                    item.setCheckState(Qt.CheckState.Unchecked)
+                else:
+                    item.setCheckState(Qt.CheckState.Checked)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.setItem(row, self.COL_VISIBILITY, item)
 
     def _on_visibility_toggle(self, item: QTableWidgetItem) -> None:
-        pass
+        assert isinstance(self._xy_plots, VisibilityXyPlotWidget)
+        if item.column() != self.COL_VISIBILITY or item.row() >= len(self._xy_plots._xys):
+            return
+        self._xy_plots.hide_xys([self._xy_plots._xys[item.row()]], item.checkState() == Qt.CheckState.Unchecked)

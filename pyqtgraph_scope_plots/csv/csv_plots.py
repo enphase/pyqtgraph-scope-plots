@@ -38,6 +38,8 @@ from PySide6.QtWidgets import (
 )
 from pydantic import BaseModel
 
+from ..legend_plot_widget import LegendPlotWidget
+from ..xy_plot_legends import XyTableLegends
 from ..xy_plot_visibility import VisibilityXyPlotWidget, VisibilityXyPlotTable
 from ..visibility_toggle_table import VisibilityToggleSignalsTable, VisibilityPlotWidget
 from ..animation_plot_table_widget import AnimationPlotsTableWidget
@@ -85,20 +87,18 @@ class FullXySplitter(XyPlotSplitter):
 
 
 class FullPlots(
-    VisibilityPlotWidget, ColorPickerPlotWidget, TimeshiftPlotWidget, TransformsPlotWidget, PlotsTableWidget.Plots
+    LegendPlotWidget,
+    VisibilityPlotWidget,
+    ColorPickerPlotWidget,
+    TimeshiftPlotWidget,
+    TransformsPlotWidget,
+    PlotsTableWidget.Plots,
 ):
     """Adds legend add functionality"""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._thickness: float = 1
-        self._show_legend: bool = False
         super().__init__(*args, **kwargs)
-
-    def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
-        plot_item = super()._init_plot_item(plot_item)
-        if self._show_legend:
-            plot_item.addLegend()
-        return plot_item
 
     def _update_plots(self) -> None:
         super()._update_plots()
@@ -111,15 +111,10 @@ class FullPlots(
         self._thickness = thickness
         self._update_plots()
 
-    def show_legends(self) -> None:
-        self._show_legend = True
-        for plot_item, _ in self._plot_item_data.items():
-            plot_item.addLegend()
-        self._update_plots()
-
 
 class FullSignalsTable(
     VisibilityToggleSignalsTable,
+    XyTableLegends,
     XyTable,
     ColorPickerSignalsTable,
     TimeshiftSignalsTable,
@@ -202,8 +197,10 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
     def _on_legend_checked(self) -> None:
         assert isinstance(self._plots, FullPlots)
+        assert isinstance(self._table, FullSignalsTable)
         self._legend_action.setDisabled(True)  # pyqtgraph doesn't support deleting legends
         self._plots.show_legends()
+        self._table.show_legends()
 
     def _on_line_width_action(self) -> None:
         assert isinstance(self._plots, FullPlots)

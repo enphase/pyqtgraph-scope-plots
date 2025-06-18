@@ -11,7 +11,7 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-
+from abc import abstractmethod
 from typing import List, Tuple, Optional, Literal, Union, cast, Any, Dict
 
 import numpy as np
@@ -44,12 +44,19 @@ class BaseXyPlot(HasSaveLoadConfig):
         super().__init__()
         self._plots = plots
 
+    @abstractmethod
     def add_xy(self, x_name: str, y_name: str) -> None:
         """Adds a XY plot to the widget"""
         ...
 
+    @abstractmethod
     def remove_xy(self, x_name: str, y_name: str) -> None:
         """Removes a XY plot from the widget. Asserts out if the plot doesn't exist."""
+        ...
+
+    @abstractmethod
+    def get_plot_widget(self) -> "XyPlotWidget":
+        """Returns the plot widget, for example if this is a plot + table splitter widget."""
         ...
 
 
@@ -105,6 +112,9 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         self._update()
         self.sigXyDataItemsChanged.emit()
 
+    def get_plot_widget(self) -> "XyPlotWidget":
+        return self
+
     @staticmethod
     def _get_correlated_indices(
         x_ts: npt.NDArray[np.float64], y_ts: npt.NDArray[np.float64], start: float, end: float
@@ -155,9 +165,14 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             last_segment_end = xt_lo
             for i in range(fade_segments):
                 this_end = int(i / (fade_segments - 1) * (xt_hi - xt_lo)) + xt_lo
+                if i == fade_segments - 1:
+                    curve_kwargs = {"name": f"{x_name} (x), {y_name} (y)"}
+                else:
+                    curve_kwargs = {}
                 curve = pg.PlotCurveItem(
                     x=x_ys[last_segment_end:this_end],
                     y=y_ys[last_segment_end + yt_lo - xt_lo : this_end + yt_lo - xt_lo],
+                    **curve_kwargs,
                 )
                 # make sure segments are continuous since this_end is exclusive,
                 # but only as far as the beginning of this segment

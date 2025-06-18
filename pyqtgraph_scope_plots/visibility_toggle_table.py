@@ -23,7 +23,7 @@ from .signals_table import SignalsTable
 
 
 class VisibilityDataStateModel(DataTopModel):
-    hidden: Optional[float] = None
+    hidden: Optional[bool] = None
 
 
 class VisibilityPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
@@ -47,24 +47,21 @@ class VisibilityPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
         for data_name, data_model in model.data.items():
             assert isinstance(data_model, VisibilityDataStateModel)
             if data_model.hidden is not None:
-                if data_model.hidden:
-                    self._hidden_data.add(data_name)
-                else:
-                    if data_name in self._hidden_data:
-                        self._hidden_data.remove(data_name)
+                self.hide_data_items([data_name], data_model.hidden, update=False)
 
-    def hide_data_items(self, data_items: List[str], hidden: bool = True) -> None:
+    def hide_data_items(self, data_items: List[str], hidden: bool = True, update: bool = True) -> None:
         if hidden:
             self._hidden_data.update(data_items)
         else:
             self._hidden_data.difference_update(data_items)
 
-        for data_item in data_items:
-            for curve in self._data_curves.get(data_item, []):
-                if hidden:
-                    curve.hide()
-                else:
-                    curve.show()
+        if update:
+            for data_item in data_items:
+                for curve in self._data_curves.get(data_item, []):
+                    if hidden:
+                        curve.hide()
+                    else:
+                        curve.show()
 
     def _update_plots(self) -> None:
         super()._update_plots()

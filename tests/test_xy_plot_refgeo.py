@@ -16,6 +16,7 @@ from unittest import mock
 
 import pyqtgraph as pg
 import pytest
+from PySide6.QtCore import QPoint
 from PySide6.QtGui import QColor, Qt
 from pytestqt.qtbot import QtBot
 
@@ -113,7 +114,7 @@ def test_table_deletion(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     plot.set_ref_geometry_fn("([-1, 2], [-1, -1])")  # addition
     qtbot.waitUntil(lambda: table.rowCount() == 2)
 
-    table.setFocus()
+    qtbot.mouseClick(table.viewport(), Qt.MouseButton.RightButton, pos=QPoint(0, 0))  # set focus
     table.selectRow(0)
     qtbot.keyClick(table.viewport(), Qt.Key.Key_Delete)
     qtbot.waitUntil(lambda: table.rowCount() == 1)

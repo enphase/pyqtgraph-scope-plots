@@ -60,4 +60,4 @@ class XyPlotSplitter(BaseXyPlot, QSplitter):
         self._xy_plots._load_model(model)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        self.closed.emit()
+        self.sigClosed.emit()

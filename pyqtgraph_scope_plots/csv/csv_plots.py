@@ -39,6 +39,8 @@ from PySide6.QtWidgets import (
 from pydantic import BaseModel
 from pydantic._internal._model_construction import ModelMetaclass
 
+from ..xy_plot_visibility import VisibilityXyPlotWidget, VisibilityXyPlotTable
+from ..visibility_toggle_table import VisibilityToggleSignalsTable, VisibilityPlotWidget
 from ..animation_plot_table_widget import AnimationPlotsTableWidget
 from ..color_signals_table import ColorPickerSignalsTable, ColorPickerPlotWidget
 from ..multi_plot_widget import MultiPlotWidget
@@ -72,17 +74,21 @@ class CsvLoaderStateModel(BaseTopModel):
 
 
 class FullXySplitter(XyPlotSplitter):
-    class FullXyPlot(RefGeoXyPlotWidget, XyDragDroppable, XyPlotWidget):
+    class FullXyPlot(VisibilityXyPlotWidget, RefGeoXyPlotWidget, XyDragDroppable, XyPlotWidget):
         pass
 
-    class FullXyPlotTable(RefGeoXyPlotTable, SignalRemovalXyPlotTable, DeleteableXyPlotTable, XyPlotTable):
+    class FullXyPlotTable(
+        VisibilityXyPlotTable, RefGeoXyPlotTable, SignalRemovalXyPlotTable, DeleteableXyPlotTable, XyPlotTable
+    ):
         pass
 
     _XY_PLOT_TYPE = FullXyPlot
     _XY_PLOT_TABLE_TYPE = FullXyPlotTable
 
 
-class FullPlots(ColorPickerPlotWidget, TimeshiftPlotWidget, TransformsPlotWidget, PlotsTableWidget.Plots):
+class FullPlots(
+    VisibilityPlotWidget, ColorPickerPlotWidget, TimeshiftPlotWidget, TransformsPlotWidget, PlotsTableWidget.Plots
+):
     """Adds legend add functionality"""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -115,6 +121,7 @@ class FullPlots(ColorPickerPlotWidget, TimeshiftPlotWidget, TransformsPlotWidget
 
 
 class FullSignalsTable(
+    VisibilityToggleSignalsTable,
     XyTable,
     ColorPickerSignalsTable,
     TimeshiftSignalsTable,
@@ -170,10 +177,10 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._watch_timer.timeout.connect(self._check_watch)
 
     @classmethod
-    def _get_model_bases(cls) -> List[ModelMetaclass]:
-        bases = super()._get_model_bases()
-        plot_bases = cls._PLOT_TYPE._get_model_bases()
-        table_bases = cls._TABLE_TYPE._get_model_bases()
+    def _get_all_model_bases(cls) -> List[ModelMetaclass]:
+        bases = super()._get_all_model_bases()
+        plot_bases = cls._PLOT_TYPE._get_all_model_bases()
+        table_bases = cls._TABLE_TYPE._get_all_model_bases()
         return bases + plot_bases + table_bases
 
     @classmethod
@@ -465,4 +472,8 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         data = self._data
         self._set_data({})  # blank the data while updates happen, for performance
         self._load_model(model)
+
+        # force-update data items and data
+        data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(self._data_items.items())]
+        self._set_data_items(data_items)
         self._set_data(data)  # bulk update everything for performance

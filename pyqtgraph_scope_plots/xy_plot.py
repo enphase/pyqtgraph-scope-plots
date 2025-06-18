@@ -12,18 +12,19 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import List, Tuple, Optional, Literal, Union, cast, Any, Dict, Sequence
+from typing import List, Tuple, Optional, Literal, Union, cast, Any, Dict
 
 import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QSize, Signal, QPoint
 from PySide6.QtGui import QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent, Qt, QAction
-from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidget, QTableWidgetItem, QMenu
+from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidgetItem, QMenu
 from numpy import typing as npt
 from pydantic import BaseModel
 
-from .save_restore_model import HasSaveLoadConfig
+from .mixin_cols_table import MixinColsTable
 from .multi_plot_widget import DragTargetOverlay, MultiPlotWidget, LinkedMultiPlotWidget
+from .save_restore_model import HasSaveLoadConfig
 from .signals_table import HasRegionSignalsTable, DraggableSignalsTable, SignalsTable
 
 
@@ -36,8 +37,9 @@ class XyWindowModel(BaseModel):
 class BaseXyPlot(HasSaveLoadConfig):
     """Abstract interface for a XY plot widget"""
 
+    _TOP_MODEL_NAME = "TopXyWindowModel"
     _MODEL_BASES = [XyWindowModel]
-    closed = Signal()
+    sigClosed = Signal()
 
     def __init__(self, plots: MultiPlotWidget):
         super().__init__()
@@ -60,6 +62,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     def __init__(self, plots: MultiPlotWidget):
         super().__init__(plots)
         self._xys: List[Tuple[str, str]] = []
+        self._xy_curves: Dict[Tuple[str, str], List[pg.PlotCurveItem]] = {}
 
         plots.sigDataUpdated.connect(self._update)
         if isinstance(self._plots, LinkedMultiPlotWidget):
@@ -125,6 +128,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     def _update(self) -> None:
         for data_item in self.listDataItems():  # clear existing
             self.removeItem(data_item)
+        self._xy_curves = {}
 
         region = HasRegionSignalsTable._region_of_plot(self._plots)
         data = self._plots._data
@@ -143,6 +147,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
                 continue
             (xt_lo, xt_hi), (yt_lo, yt_hi) = indices
 
+            this_curve_list = self._xy_curves.setdefault((x_name, y_name), [])
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
             y_color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
             fade_segments = min(
@@ -166,6 +171,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
                 )
                 curve.setPen(color=segment_color, width=1)
                 self.addItem(curve)
+                this_curve_list.append(curve)
 
 
 class XyDragDroppable(BaseXyPlot):
@@ -220,9 +226,19 @@ class XyDragDroppable(BaseXyPlot):
         event.accept()
 
 
-class XyPlotTable(QTableWidget):
-    COL_X_NAME: int = 0
-    COL_Y_NAME: int = 1
+class XyPlotTable(MixinColsTable):
+    COL_X_NAME: int = -1
+    COL_Y_NAME: int = -1
+
+    def _post_cols(self) -> int:  # total number of columns, including _pre_cols
+        self.COL_X_NAME = super()._post_cols()
+        self.COL_Y_NAME = self.COL_X_NAME + 1
+        return self.COL_Y_NAME + 1
+
+    def _init_table(self) -> None:
+        super()._init_table()
+        self.setHorizontalHeaderItem(self.COL_X_NAME, QTableWidgetItem("X"))
+        self.setHorizontalHeaderItem(self.COL_Y_NAME, QTableWidgetItem("Y"))
 
     def __init__(self, plots: MultiPlotWidget, xy_plots: XyPlotWidget):
         super().__init__()
@@ -231,10 +247,6 @@ class XyPlotTable(QTableWidget):
 
         self._plots.sigDataItemsUpdated.connect(self._update)
         self._xy_plots.sigXyDataItemsChanged.connect(self._update)
-
-        self.setColumnCount(2)
-        self.setHorizontalHeaderItem(self.COL_X_NAME, QTableWidgetItem("X"))
-        self.setHorizontalHeaderItem(self.COL_Y_NAME, QTableWidgetItem("Y"))
 
     def _update(self) -> None:
         self.setRowCount(0)  # clear table

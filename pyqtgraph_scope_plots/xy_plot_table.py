@@ -16,25 +16,33 @@ from typing import Any, List, Optional, Type
 
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QMessageBox, QWidget
-from pydantic import BaseModel
+from pydantic import BaseModel, create_model
+from pydantic._internal._model_construction import ModelMetaclass
 
 from .save_restore_model import BaseTopModel, HasSaveLoadDataConfig
 from .signals_table import ContextMenuSignalsTable, DraggableSignalsTable
-from .xy_plot import BaseXyPlot
-from .xy_plot_refgeo import XyRefGeoModel
+from .xy_plot import BaseXyPlot, XyWindowModel
 from .xy_plot_splitter import XyPlotSplitter
 
 
 class XyTableStateModel(BaseTopModel):
-    # TODO: dynamic type construction, the XyRefGeoModel is too specific at this point
-    xy_windows: Optional[List[XyRefGeoModel]] = None
+    xy_windows: Optional[List[XyWindowModel]] = None  # this is dynamically refined to the _XY_PLOT_TYPE's model
 
 
 class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasSaveLoadDataConfig):
     """Mixin into SignalsTable that adds the option to open an XY plot in a separate window."""
 
-    _MODEL_BASES = [XyTableStateModel]
     _XY_PLOT_TYPE: Type[BaseXyPlot] = XyPlotSplitter
+
+    @classmethod
+    def _create_class_model_bases(cls) -> Optional[List[ModelMetaclass]]:
+        return [
+            create_model(
+                "XyTableStateModel",
+                __base__=XyTableStateModel,
+                xy_windows=(Optional[List[cls._XY_PLOT_TYPE._create_skeleton_model_type()]], None),  # type: ignore
+            )
+        ]
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -88,7 +96,7 @@ class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasSaveLoadDataCon
         assert isinstance(xy_plot, QWidget)
         xy_plot.show()
         self._xy_plots.append(xy_plot)  # need an active reference to prevent GC'ing
-        xy_plot.closed.connect(partial(self._on_closed_xy, xy_plot))
+        xy_plot.sigClosed.connect(partial(self._on_closed_xy, xy_plot))
         return xy_plot
 
     def _on_closed_xy(self, closed: BaseXyPlot) -> None:

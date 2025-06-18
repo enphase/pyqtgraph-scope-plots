@@ -28,11 +28,13 @@ from .stats_signals_table import StatsSignalsTable
 from .color_signals_table import ColorPickerPlotWidget, ColorPickerSignalsTable
 from .timeshift_signals_table import TimeshiftPlotWidget, TimeshiftSignalsTable
 from .transforms_signal_table import TransformsPlotWidget, TransformsSignalsTable
+from .visibility_toggle_table import VisibilityPlotWidget, VisibilityToggleSignalsTable
 from .search_signals_table import SearchSignalsTable
 from .xy_plot_table import XyTable
 from .xy_plot import XyPlotWidget, XyDragDroppable, XyPlotTable, DeleteableXyPlotTable, SignalRemovalXyPlotTable
 from .xy_plot_splitter import XyPlotSplitter
 from .xy_plot_refgeo import RefGeoXyPlotWidget, RefGeoXyPlotTable
+from .xy_plot_visibility import VisibilityXyPlotWidget, VisibilityXyPlotTable
 
 from .time_axis import TimeAxisItem
 

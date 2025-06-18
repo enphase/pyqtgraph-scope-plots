@@ -17,57 +17,40 @@ from typing import Dict, Tuple, List, Any, Optional
 
 import numpy as np
 import numpy.typing as npt
-from PySide6.QtCore import QMimeData, QPoint, Signal
+from PySide6.QtCore import QMimeData, QPoint
 from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
-from PySide6.QtWidgets import QTableWidgetItem, QTableWidget, QHeaderView, QMenu, QLabel
+from PySide6.QtWidgets import QTableWidgetItem, QHeaderView, QMenu, QLabel
 
+from .mixin_cols_table import MixinColsTable
 from .multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
 from .util import not_none
 
 
-class SignalsTable(QTableWidget):
+class SignalsTable(MixinColsTable):
     """Table of signals. Includes infrastructure to allow additional mixed-in classes to extend the table columns."""
 
     COL_NAME: int = -1  # dynamically init'd
-    COL_COUNT: int = 0
 
     @classmethod
     def _create_noneditable_table_item(cls, *args: Any) -> QTableWidgetItem:
         """Creates a non-editable QTableWidgetItem (table cell)"""
         item = QTableWidgetItem(*args)
-        item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)  # make non-editable
+        item.setFlags(
+            item.flags() & ~Qt.ItemFlag.ItemIsEditable & ~Qt.ItemFlag.ItemIsUserCheckable
+        )  # make non-editable
         return item
 
-    def _pre_cols(self) -> int:  # number of cols before nane
-        """Called during beginning of __init__ to calculate column counts.
-        Subclasses should override this (with an accumulating super() call) and initialize their offsets.
-        """
-        return 0
-
     def _post_cols(self) -> int:  # total number of columns, including _pre_cols
-        """Called during beginning of __init__ to calculate column counts.
-        Subclasses should override this (with an accumulating super() call) and initialize their offsets.
-        """
-        return self.COL_NAME + 1  # 1 for the name column
-
-    def _init_col_counts(self) -> None:
-        """Called during beginning of init to initialize column offsets and counts. Do NOT override."""
-        if self.COL_NAME == -1 or self.COL_COUNT == 0:
-            self.COL_NAME = self._pre_cols()
-            self.COL_COUNT = self._post_cols()
+        self.COL_NAME = super()._post_cols()
+        return self.COL_NAME + 1
 
     def _init_table(self) -> None:
-        """Called during init, AFTER _init_col_counts (and where offsets and counts should be valid), to
-        do any table initialization like setting up headers.
-        Subclasses should override this (including a super() call)"""
+        super()._init_table()
         self.setHorizontalHeaderItem(self.COL_NAME, QTableWidgetItem("Name"))
 
     def __init__(self, plots: MultiPlotWidget) -> None:
         super().__init__()
         self._plots = plots
-        self._init_col_counts()
-        self.setColumnCount(self.COL_COUNT)
-        self._init_table()
 
         header = self.horizontalHeader()
         for col in range(self.columnCount()):
@@ -84,7 +67,7 @@ class SignalsTable(QTableWidget):
         self.setRowCount(0)  # clear the existing table, other resizing becomes really expensive
         self.setRowCount(len(self._data_items))  # create new items
         for row, (name, color) in enumerate(self._data_items.items()):
-            for col in range(self.COL_COUNT):
+            for col in range(self.columnCount()):
                 item = self._create_noneditable_table_item()
                 item.setForeground(color)
                 self.setItem(row, col, item)

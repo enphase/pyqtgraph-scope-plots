@@ -14,23 +14,32 @@
 from typing import cast
 
 import pytest
+from PySide6.QtGui import QColor, Qt
 from pytestqt.qtbot import QtBot
 
+from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
 from pyqtgraph_scope_plots.util import not_none
+from pyqtgraph_scope_plots.xy_plot_table import XyTable
+from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel
 from pyqtgraph_scope_plots.xy_plot_visibility import (
     VisibilityXyPlotWidget,
     VisibilityXyPlotTable,
     XyVisibilityStateModel,
 )
-from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
-from pyqtgraph_scope_plots.visibility_toggle_table import VisibilityDataStateModel
-from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel
-from pyqtgraph_scope_plots.xy_plot_table import XyTable
+from tests.test_transforms import DATA
 
 
 @pytest.fixture()
 def plot(qtbot: QtBot) -> VisibilityXyPlotWidget:
-    xy_plot = VisibilityXyPlotWidget(MultiPlotWidget())
+    plots = MultiPlotWidget()
+    plots.show_data_items(
+        [
+            ("0", QColor("yellow"), MultiPlotWidget.PlotType.DEFAULT),
+            ("1", QColor("orange"), MultiPlotWidget.PlotType.DEFAULT),
+            ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
+        ]
+    )
+    xy_plot = VisibilityXyPlotWidget(plots)
     qtbot.addWidget(xy_plot)
     xy_plot.show()
     qtbot.waitExposed(xy_plot)
@@ -46,26 +55,27 @@ def test_visibility_table(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
 
 
 def test_visibility_save(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
-    qtbot.waitUntil(lambda: cast(XyVisibilityStateModel, plot._dump_model()).hidden_data == [])
+    assert cast(XyVisibilityStateModel, plot._dump_model()).hidden_data == []
 
-    # TODO
-    # plot.set_ref_geometry_fn("([-1, 1], [-1, -1])")
-    # qtbot.waitUntil(lambda: cast(XyRefGeoModel, plot._dump_model()).ref_geo == ["([-1, 1], [-1, -1])"])
+    plot.hide_xys([("0", "1")])
+    assert cast(XyVisibilityStateModel, plot._dump_model()).hidden_data == [("0", "1")]
 
 
 def test_visibility_load(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
+    plot.add_xy("0", "1")
     table = VisibilityXyPlotTable(plot._plots, plot)
+    table._update()
     model = cast(XyVisibilityStateModel, plot._dump_model())
 
-    # TODO
-    # model.ref_geo = ["([-1, 1], [-1, -1])"]
-    # plot._load_model(model)
-    # qtbot.waitUntil(lambda: table.rowCount() == 1)
-    # assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"
-    #
-    # model.ref_geo = []
-    # plot._load_model(model)
-    # qtbot.waitUntil(lambda: table.rowCount() == 0)
+    model.hidden_data = [("0", "1")]
+    plot._load_model(model)
+    plot._plots.set_data(DATA)  # trigger update
+    assert table.item(0, table.COL_VISIBILITY).checkState() == Qt.CheckState.Unchecked
+
+    model.hidden_data = []
+    plot._load_model(model)
+    plot._plots.set_data(DATA)  # trigger update
+    assert table.item(0, table.COL_VISIBILITY).checkState() == Qt.CheckState.Checked
 
 
 class XyTableWithMixins(XyTable):

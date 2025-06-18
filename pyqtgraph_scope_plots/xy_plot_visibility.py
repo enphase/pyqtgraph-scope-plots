@@ -11,7 +11,7 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-from typing import Any, List, Tuple, Set
+from typing import Any, List, Tuple, Set, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHeaderView, QTableWidgetItem
@@ -23,7 +23,7 @@ from .xy_plot import XyPlotWidget, XyPlotTable, XyWindowModel
 
 
 class XyVisibilityStateModel(XyWindowModel):
-    hidden_data: List[Tuple[str, str]] = []  # x, y
+    hidden_data: Optional[List[Tuple[str, str]]] = []  # x, y
 
 
 class VisibilityXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
@@ -38,12 +38,13 @@ class VisibilityXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
         assert isinstance(model, XyVisibilityStateModel)
-        # TODO IMPLEMENT ME
+        model.hidden_data = sorted(list(self._hidden_data))
 
     def _load_model(self, model: BaseModel) -> None:
         super()._load_model(model)
         assert isinstance(model, XyVisibilityStateModel)
-        # TODO IMPLEMENT ME
+        if model.hidden_data is not None:
+            self._hidden_data = set(model.hidden_data)
 
     def hide_xys(self, xys: List[Tuple[str, str]], hidden: bool = True) -> None:
         if hidden:

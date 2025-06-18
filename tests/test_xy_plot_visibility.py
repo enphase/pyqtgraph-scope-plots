@@ -17,28 +17,17 @@ import pytest
 from PySide6.QtGui import QColor, Qt
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
-from pyqtgraph_scope_plots.util import not_none
-from pyqtgraph_scope_plots.xy_plot_table import XyTable
+from pyqtgraph_scope_plots import MultiPlotWidget, VisibilityXyPlotWidget, VisibilityXyPlotTable, XyTable
+from pyqtgraph_scope_plots.util.util import not_none
 from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel
-from pyqtgraph_scope_plots.xy_plot_visibility import (
-    VisibilityXyPlotWidget,
-    VisibilityXyPlotTable,
-    XyVisibilityStateModel,
-)
-from tests.test_xy_plot import XY_DATA
+from pyqtgraph_scope_plots.xy_plot_visibility import XyVisibilityStateModel
+from .common_testdata import DATA_ITEMS, XY_DATA
 
 
 @pytest.fixture()
 def plot(qtbot: QtBot) -> VisibilityXyPlotWidget:
     plots = MultiPlotWidget()
-    plots.show_data_items(
-        [
-            ("0", QColor("yellow"), MultiPlotWidget.PlotType.DEFAULT),
-            ("1", QColor("orange"), MultiPlotWidget.PlotType.DEFAULT),
-            ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
-        ]
-    )
+    plots.show_data_items(DATA_ITEMS)
     plots.set_data(XY_DATA)
     xy_plot = VisibilityXyPlotWidget(plots)
     xy_plot.add_xy("0", "1")

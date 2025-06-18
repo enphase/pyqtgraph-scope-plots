@@ -20,12 +20,9 @@ import pytest
 from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.multi_plot_widget import (
-    MultiPlotWidget,
-    MultiPlotStateModel,
-    PlotWidgetModel,
-)
-from pyqtgraph_scope_plots.plots_table_widget import PlotsTableWidget
+from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotStateModel, PlotWidgetModel
+from pyqtgraph_scope_plots import MultiPlotWidget, PlotsTableWidget
+from .common_testdata import DATA_ITEMS, DATA
 from .test_util import assert_cast
 
 
@@ -33,20 +30,8 @@ from .test_util import assert_cast
 def plot(qtbot: QtBot) -> PlotsTableWidget:
     """Creates a signals plot with multiple data items"""
     plot = PlotsTableWidget()
-    plot._set_data_items(
-        [
-            ("0", QColor("yellow"), MultiPlotWidget.PlotType.DEFAULT),
-            ("1", QColor("orange"), MultiPlotWidget.PlotType.DEFAULT),
-            ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
-        ]
-    )
-    plot._set_data(
-        {
-            "0": ([0, 0.1, 1, 2], [0.01, 1, 1, 0]),
-            "1": ([0, 1, 2], [0.5, 0.25, 0.5]),
-            "2": ([0, 1, 2], [0.7, 0.6, 0.5]),
-        }
-    )
+    plot._set_data_items(DATA_ITEMS)
+    plot._set_data(DATA)
     qtbot.addWidget(plot)
     plot.show()
     qtbot.waitExposed(plot)
@@ -64,14 +49,7 @@ def test_num_plots_table(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     assert plot._table.item(1, plot._table.COL_NAME).text() == "1"
     assert plot._table.item(2, plot._table.COL_NAME).text() == "2"
 
-    plot._set_data_items(
-        [
-            ("0", QColor("yellow"), MultiPlotWidget.PlotType.DEFAULT),
-            ("1", QColor("orange"), MultiPlotWidget.PlotType.DEFAULT),
-            ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
-            ("3", QColor("green"), MultiPlotWidget.PlotType.DEFAULT),
-        ]
-    )
+    plot._set_data_items(DATA_ITEMS + [("3", QColor("green"), MultiPlotWidget.PlotType.DEFAULT)])
     qtbot.waitUntil(lambda: plot._plots.count() == 4)
     assert plot._table.rowCount() == 4
     assert plot._table.item(0, plot._table.COL_NAME).text() == "0"

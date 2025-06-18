@@ -16,8 +16,7 @@ import pytest
 from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
-from pyqtgraph_scope_plots.search_signals_table import SearchSignalsTable
+from pyqtgraph_scope_plots import MultiPlotWidget, SearchSignalsTable
 
 
 @pytest.fixture()

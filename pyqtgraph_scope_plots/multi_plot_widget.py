@@ -26,7 +26,7 @@ from pydantic import BaseModel
 
 from .enum_waveform_plotitem import EnumWaveformPlot
 from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot
-from .save_restore_model import BaseTopModel, HasSaveLoadDataConfig
+from .util import BaseTopModel, HasSaveLoadDataConfig
 
 
 class InteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot):

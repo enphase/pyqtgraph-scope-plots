@@ -19,7 +19,7 @@ from PySide6.QtWidgets import QMenu, QColorDialog
 from pydantic import BaseModel
 
 from .multi_plot_widget import MultiPlotWidget
-from .save_restore_model import BaseTopModel, DataTopModel, HasSaveLoadDataConfig
+from .util import BaseTopModel, DataTopModel, HasSaveLoadDataConfig
 from .signals_table import ContextMenuSignalsTable
 
 

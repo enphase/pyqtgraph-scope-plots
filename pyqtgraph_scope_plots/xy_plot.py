@@ -22,9 +22,8 @@ from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidgetItem, QMenu
 from numpy import typing as npt
 from pydantic import BaseModel
 
-from .mixin_cols_table import MixinColsTable
 from .multi_plot_widget import DragTargetOverlay, MultiPlotWidget, LinkedMultiPlotWidget
-from .save_restore_model import HasSaveLoadConfig
+from .util import HasSaveLoadConfig, MixinColsTable
 from .signals_table import HasRegionSignalsTable, DraggableSignalsTable, SignalsTable
 
 

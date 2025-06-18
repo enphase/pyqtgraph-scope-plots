@@ -19,7 +19,7 @@ from PySide6.QtCore import QPointF, QPoint, QEvent
 from PySide6.QtGui import QColor, Qt, QMouseEvent
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.util import not_none
+from pyqtgraph_scope_plots.util.util import not_none
 from pyqtgraph_scope_plots.interactivity_mixins import PointsOfInterestPlot, LiveCursorPlot, RegionPlot
 
 

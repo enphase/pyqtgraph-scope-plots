@@ -21,9 +21,8 @@ from PySide6.QtCore import QMimeData, QPoint
 from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
 from PySide6.QtWidgets import QTableWidgetItem, QHeaderView, QMenu, QLabel
 
-from .mixin_cols_table import MixinColsTable
 from .multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
-from .util import not_none
+from .util import MixinColsTable, not_none
 
 
 class SignalsTable(MixinColsTable):

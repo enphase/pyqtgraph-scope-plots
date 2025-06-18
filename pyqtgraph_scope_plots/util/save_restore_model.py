@@ -16,7 +16,6 @@ from typing import List, Type, Dict, Iterable, Optional
 
 import pydantic
 from pydantic import BaseModel
-from pydantic._internal._model_construction import ModelMetaclass
 
 
 class HasSaveLoadConfig:
@@ -35,16 +34,16 @@ class HasSaveLoadConfig:
     """
 
     _TOP_MODEL_NAME = "TopModel"
-    _MODEL_BASES: List[ModelMetaclass] = []  # defined in subclasses
+    _MODEL_BASES: List[Type[BaseModel]] = []  # defined in subclasses
 
     @classmethod
-    def _create_class_model_bases(cls) -> Optional[List[ModelMetaclass]]:
+    def _create_class_model_bases(cls) -> Optional[List[Type[BaseModel]]]:
         """Returns the model base fragments for this class only. This is in addition to _MODEL_BASES
         and allows dynamic creation of models."""
         return None
 
     @classmethod
-    def _get_all_model_bases(cls) -> List[ModelMetaclass]:
+    def _get_all_model_bases(cls) -> List[Type[BaseModel]]:
         """Returns the model bases of this class, inspecting fragments
         (from both _MODEL_BASES and get_model_fragments) for each superclass.
 
@@ -63,7 +62,7 @@ class HasSaveLoadConfig:
     @classmethod
     def _create_skeleton_model_type(cls) -> Type[BaseModel]:
         model_bases = cls._get_all_model_bases()
-        return pydantic.create_model(cls._TOP_MODEL_NAME, __base__=tuple(model_bases))  # type: ignore
+        return pydantic.create_model(cls._TOP_MODEL_NAME, __base__=tuple(model_bases))
 
     def _dump_model(self) -> BaseModel:
         """For top-level self, generate the save state model. Convenience wrapper around model creation and writing."""
@@ -107,10 +106,10 @@ class HasSaveLoadDataConfig(HasSaveLoadConfig):
     subalssses' state is stored for performance reasons.
     """
 
-    _DATA_MODEL_BASES: List[ModelMetaclass] = []
+    _DATA_MODEL_BASES: List[Type[BaseModel]] = []
 
     @classmethod
-    def _get_data_model_bases(cls) -> List[ModelMetaclass]:
+    def _get_data_model_bases(cls) -> List[Type[BaseModel]]:
         model_bases = []
         for base in cls.__mro__:
             if issubclass(base, HasSaveLoadDataConfig) and "_DATA_MODEL_BASES" in base.__dict__:
@@ -124,7 +123,7 @@ class HasSaveLoadDataConfig(HasSaveLoadConfig):
         model_bases.append(BaseTopModel)
         data_model_bases.append(DataTopModel)
 
-        data_model_cls = pydantic.create_model("DataModel", __base__=tuple(data_model_bases))  # type: ignore
+        data_model_cls = pydantic.create_model("DataModel", __base__=tuple(data_model_bases))
         top_model_cls = pydantic.create_model(
             cls._TOP_MODEL_NAME, __base__=tuple(model_bases), data=(Dict[str, data_model_cls], ...)  # type: ignore
         )

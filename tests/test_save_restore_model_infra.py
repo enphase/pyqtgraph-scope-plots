@@ -12,16 +12,11 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import Optional, Iterable, cast, Dict, List
+from typing import Optional, Iterable, cast, Dict, List, Type
 
 from pydantic import BaseModel
-from pydantic._internal._model_construction import ModelMetaclass
 
-from pyqtgraph_scope_plots.save_restore_model import (
-    DataTopModel,
-    BaseTopModel,
-    HasSaveLoadDataConfig,
-)
+from pyqtgraph_scope_plots import DataTopModel, BaseTopModel, HasSaveLoadDataConfig
 
 
 class DataModelSub1(DataTopModel):
@@ -48,7 +43,7 @@ class SaveRestoreSub(HasSaveLoadDataConfig):
     _MODEL_BASES = [BaseModelSub1]
 
     @classmethod
-    def _create_class_model_bases(cls) -> Optional[List[ModelMetaclass]]:
+    def _create_class_model_bases(cls) -> Optional[List[Type[BaseModel]]]:
         return [BaseModelSub2]
 
     _DATA_MODEL_BASES = [DataModelSub1, DataModelSub2]

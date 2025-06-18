@@ -48,4 +48,4 @@ jobs:
         mypy .
     - name: Test with pytest
       run: |
-        QT_QPA_PLATFORM="vnc" python -m pytest --cov=. --cov-report=html  # QT_QPA_PLATFORM='minimal' does wrong things to sizing which breaks tests
+        QT_QPA_PLATFORM="vnc" python -m pytest -s  # QT_QPA_PLATFORM='minimal' does wrong things to sizing which breaks tests

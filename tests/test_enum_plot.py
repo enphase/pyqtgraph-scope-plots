@@ -21,7 +21,7 @@ from pyqtgraph import PlotWidget
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.multi_plot_widget import EnumWaveformInteractivePlot
-from pyqtgraph_scope_plots.util import not_none
+from pyqtgraph_scope_plots.util.util import not_none
 
 
 @pytest.fixture()

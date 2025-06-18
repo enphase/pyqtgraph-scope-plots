@@ -82,9 +82,6 @@ class VisibilityXyPlotTable(XyPlotTable):
         self.setHorizontalHeaderItem(self.COL_VISIBILITY, QTableWidgetItem("Visible"))
         self.itemChanged.connect(self._on_visibility_toggle)
 
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
-
     def _update(self) -> None:
         super()._update()
         assert isinstance(self._xy_plots, VisibilityXyPlotWidget)

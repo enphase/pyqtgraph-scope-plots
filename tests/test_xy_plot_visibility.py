@@ -16,9 +16,10 @@ from typing import cast
 import pytest
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots import VisibilityXyPlotWidget, VisibilityXyPlotTable
+from pyqtgraph_scope_plots import VisibilityXyPlotWidget, VisibilityXyPlotTable, XyTable
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
 from pyqtgraph_scope_plots.visibility_toggle_table import VisibilityDataStateModel
+from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel
 
 
 @pytest.fixture()
@@ -39,7 +40,8 @@ def test_visibility_table(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
 
 
 def test_visibility_save(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
-    qtbot.waitUntil(lambda: cast(VisibilityDataStateModel, plot._dump_model()).hidden == [])
+    print(plot._dump_model())
+    qtbot.waitUntil(lambda: cast(VisibilityDataStateModel, plot._dump_model()).hidden_data == [])
 
     # TODO
     # plot.set_ref_geometry_fn("([-1, 1], [-1, -1])")
@@ -59,3 +61,18 @@ def test_visibility_load(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
     # model.ref_geo = []
     # plot._load_model(model)
     # qtbot.waitUntil(lambda: table.rowCount() == 0)
+
+
+class XyTableWithMixins(XyTable):
+    _XY_PLOT_TYPE = VisibilityXyPlotWidget
+
+
+def test_toptable_composition(qtbot: QtBot) -> None:
+    """Test that the top-level dump (from the timeseries table) models are composed properly
+    including hidden_data from VisibilityXyPlotWidget"""
+    plots = MultiPlotWidget()
+    table = XyTableWithMixins(plots)
+    table.create_xy()
+    top_model = cast(XyTableStateModel, table._dump_data_model([]))
+    assert cast(VisibilityDataStateModel, top_model.xy_windows[0]).hidden_data == []
+    assert top_model.model_dump()["xy_windows"][0]["hidden_data"] == []  # validation to schema happens here

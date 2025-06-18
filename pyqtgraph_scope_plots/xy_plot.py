@@ -12,19 +12,19 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import List, Tuple, Optional, Literal, Union, cast, Any, Dict, Sequence
+from typing import List, Tuple, Optional, Literal, Union, cast, Any
 
 import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QSize, Signal, QPoint
 from PySide6.QtGui import QColor, QDragMoveEvent, QDragLeaveEvent, QDropEvent, Qt, QAction
-from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidget, QTableWidgetItem, QMenu
+from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidgetItem, QMenu
 from numpy import typing as npt
 from pydantic import BaseModel
 
 from .mixin_cols_table import MixinColsTable
-from .save_restore_model import HasSaveLoadConfig
 from .multi_plot_widget import DragTargetOverlay, MultiPlotWidget, LinkedMultiPlotWidget
+from .save_restore_model import HasSaveLoadConfig
 from .signals_table import HasRegionSignalsTable, DraggableSignalsTable, SignalsTable
 
 
@@ -37,8 +37,9 @@ class XyWindowModel(BaseModel):
 class BaseXyPlot(HasSaveLoadConfig):
     """Abstract interface for a XY plot widget"""
 
+    _TOP_MODEL_NAME = "TopXyWindowModel"
     _MODEL_BASES = [XyWindowModel]
-    closed = Signal()
+    sigClosed = Signal()
 
     def __init__(self, plots: MultiPlotWidget):
         super().__init__()

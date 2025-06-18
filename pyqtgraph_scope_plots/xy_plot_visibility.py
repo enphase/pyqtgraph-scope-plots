@@ -11,7 +11,7 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Set
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHeaderView, QTableWidgetItem
@@ -33,6 +33,7 @@ class VisibilityXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
+        self._hidden_data: Set[Tuple[str, str]] = set()
 
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
@@ -44,8 +45,18 @@ class VisibilityXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         assert isinstance(model, XyVisibilityModel)
         # TODO IMPLEMENT ME
 
+    def hide_xys(self, xys: List[Tuple[str, str]], hidden: bool = True) -> None:
+        if hidden:
+            self._hidden_data.update(xys)
+        else:
+            self._hidden_data.difference_update(xys)
+
+        # TODO HIDE CURVES
+
     def _update(self) -> None:
         super()._update()
+
+        # TODO HIDE CURVES
 
 
 class VisibilityXyPlotTable(XyPlotTable):

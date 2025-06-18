@@ -34,6 +34,7 @@ class HasSaveLoadConfig:
     - where a None is a concrete value, use something else, e.g., empty tuple.
     """
 
+    _TOP_MODEL_NAME = "TopModel"
     _MODEL_BASES: List[ModelMetaclass] = []  # defined in subclasses
 
     @classmethod
@@ -52,7 +53,7 @@ class HasSaveLoadConfig:
     @classmethod
     def _create_skeleton_model_type(cls) -> Type[BaseModel]:
         model_bases = cls._get_model_bases()
-        return pydantic.create_model("TopModel", __base__=tuple(model_bases))  # type: ignore
+        return pydantic.create_model(cls._TOP_MODEL_NAME, __base__=tuple(model_bases))  # type: ignore
 
     def _dump_model(self) -> BaseModel:
         """For top-level self, generate the save state model. Convenience wrapper around model creation and writing."""
@@ -115,7 +116,7 @@ class HasSaveLoadDataConfig(HasSaveLoadConfig):
 
         data_model_cls = pydantic.create_model("DataModel", __base__=tuple(data_model_bases))  # type: ignore
         top_model_cls = pydantic.create_model(
-            "TopModel", __base__=tuple(model_bases), data=(Dict[str, data_model_cls], ...)  # type: ignore
+            cls._TOP_MODEL_NAME, __base__=tuple(model_bases), data=(Dict[str, data_model_cls], ...)  # type: ignore
         )
         return top_model_cls
 

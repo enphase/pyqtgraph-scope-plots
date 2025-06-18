@@ -20,14 +20,13 @@ from pydantic import BaseModel
 
 from .save_restore_model import BaseTopModel, HasSaveLoadDataConfig
 from .signals_table import ContextMenuSignalsTable, DraggableSignalsTable
-from .xy_plot import BaseXyPlot
-from .xy_plot_refgeo import XyRefGeoModel
+from .xy_plot import BaseXyPlot, XyWindowModel
 from .xy_plot_splitter import XyPlotSplitter
 
 
 class XyTableStateModel(BaseTopModel):
     # TODO: dynamic type construction, the XyRefGeoModel is too specific at this point
-    xy_windows: Optional[List[XyRefGeoModel]] = None
+    xy_windows: Optional[List[XyWindowModel]] = None
 
 
 class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasSaveLoadDataConfig):
@@ -88,7 +87,7 @@ class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasSaveLoadDataCon
         assert isinstance(xy_plot, QWidget)
         xy_plot.show()
         self._xy_plots.append(xy_plot)  # need an active reference to prevent GC'ing
-        xy_plot.closed.connect(partial(self._on_closed_xy, xy_plot))
+        xy_plot.sigClosed.connect(partial(self._on_closed_xy, xy_plot))
         return xy_plot
 
     def _on_closed_xy(self, closed: BaseXyPlot) -> None:

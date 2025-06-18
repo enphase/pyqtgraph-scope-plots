@@ -472,4 +472,8 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         data = self._data
         self._set_data({})  # blank the data while updates happen, for performance
         self._load_model(model)
+
+        # force-update data items and data
+        data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(self._data_items.items())]
+        self._set_data_items(data_items)
         self._set_data(data)  # bulk update everything for performance

@@ -83,12 +83,12 @@ def test_visibility_load(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
 
     model.hidden_data = [("0", "1")]
     plot._load_model(model)
-    plot._plots.set_data(XY_DATA)  # trigger update
+    table._update()  # trigger update
     assert table.item(0, table.COL_VISIBILITY).checkState() == Qt.CheckState.Unchecked
 
     model.hidden_data = []
     plot._load_model(model)
-    plot._plots.set_data(XY_DATA)  # trigger update
+    table._update()  # trigger update
     assert table.item(0, table.COL_VISIBILITY).checkState() == Qt.CheckState.Checked
 
 

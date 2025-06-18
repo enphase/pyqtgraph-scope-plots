@@ -28,6 +28,7 @@ from .color_signals_table import ColorPickerPlotWidget, ColorPickerSignalsTable
 from .timeshift_signals_table import TimeshiftPlotWidget, TimeshiftSignalsTable
 from .transforms_signal_table import TransformsPlotWidget, TransformsSignalsTable
 from .visibility_toggle_table import VisibilityPlotWidget, VisibilityToggleSignalsTable
+from .legend_plot_widget import LegendPlotWidget
 from .plots_table_widget import PlotsTableWidget
 
 # xy and mixins
@@ -43,6 +44,7 @@ from .xy_plot_refgeo import RefGeoXyPlotWidget, RefGeoXyPlotTable
 from .xy_plot_visibility import VisibilityXyPlotWidget, VisibilityXyPlotTable
 from .xy_plot_splitter import XyPlotSplitter
 from .xy_plot_table import XyTable
+from .xy_plot_legends import XyTableLegends
 
 
 __all__ = [
@@ -68,6 +70,7 @@ __all__ = [
     "TransformsSignalsTable",
     "VisibilityPlotWidget",
     "VisibilityToggleSignalsTable",
+    "LegendPlotWidget",
     "PlotsTableWidget",
     "XyPlotWidget",
     "XyDragDroppable",
@@ -81,4 +84,5 @@ __all__ = [
     "VisibilityXyPlotTable",
     "XyPlotSplitter",
     "XyTable",
+    "XyTableLegends",
 ]

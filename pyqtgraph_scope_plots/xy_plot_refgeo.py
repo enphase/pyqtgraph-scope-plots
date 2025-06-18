@@ -162,7 +162,7 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
             self.setSpan(self._row_offset_refgeo + row, self.COL_X_NAME, 1, 2)
 
     def _on_refgeo_double_click(self, row: int, col: int) -> None:
-        if row >= self._row_offset_refgeo and col == 0:
+        if row >= self._row_offset_refgeo and col == self.COL_X_NAME:
             self._on_set_refgeo(row - self._row_offset_refgeo)
 
     def _on_set_refgeo(self, index: Optional[int] = None) -> None:

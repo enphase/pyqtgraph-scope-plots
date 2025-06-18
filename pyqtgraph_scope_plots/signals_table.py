@@ -154,13 +154,14 @@ class DraggableSignalsTable(SignalsTable):
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self._ordered_selects: List[QTableWidgetItem] = []
+        self._ordered_selects: List[Tuple[int, int]] = []  # row, col
         self.itemSelectionChanged.connect(self._on_select_changed)
 
     def _on_select_changed(self) -> None:
         # since selectedItems is not ordered by selection, keep an internal order by tracking changes
-        new_selects = [item for item in self.selectedItems() if item not in self._ordered_selects]
-        self._ordered_selects = [item for item in self._ordered_selects if item in self.selectedItems()]
+        selected = [(item.row(), item.column()) for item in self.selectedItems()]
+        new_selects = [item for item in selected if item not in self._ordered_selects]
+        self._ordered_selects = [item for item in self._ordered_selects if item in selected]
         self._ordered_selects.extend(new_selects)
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
@@ -168,7 +169,7 @@ class DraggableSignalsTable(SignalsTable):
             if not self._ordered_selects:
                 return
             data_names = list(self._data_items.keys())
-            item_names = [data_names[item.row()] for item in self._ordered_selects]
+            item_names = [data_names[item[0]] for item in self._ordered_selects]
 
             drag = QDrag(self)
             mime = QMimeData()

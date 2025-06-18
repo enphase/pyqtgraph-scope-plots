@@ -74,7 +74,7 @@ class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasSaveLoadDataCon
 
     def _on_create_xy(self) -> Optional[BaseXyPlot]:
         """Creates an XY plot with the selected signal(s) and returns the new plot."""
-        data = [self.item(item.row(), self.COL_NAME).text() for item in self._ordered_selects]
+        data = [self.item(item[0], self.COL_NAME).text() for item in self._ordered_selects]
         if len(data) != 2:
             QMessageBox.critical(
                 self, "Error", f"Select two items for X-Y plotting, got {data}", QMessageBox.StandardButton.Ok

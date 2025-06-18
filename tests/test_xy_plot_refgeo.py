@@ -116,6 +116,7 @@ def test_table_deletion(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
 
     qtbot.mouseClick(table.viewport(), Qt.MouseButton.RightButton, pos=QPoint(0, 0))  # extra robustness
     table.setFocus()
+    qtbot.wait(10)
     table.selectRow(0)
     qtbot.keyClick(table.viewport(), Qt.Key.Key_Delete)
     qtbot.waitUntil(lambda: table.rowCount() == 1)

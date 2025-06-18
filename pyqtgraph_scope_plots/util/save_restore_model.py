@@ -62,7 +62,7 @@ class HasSaveLoadConfig:
     @classmethod
     def _create_skeleton_model_type(cls) -> Type[BaseModel]:
         model_bases = cls._get_all_model_bases()
-        return pydantic.create_model(cls._TOP_MODEL_NAME, __base__=tuple(model_bases))  # type: ignore
+        return pydantic.create_model(cls._TOP_MODEL_NAME, __base__=tuple(model_bases))
 
     def _dump_model(self) -> BaseModel:
         """For top-level self, generate the save state model. Convenience wrapper around model creation and writing."""
@@ -123,7 +123,7 @@ class HasSaveLoadDataConfig(HasSaveLoadConfig):
         model_bases.append(BaseTopModel)
         data_model_bases.append(DataTopModel)
 
-        data_model_cls = pydantic.create_model("DataModel", __base__=tuple(data_model_bases))  # type: ignore
+        data_model_cls = pydantic.create_model("DataModel", __base__=tuple(data_model_bases))
         top_model_cls = pydantic.create_model(
             cls._TOP_MODEL_NAME, __base__=tuple(model_bases), data=(Dict[str, data_model_cls], ...)  # type: ignore
         )

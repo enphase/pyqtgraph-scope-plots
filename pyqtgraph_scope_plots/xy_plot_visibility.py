@@ -53,13 +53,20 @@ class VisibilityXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         else:
             self._hidden_data.difference_update(xys)
 
+        for xy in xys:
+            for curve in self._xy_curves.get(xy, []):
+                if hidden:
+                    curve.hide()
+                else:
+                    curve.show()
+
         self.sigXyDataItemsChanged.emit()
-        # TODO HIDE CURVES
 
     def _update(self) -> None:
-        super()._update()
-
-        # TODO HIDE CURVES
+        super()._update()  # all curves refreshed and start shown
+        for hidden_xy in self._hidden_data:
+            for curve in self._xy_curves.get(hidden_xy, []):
+                curve.hide()
 
 
 class VisibilityXyPlotTable(XyPlotTable):

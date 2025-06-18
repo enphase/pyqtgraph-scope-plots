@@ -41,6 +41,7 @@ def plot(qtbot: QtBot) -> VisibilityXyPlotWidget:
     )
     plots.set_data(XY_DATA)
     xy_plot = VisibilityXyPlotWidget(plots)
+    xy_plot.add_xy("0", "1")
     qtbot.addWidget(xy_plot)
     xy_plot.show()
     qtbot.waitExposed(xy_plot)
@@ -48,7 +49,13 @@ def plot(qtbot: QtBot) -> VisibilityXyPlotWidget:
 
 
 def test_visibility(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
-    pass
+    assert plot._xy_curves[("0", "1")][0].isVisible()
+
+    plot.hide_xys([("0", "1")])
+    assert not plot._xy_curves[("0", "1")][0].isVisible()
+
+    plot.hide_xys([("0", "1")], hidden=False)
+    assert plot._xy_curves[("0", "1")][0].isVisible()
 
 
 def test_visibility_table(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
@@ -63,7 +70,6 @@ def test_visibility_save(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
 
 
 def test_visibility_load(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
-    plot.add_xy("0", "1")
     table = VisibilityXyPlotTable(plot._plots, plot)
     table._update()
     model = cast(XyVisibilityStateModel, plot._dump_model())

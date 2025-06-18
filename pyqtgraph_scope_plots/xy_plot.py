@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import List, Tuple, Optional, Literal, Union, cast, Any
+from typing import List, Tuple, Optional, Literal, Union, cast, Any, Dict
 
 import numpy as np
 import pyqtgraph as pg
@@ -62,6 +62,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     def __init__(self, plots: MultiPlotWidget):
         super().__init__(plots)
         self._xys: List[Tuple[str, str]] = []
+        self._xy_curves: Dict[Tuple[str, str], List[pg.PlotCurveItem]] = {}
 
         plots.sigDataUpdated.connect(self._update)
         if isinstance(self._plots, LinkedMultiPlotWidget):
@@ -127,6 +128,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     def _update(self) -> None:
         for data_item in self.listDataItems():  # clear existing
             self.removeItem(data_item)
+        self._xy_curves = {}
 
         region = HasRegionSignalsTable._region_of_plot(self._plots)
         data = self._plots._data
@@ -145,6 +147,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
                 continue
             (xt_lo, xt_hi), (yt_lo, yt_hi) = indices
 
+            this_curve_list = self._xy_curves.setdefault((x_name, y_name), [])
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
             y_color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
             fade_segments = min(
@@ -168,6 +171,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
                 )
                 curve.setPen(color=segment_color, width=1)
                 self.addItem(curve)
+                this_curve_list.append(curve)
 
 
 class XyDragDroppable(BaseXyPlot):

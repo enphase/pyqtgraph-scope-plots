@@ -21,11 +21,9 @@ from PySide6.QtGui import QAction, Qt, QDoubleValidator
 from PySide6.QtWidgets import QTableWidgetItem, QMenu, QStyledItemDelegate, QLineEdit, QWidget
 from pydantic import BaseModel
 
-from .cache_dict import IdentityCacheDict
 from .multi_plot_widget import LinkedMultiPlotWidget
-from .save_restore_model import DataTopModel, HasSaveLoadDataConfig, BaseTopModel
 from .signals_table import ContextMenuSignalsTable
-from .util import not_none
+from .util import IdentityCacheDict, DataTopModel, HasSaveLoadDataConfig, BaseTopModel, not_none
 
 
 class TimeshiftDataStateModel(DataTopModel):

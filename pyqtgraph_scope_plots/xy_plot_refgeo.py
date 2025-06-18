@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 from functools import partial
-from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional, Mapping
+from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -22,7 +22,7 @@ from PySide6.QtWidgets import QMenu, QInputDialog, QLineEdit
 import pyqtgraph as pg
 from pydantic import BaseModel
 
-from .save_restore_model import HasSaveLoadConfig
+from .util import HasSaveLoadConfig
 from .signals_table import SignalsTable, HasRegionSignalsTable
 from .xy_plot import XyPlotWidget, XyPlotTable, ContextMenuXyPlotTable, XyWindowModel, DeleteableXyPlotTable
 

@@ -37,7 +37,6 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 from pydantic import BaseModel
-from pydantic._internal._model_construction import ModelMetaclass
 
 from ..xy_plot_visibility import VisibilityXyPlotWidget, VisibilityXyPlotTable
 from ..visibility_toggle_table import VisibilityToggleSignalsTable, VisibilityPlotWidget
@@ -45,13 +44,13 @@ from ..animation_plot_table_widget import AnimationPlotsTableWidget
 from ..color_signals_table import ColorPickerSignalsTable, ColorPickerPlotWidget
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
-from ..save_restore_model import BaseTopModel, HasSaveLoadDataConfig
+from pyqtgraph_scope_plots.util.save_restore_model import BaseTopModel, HasSaveLoadDataConfig
 from ..search_signals_table import SearchSignalsTable
 from ..stats_signals_table import StatsSignalsTable
 from ..time_axis import TimeAxisItem
 from ..timeshift_signals_table import TimeshiftSignalsTable, TimeshiftPlotWidget
 from ..transforms_signal_table import TransformsSignalsTable, TransformsPlotWidget
-from ..util import int_color
+from pyqtgraph_scope_plots.util.util import int_color
 from ..xy_plot import XyPlotWidget, XyDragDroppable, DeleteableXyPlotTable, SignalRemovalXyPlotTable, XyPlotTable
 from ..xy_plot_table import XyTable
 from ..xy_plot_splitter import XyPlotSplitter
@@ -177,14 +176,14 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._watch_timer.timeout.connect(self._check_watch)
 
     @classmethod
-    def _get_all_model_bases(cls) -> List[ModelMetaclass]:
+    def _get_all_model_bases(cls) -> List[Type[BaseModel]]:
         bases = super()._get_all_model_bases()
         plot_bases = cls._PLOT_TYPE._get_all_model_bases()
         table_bases = cls._TABLE_TYPE._get_all_model_bases()
         return bases + plot_bases + table_bases
 
     @classmethod
-    def _get_data_model_bases(cls) -> List[ModelMetaclass]:
+    def _get_data_model_bases(cls) -> List[Type[BaseModel]]:
         bases = super()._get_data_model_bases()
         plot_bases = cls._PLOT_TYPE._get_data_model_bases()
         table_bases = cls._TABLE_TYPE._get_data_model_bases()

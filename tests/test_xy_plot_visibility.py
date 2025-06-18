@@ -18,7 +18,7 @@ from PySide6.QtGui import QColor, Qt
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
-from pyqtgraph_scope_plots.util import not_none
+from pyqtgraph_scope_plots.util.util import not_none
 from pyqtgraph_scope_plots.xy_plot_table import XyTable
 from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel
 from pyqtgraph_scope_plots.xy_plot_visibility import (

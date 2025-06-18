@@ -28,7 +28,7 @@ from pyqtgraph_scope_plots.transforms_signal_table import (
     TransformsDataStateModel,
     TransformsPlotWidget,
 )
-from pyqtgraph_scope_plots.util import not_none
+from pyqtgraph_scope_plots.util.util import not_none
 from .test_util import context_menu, menu_action_by_name
 
 

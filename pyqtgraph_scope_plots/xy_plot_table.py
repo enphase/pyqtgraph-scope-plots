@@ -17,9 +17,8 @@ from typing import Any, List, Optional, Type
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QMessageBox, QWidget
 from pydantic import BaseModel, create_model
-from pydantic._internal._model_construction import ModelMetaclass
 
-from .save_restore_model import BaseTopModel, HasSaveLoadDataConfig
+from .util import BaseTopModel, HasSaveLoadDataConfig
 from .signals_table import ContextMenuSignalsTable, DraggableSignalsTable
 from .xy_plot import BaseXyPlot, XyWindowModel
 from .xy_plot_splitter import XyPlotSplitter
@@ -35,7 +34,7 @@ class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasSaveLoadDataCon
     _XY_PLOT_TYPE: Type[BaseXyPlot] = XyPlotSplitter
 
     @classmethod
-    def _create_class_model_bases(cls) -> Optional[List[ModelMetaclass]]:
+    def _create_class_model_bases(cls) -> Optional[List[Type[BaseModel]]]:
         return [
             create_model(
                 "XyTableStateModel",

@@ -15,16 +15,15 @@
 import math
 import queue
 import weakref
-from typing import Dict, Tuple, List, Any, NamedTuple, Optional
+from typing import Dict, Tuple, List, Any, NamedTuple
 
 import numpy as np
 import numpy.typing as npt
 from PySide6.QtCore import Signal, QObject, QThread
 from PySide6.QtWidgets import QTableWidgetItem
 
-from .cache_dict import IdentityCacheDict
 from .signals_table import HasRegionSignalsTable
-from .util import not_none
+from .util import IdentityCacheDict, not_none
 
 
 class StatsSignalsTable(HasRegionSignalsTable):

@@ -17,7 +17,7 @@ from PySide6.QtCore import Qt, QSignalBlocker
 from PySide6.QtWidgets import QHeaderView, QTableWidgetItem
 from pydantic import BaseModel
 
-from .save_restore_model import HasSaveLoadConfig
+from .util import HasSaveLoadConfig
 from .signals_table import SignalsTable
 from .xy_plot import XyPlotWidget, XyPlotTable, XyWindowModel
 

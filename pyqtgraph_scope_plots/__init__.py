@@ -38,4 +38,4 @@ from .xy_plot_visibility import VisibilityXyPlotWidget, VisibilityXyPlotTable
 
 from .time_axis import TimeAxisItem
 
-from .save_restore_model import HasSaveLoadConfig, DataTopModel, BaseTopModel
+from pyqtgraph_scope_plots.util.save_restore_model import HasSaveLoadConfig, DataTopModel, BaseTopModel

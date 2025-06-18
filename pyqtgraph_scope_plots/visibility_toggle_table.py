@@ -19,7 +19,7 @@ from PySide6.QtWidgets import QTableWidgetItem, QHeaderView
 from pydantic import BaseModel
 
 from .multi_plot_widget import MultiPlotWidget
-from .save_restore_model import HasSaveLoadDataConfig, BaseTopModel, DataTopModel
+from .util import HasSaveLoadDataConfig, BaseTopModel, DataTopModel
 from .signals_table import SignalsTable
 
 

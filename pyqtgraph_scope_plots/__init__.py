@@ -70,6 +70,7 @@ __all__ = [
     "TransformsSignalsTable",
     "VisibilityPlotWidget",
     "VisibilityToggleSignalsTable",
+    "LegendPlotWidget",
     "PlotsTableWidget",
     "XyPlotWidget",
     "XyDragDroppable",

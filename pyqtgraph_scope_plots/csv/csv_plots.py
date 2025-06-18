@@ -39,7 +39,7 @@ from PySide6.QtWidgets import (
 from pydantic import BaseModel
 from pydantic._internal._model_construction import ModelMetaclass
 
-from .. import VisibilityXyPlotWidget, VisibilityXyPlotTable
+from ..xy_plot_visibility import VisibilityXyPlotWidget, VisibilityXyPlotTable
 from ..visibility_toggle_table import VisibilityToggleSignalsTable, VisibilityPlotWidget
 from ..animation_plot_table_widget import AnimationPlotsTableWidget
 from ..color_signals_table import ColorPickerSignalsTable, ColorPickerPlotWidget

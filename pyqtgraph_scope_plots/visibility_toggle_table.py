@@ -66,7 +66,7 @@ class VisibilityPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
                 else:
                     curve.show()
 
-    def _update_plots(self):
+    def _update_plots(self) -> None:
         super()._update_plots()
         for data_item in self._hidden_data:
             for curve in self._data_curves.get(data_item, []):
@@ -106,7 +106,7 @@ class VisibilityToggleSignalsTable(SignalsTable):
             item.setCheckState(Qt.CheckState.Checked)
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
-    def _update_visibility_checkbox(self):
+    def _update_visibility_checkbox(self) -> None:
         assert isinstance(self._plots, VisibilityPlotWidget)
         for row, (data_item, (_, plot_type)) in enumerate(self._plots._data_items.items()):
             item = self.item(row, self.COL_VISIBILITY)

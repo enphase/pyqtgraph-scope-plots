@@ -37,22 +37,12 @@ class VisibilityXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
         assert isinstance(model, XyVisibilityModel)
-        # model.ref_geo = [expr for expr, parsed in self._refgeo_fns]
+        # TODO IMPLEMENT ME
 
     def _load_model(self, model: BaseModel) -> None:
         super()._load_model(model)
         assert isinstance(model, XyVisibilityModel)
-        # while len(self._refgeo_fns) > 0:  # delete existing
-        #     self.set_ref_geometry_fn("", 0, update=False)
-        # for expr in model.ref_geo:
-        #     try:
-        #         self.set_ref_geometry_fn(expr, update=False)
-        #     except Exception as e:
-        #         print(f"failed to restore ref geometry fn {expr}: {e}")  # TODO better logging
-        #
-        # # bulk update
-        # self._update()
-        # self.sigXyDataItemsChanged.emit()
+        # TODO IMPLEMENT ME
 
     def _update(self) -> None:
         super()._update()

@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (
 from pydantic import BaseModel
 from pydantic._internal._model_construction import ModelMetaclass
 
+from .. import VisibilityXyPlotWidget, VisibilityXyPlotTable
 from ..visibility_toggle_table import VisibilityToggleSignalsTable, VisibilityPlotWidget
 from ..animation_plot_table_widget import AnimationPlotsTableWidget
 from ..color_signals_table import ColorPickerSignalsTable, ColorPickerPlotWidget
@@ -73,10 +74,12 @@ class CsvLoaderStateModel(BaseTopModel):
 
 
 class FullXySplitter(XyPlotSplitter):
-    class FullXyPlot(RefGeoXyPlotWidget, XyDragDroppable, XyPlotWidget):
+    class FullXyPlot(VisibilityXyPlotWidget, RefGeoXyPlotWidget, XyDragDroppable, XyPlotWidget):
         pass
 
-    class FullXyPlotTable(RefGeoXyPlotTable, SignalRemovalXyPlotTable, DeleteableXyPlotTable, XyPlotTable):
+    class FullXyPlotTable(
+        VisibilityXyPlotTable, RefGeoXyPlotTable, SignalRemovalXyPlotTable, DeleteableXyPlotTable, XyPlotTable
+    ):
         pass
 
     _XY_PLOT_TYPE = FullXyPlot

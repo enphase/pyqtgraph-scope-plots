@@ -34,6 +34,7 @@ from .xy_plot_table import XyTable
 from .xy_plot import XyPlotWidget, XyDragDroppable, XyPlotTable, DeleteableXyPlotTable, SignalRemovalXyPlotTable
 from .xy_plot_splitter import XyPlotSplitter
 from .xy_plot_refgeo import RefGeoXyPlotWidget, RefGeoXyPlotTable
+from .xy_plot_visibility import VisibilityXyPlotWidget, VisibilityXyPlotTable
 
 from .time_axis import TimeAxisItem
 

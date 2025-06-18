@@ -79,10 +79,6 @@ class VisibilityToggleSignalsTable(SignalsTable):
 
     COL_VISIBILITY = -1
 
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
-        self._plots.sigDataUpdated.connect(self._update_visibility_checkbox)
-
     def _pre_cols(self) -> int:
         self.COL_VISIBILITY = super()._pre_cols()
         return self.COL_VISIBILITY + 1
@@ -93,6 +89,10 @@ class VisibilityToggleSignalsTable(SignalsTable):
         self.setColumnWidth(self.COL_VISIBILITY, 50)
         self.setHorizontalHeaderItem(self.COL_VISIBILITY, QTableWidgetItem("Visible"))
         self.itemChanged.connect(self._on_visibility_toggle)
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self._plots.sigDataUpdated.connect(self._update_visibility_checkbox)
 
     def _update(self) -> None:
         super()._update()

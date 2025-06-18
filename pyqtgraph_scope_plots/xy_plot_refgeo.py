@@ -22,6 +22,7 @@ from PySide6.QtWidgets import QMenu, QInputDialog, QLineEdit
 import pyqtgraph as pg
 from pydantic import BaseModel
 
+from .save_restore_model import HasSaveLoadConfig
 from .signals_table import SignalsTable, HasRegionSignalsTable
 from .xy_plot import XyPlotWidget, XyPlotTable, ContextMenuXyPlotTable, XyWindowModel, DeleteableXyPlotTable
 
@@ -35,7 +36,7 @@ def _refgeo_polyline_fn(*pts: Tuple[float, float]) -> Tuple[Sequence[float], Seq
     return [pt[0] for pt in pts], [pt[1] for pt in pts]
 
 
-class RefGeoXyPlotWidget(XyPlotWidget):
+class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
     """Mixin into XyPlotWidget that adds support for reference geometry as a polyline.
     For signal purposes, reference geometry is counted as a data item change."""
 

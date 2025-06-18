@@ -36,7 +36,6 @@ class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasSaveLoadDataCon
 
     @classmethod
     def _create_class_model_bases(cls) -> Optional[List[ModelMetaclass]]:
-        print(cls)
         return [
             create_model(
                 "XyTableStateModel",

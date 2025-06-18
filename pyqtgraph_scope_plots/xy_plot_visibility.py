@@ -81,7 +81,8 @@ class VisibilityXyPlotTable(XyPlotTable):
         super()._update()
         assert isinstance(self._xy_plots, VisibilityXyPlotWidget)
         for row, xy_item in enumerate(self._xy_plots._xys):
-            item = item = SignalsTable._create_noneditable_table_item()
+            item = SignalsTable._create_noneditable_table_item()
+            item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
             item.setCheckState(Qt.CheckState.Checked)
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.setItem(row, self.COL_VISIBILITY, item)

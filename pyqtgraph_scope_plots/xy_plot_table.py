@@ -34,7 +34,7 @@ class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasSaveLoadDataCon
     _XY_PLOT_TYPE: Type[BaseXyPlot] = XyPlotSplitter
 
     @classmethod
-    def _create_class_model_bases(cls) -> Optional[List[Type[BaseModel]]]:
+    def _create_class_model_bases(cls) -> List[Type[BaseModel]]:
         return [
             create_model(
                 "XyTableStateModel",

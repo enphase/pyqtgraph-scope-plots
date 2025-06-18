@@ -43,7 +43,7 @@ class SaveRestoreSub(HasSaveLoadDataConfig):
     _MODEL_BASES = [BaseModelSub1]
 
     @classmethod
-    def _create_class_model_bases(cls) -> Optional[List[Type[BaseModel]]]:
+    def _create_class_model_bases(cls) -> List[Type[BaseModel]]:
         return [BaseModelSub2]
 
     _DATA_MODEL_BASES = [DataModelSub1, DataModelSub2]

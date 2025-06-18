@@ -12,10 +12,12 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import List, Type, Dict, Iterable, Optional
+from typing import List, Type, Dict, Iterable, Optional, Set, TypeVar
 
 import pydantic
 from pydantic import BaseModel
+
+DedupListType = TypeVar("DedupListType")
 
 
 class HasSaveLoadConfig:
@@ -59,9 +61,19 @@ class HasSaveLoadConfig:
                     model_bases.extend(fn_bases)
         return model_bases
 
+    @staticmethod
+    def _deduplicate_list(elts: List[DedupListType]) -> List[DedupListType]:
+        seen_elts: Set[DedupListType] = set()
+        deduplicated: List[DedupListType] = []
+        for elt in elts:
+            if elt not in seen_elts:
+                deduplicated.append(elt)
+                seen_elts.add(elt)
+        return deduplicated
+
     @classmethod
     def _create_skeleton_model_type(cls) -> Type[BaseModel]:
-        model_bases = cls._get_all_model_bases()
+        model_bases = cls._deduplicate_list(cls._get_all_model_bases())
         return pydantic.create_model(cls._TOP_MODEL_NAME, __base__=tuple(model_bases))
 
     def _dump_model(self) -> BaseModel:
@@ -118,10 +130,8 @@ class HasSaveLoadDataConfig(HasSaveLoadConfig):
 
     @classmethod
     def _create_skeleton_model_type(cls) -> Type[BaseModel]:
-        model_bases = cls._get_all_model_bases()
-        data_model_bases = cls._get_data_model_bases()
-        model_bases.append(BaseTopModel)
-        data_model_bases.append(DataTopModel)
+        model_bases = cls._deduplicate_list(cls._get_all_model_bases() + [BaseTopModel])
+        data_model_bases = cls._deduplicate_list(cls._get_data_model_bases() + [DataTopModel])
 
         data_model_cls = pydantic.create_model("DataModel", __base__=tuple(data_model_bases))
         top_model_cls = pydantic.create_model(

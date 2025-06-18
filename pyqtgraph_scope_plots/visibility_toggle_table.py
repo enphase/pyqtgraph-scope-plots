@@ -13,6 +13,7 @@
 #    limitations under the License.
 from typing import List, Any, Set, Optional
 
+from PySide6.QtCore import QSignalBlocker
 from PySide6.QtGui import Qt
 from PySide6.QtWidgets import QTableWidgetItem, QHeaderView
 from pydantic import BaseModel
@@ -87,34 +88,25 @@ class VisibilityToggleSignalsTable(SignalsTable):
         self.setHorizontalHeaderItem(self.COL_VISIBILITY, QTableWidgetItem("Visible"))
         self.itemChanged.connect(self._on_visibility_toggle)
 
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
-        self._plots.sigDataUpdated.connect(self._update_visibility_checkbox)
-
     def _update(self) -> None:
         super()._update()
         assert isinstance(self._plots, VisibilityPlotWidget)
-        for row, (data_item, (_, plot_type)) in enumerate(self._plots._data_items.items()):
-            item = self.item(row, self.COL_VISIBILITY)
-            if plot_type == MultiPlotWidget.PlotType.DEFAULT:
-                item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
-            else:
-                item.setFlags(Qt.ItemFlag.ItemIsUserCheckable)  # other plots not disable-able
-            item.setCheckState(Qt.CheckState.Checked)
-            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-
-    def _update_visibility_checkbox(self) -> None:
-        assert isinstance(self._plots, VisibilityPlotWidget)
-        for row, (data_item, (_, plot_type)) in enumerate(self._plots._data_items.items()):
-            item = self.item(row, self.COL_VISIBILITY)
-            if data_item in self._plots._hidden_data:
-                item.setCheckState(Qt.CheckState.Unchecked)
-            else:
-                item.setCheckState(Qt.CheckState.Checked)
+        with QSignalBlocker(self):  # prevent creation from updating state
+            for row, (data_item, (_, plot_type)) in enumerate(self._plots._data_items.items()):
+                item = self.item(row, self.COL_VISIBILITY)
+                if data_item in self._plots._hidden_data:
+                    item.setCheckState(Qt.CheckState.Unchecked)
+                else:
+                    item.setCheckState(Qt.CheckState.Checked)
+                if plot_type == MultiPlotWidget.PlotType.DEFAULT:
+                    item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+                else:
+                    item.setFlags(Qt.ItemFlag.ItemIsUserCheckable)  # other plots not disable-able
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
     def _on_visibility_toggle(self, item: QTableWidgetItem) -> None:
-        if item.column() != self.COL_VISIBILITY:
-            return
+        if item.column() != self.COL_VISIBILITY or not item.flags() & Qt.ItemFlag.ItemIsUserCheckable:
+            return  # not ItemIsUserCheckable means it is in a pre-init state
         assert isinstance(self._plots, VisibilityPlotWidget)
         data_name = list(self._data_items.keys())[item.row()]
         self._plots.hide_data_items([data_name], item.checkState() == Qt.CheckState.Unchecked)

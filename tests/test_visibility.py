@@ -98,7 +98,8 @@ def test_visibility_load(qtbot: QtBot, visibility_plots: VisibilityPlotWidget) -
     cast(VisibilityDataStateModel, model.data["1"]).hidden = True
 
     visibility_plots._load_model(model)
-    visibility_plots.set_data(DATA)  # trigger a curve-visibility and table refresh
+    visibility_plots.set_data(DATA)  # trigger a curve-visibility update
+    visibility_table._update()  # trigger update
     assert visibility_plots._data_curves["0"][0].isVisible()
     assert not visibility_plots._data_curves["1"][0].isVisible()
     assert visibility_plots._data_curves["2"][0].isVisible()

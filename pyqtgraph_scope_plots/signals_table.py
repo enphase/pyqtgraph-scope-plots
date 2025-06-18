@@ -35,7 +35,9 @@ class SignalsTable(MixinColsTable):
     def _create_noneditable_table_item(cls, *args: Any) -> QTableWidgetItem:
         """Creates a non-editable QTableWidgetItem (table cell)"""
         item = QTableWidgetItem(*args)
-        item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)  # make non-editable
+        item.setFlags(
+            item.flags() & ~Qt.ItemFlag.ItemIsEditable & ~Qt.ItemFlag.ItemIsUserCheckable
+        )  # make non-editable
         return item
 
     def _post_cols(self) -> int:  # total number of columns, including _pre_cols

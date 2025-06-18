@@ -16,7 +16,7 @@ from typing import Any, cast
 import pyqtgraph as pg
 from pydantic import BaseModel
 
-from . import HasSaveLoadDataConfig
+from .util import HasSaveLoadDataConfig
 from .legend_plot_widget import ShowLegendsStateModel
 from .xy_plot_table import XyTable
 from .xy_plot import BaseXyPlot

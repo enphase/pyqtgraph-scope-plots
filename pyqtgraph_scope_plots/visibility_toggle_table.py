@@ -91,7 +91,7 @@ class VisibilityToggleSignalsTable(SignalsTable):
     def _update(self) -> None:
         super()._update()
         assert isinstance(self._plots, VisibilityPlotWidget)
-        with QSignalBlocker(self):  # prevent creation from updating state
+        with QSignalBlocker(self):  # prevent updating state
             for row, (data_item, (_, plot_type)) in enumerate(self._plots._data_items.items()):
                 item = self.item(row, self.COL_VISIBILITY)
                 if data_item in self._plots._hidden_data:

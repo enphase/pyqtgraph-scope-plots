@@ -13,13 +13,11 @@
 #    limitations under the License.
 
 import pytest
-from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
 
-from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
-from pyqtgraph_scope_plots.stats_signals_table import StatsSignalsTable
-from .test_transforms import DATA
+from pyqtgraph_scope_plots import LinkedMultiPlotWidget, StatsSignalsTable
+from .common_testdata import DATA_ITEMS, DATA
 
 
 @pytest.fixture()
@@ -27,13 +25,7 @@ def table(qtbot: QtBot) -> StatsSignalsTable:
     """Creates a signals plot with multiple data items"""
     plots = LinkedMultiPlotWidget()
     table = StatsSignalsTable(plots)
-    plots.show_data_items(
-        [
-            ("0", QColor("yellow"), MultiPlotWidget.PlotType.DEFAULT),
-            ("1", QColor("orange"), MultiPlotWidget.PlotType.DEFAULT),
-            ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
-        ]
-    )
+    plots.show_data_items(DATA_ITEMS)
     plots.set_data(DATA)
     qtbot.addWidget(table)
     table.show()

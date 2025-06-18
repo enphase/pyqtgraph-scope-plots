@@ -12,7 +12,6 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from io import StringIO
 from typing import cast
 
 import pyqtgraph as pg
@@ -20,35 +19,17 @@ import pytest
 from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.multi_plot_widget import (
-    MultiPlotWidget,
-    MultiPlotStateModel,
-    PlotWidgetModel,
-    DroppableMultiPlotWidget,
-)
-from pyqtgraph_scope_plots.plots_table_widget import PlotsTableWidget
-from pyqtgraph_scope_plots.signals_table import SignalsTable
-from .test_util import assert_cast
+from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotStateModel, PlotWidgetModel
+from pyqtgraph_scope_plots import MultiPlotWidget, DroppableMultiPlotWidget, SignalsTable
+from tests.common_testdata import DATA_ITEMS, DATA
 
 
 @pytest.fixture()
 def plots(qtbot: QtBot) -> DroppableMultiPlotWidget:
     """Creates a signals plot with multiple data items"""
     plots = DroppableMultiPlotWidget()
-    plots.show_data_items(
-        [
-            ("0", QColor("yellow"), MultiPlotWidget.PlotType.DEFAULT),
-            ("1", QColor("orange"), MultiPlotWidget.PlotType.DEFAULT),
-            ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
-        ]
-    )
-    plots.set_data(
-        {
-            "0": ([0, 0.1, 1, 2], [0.01, 1, 1, 0]),
-            "1": ([0, 1, 2], [0.5, 0.25, 0.5]),
-            "2": ([0, 1, 2], [0.7, 0.6, 0.5]),
-        }
-    )
+    plots.show_data_items(DATA_ITEMS)
+    plots.set_data(DATA)
     qtbot.addWidget(plots)
     plots.show()
     qtbot.waitExposed(plots)
@@ -121,10 +102,8 @@ def test_plot_merge_multi(qtbot: QtBot, plots: DroppableMultiPlotWidget) -> None
 
 def test_invalid_plot_merge(qtbot: QtBot, plots: DroppableMultiPlotWidget) -> None:
     plots.show_data_items(
-        [
-            ("0", QColor("yellow"), MultiPlotWidget.PlotType.DEFAULT),
-            ("1", QColor("orange"), MultiPlotWidget.PlotType.DEFAULT),
-            ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
+        DATA_ITEMS
+        + [
             ("3", QColor("cyan"), MultiPlotWidget.PlotType.ENUM_WAVEFORM),
             ("4", QColor("brown"), MultiPlotWidget.PlotType.ENUM_WAVEFORM),
         ]

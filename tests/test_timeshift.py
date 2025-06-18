@@ -15,29 +15,18 @@
 from typing import cast
 
 import pytest
-from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
-from pyqtgraph_scope_plots.timeshift_signals_table import (
-    TimeshiftSignalsTable,
-    TimeshiftDataStateModel,
-    TimeshiftPlotWidget,
-)
-from .test_transforms import DATA
+from pyqtgraph_scope_plots import TimeshiftSignalsTable, TimeshiftPlotWidget
+from pyqtgraph_scope_plots.timeshift_signals_table import TimeshiftDataStateModel
+from .common_testdata import DATA_ITEMS, DATA
 
 
 @pytest.fixture()
 def timeshifts_plots(qtbot: QtBot) -> TimeshiftPlotWidget:
     """Creates a signals plot with multiple data items"""
     plots = TimeshiftPlotWidget()
-    plots.show_data_items(
-        [
-            ("0", QColor("yellow"), MultiPlotWidget.PlotType.DEFAULT),
-            ("1", QColor("orange"), MultiPlotWidget.PlotType.DEFAULT),
-            ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
-        ]
-    )
+    plots.show_data_items(DATA_ITEMS)
     qtbot.addWidget(plots)
     plots.show()
     qtbot.waitExposed(plots)

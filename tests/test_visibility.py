@@ -18,26 +18,16 @@ import pytest
 from PySide6.QtGui import QColor, Qt
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
-from pyqtgraph_scope_plots.visibility_toggle_table import (
-    VisibilityDataStateModel,
-    VisibilityPlotWidget,
-    VisibilityToggleSignalsTable,
-)
-from .test_transforms import DATA
+from pyqtgraph_scope_plots import MultiPlotWidget, VisibilityPlotWidget, VisibilityToggleSignalsTable
+from pyqtgraph_scope_plots.visibility_toggle_table import VisibilityDataStateModel
+from .common_testdata import DATA_ITEMS, DATA
 
 
 @pytest.fixture()
 def visibility_plots(qtbot: QtBot) -> VisibilityPlotWidget:
     """Creates a signals plot with multiple data items"""
     plots = VisibilityPlotWidget()
-    plots.show_data_items(
-        [
-            ("0", QColor("yellow"), MultiPlotWidget.PlotType.DEFAULT),
-            ("1", QColor("orange"), MultiPlotWidget.PlotType.DEFAULT),
-            ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
-        ]
-    )
+    plots.show_data_items(DATA_ITEMS)
     plots.set_data(DATA)
     qtbot.addWidget(plots)
     plots.show()

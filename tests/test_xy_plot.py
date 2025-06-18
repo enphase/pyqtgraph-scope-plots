@@ -19,33 +19,18 @@ import pytest
 from PySide6.QtGui import QColor
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
+from pyqtgraph_scope_plots import MultiPlotWidget, XyPlotWidget, XyWindowModel, XyPlotSplitter, XyTable
+from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel
 from pyqtgraph_scope_plots.util.util import not_none
-from pyqtgraph_scope_plots.xy_plot import XyPlotWidget
-from pyqtgraph_scope_plots.xy_plot_refgeo import XyRefGeoModel
-from pyqtgraph_scope_plots.xy_plot_splitter import XyPlotSplitter
-from pyqtgraph_scope_plots.xy_plot_table import XyTableStateModel, XyTable
 
-
-XY_DATA = {
-    "0": ([0, 1, 2], [0, 1, 2]),
-    "1": ([0, 1, 2], [2, 1, 0]),
-    "2": ([1, 2, 3], [0, 1, 2]),  # offset in time but evenly spaced
-    "X": ([0, 1, 4], [0, 1, 2]),  # not evenly spaced
-}
+from .common_testdata import DATA_ITEMS, XY_DATA
 
 
 @pytest.fixture()
 def xy_table(qtbot: QtBot) -> XyTable:
     """Creates a signals plot with multiple data items"""
     table = XyTable(MultiPlotWidget())
-    table._plots.show_data_items(
-        [
-            ("0", QColor("yellow"), MultiPlotWidget.PlotType.DEFAULT),
-            ("1", QColor("orange"), MultiPlotWidget.PlotType.DEFAULT),
-            ("2", QColor("blue"), MultiPlotWidget.PlotType.DEFAULT),
-        ]
-    )
+    table._plots.show_data_items(DATA_ITEMS)
     table._plots.set_data(XY_DATA)
     qtbot.addWidget(table)
     table.show()
@@ -135,7 +120,7 @@ def test_xy_save(qtbot: QtBot, xy_table: XyTable) -> None:
 def test_xy_load(qtbot: QtBot, xy_table: XyTable) -> None:
     model = cast(XyTableStateModel, xy_table._dump_data_model([]))
 
-    model.xy_windows = [XyRefGeoModel(xy_data_items=[("1", "0")])]
+    model.xy_windows = [XyWindowModel(xy_data_items=[("1", "0")])]
     xy_table._load_model(model)
     qtbot.waitUntil(lambda: len(xy_table._xy_plots) == 1)
     assert cast(XyPlotSplitter, xy_table._xy_plots[0])._xy_plots._xys == [("1", "0")]

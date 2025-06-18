@@ -20,8 +20,8 @@ from PySide6.QtCore import QPoint
 from PySide6.QtGui import QColor, Qt
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
-from pyqtgraph_scope_plots.xy_plot_refgeo import RefGeoXyPlotWidget, XyRefGeoModel, RefGeoXyPlotTable
+from pyqtgraph_scope_plots import MultiPlotWidget, LinkedMultiPlotWidget, RefGeoXyPlotWidget, RefGeoXyPlotTable
+from pyqtgraph_scope_plots.xy_plot_refgeo import XyRefGeoModel
 
 
 @pytest.fixture()

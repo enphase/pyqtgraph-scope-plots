@@ -12,38 +12,19 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import List, Tuple, Dict, Any, cast
+from typing import Tuple, Any, cast
 from unittest import mock
 
-import numpy as np
-import numpy.typing as npt
 import pytest
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QInputDialog
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget
-from pyqtgraph_scope_plots.transforms_signal_table import (
-    TransformsSignalsTable,
-    TransformsDataStateModel,
-    TransformsPlotWidget,
-)
+from pyqtgraph_scope_plots import MultiPlotWidget, TransformsSignalsTable, TransformsPlotWidget
+from pyqtgraph_scope_plots.transforms_signal_table import TransformsDataStateModel
 from pyqtgraph_scope_plots.util.util import not_none
+from .common_testdata import DATA
 from .test_util import context_menu, menu_action_by_name
-
-
-def np_immutable(x: List[float]) -> npt.NDArray[np.float64]:
-    """Creates a np.array with immutable set (writable=False)"""
-    arr = np.array(x)
-    arr.flags.writeable = False
-    return arr
-
-
-DATA: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = {
-    "0": (np_immutable([0, 0.1, 1, 2]), np_immutable([0.01, 1, 1, 0])),
-    "1": (np_immutable([0, 1, 2]), np_immutable([0.5, 0.25, 0.5])),
-    "2": (np_immutable([0, 1, 2]), np_immutable([0.7, 0.6, 0.5])),
-}
 
 
 @pytest.fixture()

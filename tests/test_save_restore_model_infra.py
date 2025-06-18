@@ -16,11 +16,7 @@ from typing import Optional, Iterable, cast, Dict, List, Type
 
 from pydantic import BaseModel
 
-from pyqtgraph_scope_plots.util.save_restore_model import (
-    DataTopModel,
-    BaseTopModel,
-    HasSaveLoadDataConfig,
-)
+from pyqtgraph_scope_plots import DataTopModel, BaseTopModel, HasSaveLoadDataConfig
 
 
 class DataModelSub1(DataTopModel):

@@ -16,8 +16,8 @@ from typing import cast
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.multi_plot_widget import LinkedMultiPlotStateModel
-from pyqtgraph_scope_plots.plots_table_widget import PlotsTableWidget
 from pyqtgraph_scope_plots.util.util import not_none
+from pyqtgraph_scope_plots import PlotsTableWidget
 from .test_base_plot import plot_item, plot
 
 

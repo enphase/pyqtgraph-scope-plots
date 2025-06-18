@@ -21,18 +21,6 @@ from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget
 from pyqtgraph_scope_plots.xy_plot_refgeo import RefGeoXyPlotWidget, XyRefGeoModel, RefGeoXyPlotTable
-from pyqtgraph_scope_plots.xy_plot_splitter import XyPlotSplitter
-
-
-class FullXySplitter(XyPlotSplitter):
-    class FullXyPlot(RefGeoXyPlotWidget):
-        pass
-
-    class FullXyPlotTable(RefGeoXyPlotTable):
-        pass
-
-    _XY_PLOT_TYPE = FullXyPlot
-    _XY_PLOT_TABLE_TYPE = FullXyPlotTable
 
 
 @pytest.fixture()
@@ -42,15 +30,6 @@ def plot(qtbot: QtBot) -> RefGeoXyPlotWidget:
     xy_plot.show()
     qtbot.waitExposed(xy_plot)
     return xy_plot
-
-
-@pytest.fixture()
-def splitter(qtbot: QtBot) -> FullXySplitter:
-    splitter = FullXySplitter(LinkedMultiPlotWidget())
-    qtbot.addWidget(splitter)
-    splitter.show()
-    qtbot.waitExposed(splitter)
-    return splitter
 
 
 def test_square_points(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
@@ -103,65 +82,69 @@ def test_data_region(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
         assert list(curve.yData) == [-1, 1]
 
 
-def test_table(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
-    splitter._xy_plots.set_ref_geometry_fn("([-1, 1], [-1, -1])")
-    qtbot.waitUntil(lambda: splitter._table.rowCount() == 1)
-    assert splitter._table.item(0, 0).text() == "([-1, 1], [-1, -1])"
+def test_table(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
+    table = RefGeoXyPlotTable(plot._plots, plot)
+    plot.set_ref_geometry_fn("([-1, 1], [-1, -1])")
+    qtbot.waitUntil(lambda: table.rowCount() == 1)
+    assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"
 
-    splitter._xy_plots.set_ref_geometry_fn("([-1, 2], [-1, -1])")  # addition
-    qtbot.waitUntil(lambda: splitter._table.rowCount() == 2)
-    assert splitter._table.item(0, 0).text() == "([-1, 1], [-1, -1])"
-    assert splitter._table.item(1, 0).text() == "([-1, 2], [-1, -1])"
+    plot.set_ref_geometry_fn("([-1, 2], [-1, -1])")  # addition
+    qtbot.waitUntil(lambda: table.rowCount() == 2)
+    assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"
+    assert table.item(1, 0).text() == "([-1, 2], [-1, -1])"
 
-    splitter._xy_plots.set_ref_geometry_fn("([-1, 0], [-1, -1])", 1)  # replacement
-    qtbot.waitUntil(lambda: splitter._table.rowCount() == 2)
-    assert splitter._table.item(0, 0).text() == "([-1, 1], [-1, -1])"
-    assert splitter._table.item(1, 0).text() == "([-1, 0], [-1, -1])"
+    plot.set_ref_geometry_fn("([-1, 0], [-1, -1])", 1)  # replacement
+    qtbot.waitUntil(lambda: table.rowCount() == 2)
+    assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"
+    assert table.item(1, 0).text() == "([-1, 0], [-1, -1])"
 
-    splitter._xy_plots.set_ref_geometry_fn("", 0)  # deletion
-    qtbot.waitUntil(lambda: splitter._table.rowCount() == 1)
-    assert splitter._table.item(0, 0).text() == "([-1, 0], [-1, -1])"
+    plot.set_ref_geometry_fn("", 0)  # deletion
+    qtbot.waitUntil(lambda: table.rowCount() == 1)
+    assert table.item(0, 0).text() == "([-1, 0], [-1, -1])"
 
 
-def test_table_deletion(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
-    splitter._xy_plots.set_ref_geometry_fn("([-1, 1], [-1, -1])")
-    splitter._xy_plots.set_ref_geometry_fn("([-1, 2], [-1, -1])")  # addition
-    qtbot.waitUntil(lambda: splitter._table.rowCount() == 2)
+def test_table_deletion(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
+    table = RefGeoXyPlotTable(plot._plots, plot)
+    plot.set_ref_geometry_fn("([-1, 1], [-1, -1])")
+    plot.set_ref_geometry_fn("([-1, 2], [-1, -1])")  # addition
+    qtbot.waitUntil(lambda: table.rowCount() == 2)
 
-    splitter._table.setFocus()
-    splitter._table.selectRow(0)
-    qtbot.keyClick(splitter._table.viewport(), Qt.Key.Key_Delete)
-    qtbot.waitUntil(lambda: splitter._table.rowCount() == 1)
-    assert splitter._table.item(0, 0).text() == "([-1, 2], [-1, -1])"
+    table.setFocus()
+    table.selectRow(0)
+    qtbot.keyClick(table.viewport(), Qt.Key.Key_Delete)
+    qtbot.waitUntil(lambda: table.rowCount() == 1)
+    assert table.item(0, 0).text() == "([-1, 2], [-1, -1])"
 
-    splitter._table.selectRow(0)
-    qtbot.keyClick(splitter._table.viewport(), Qt.Key.Key_Delete)
-    qtbot.waitUntil(lambda: splitter._table.rowCount() == 0)
+    table.selectRow(0)
+    qtbot.keyClick(table.viewport(), Qt.Key.Key_Delete)
+    qtbot.waitUntil(lambda: table.rowCount() == 0)
 
-    qtbot.keyClick(splitter._table.viewport(), Qt.Key.Key_Delete)  # no-op
+    qtbot.keyClick(table.viewport(), Qt.Key.Key_Delete)  # no-op
     qtbot.wait(10)  # test empty deletion doesn't crash
 
 
-def test_table_err(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
-    splitter._xy_plots.set_ref_geometry_fn("abc")
-    qtbot.waitUntil(lambda: "NameNotDefined" in splitter._table.item(0, 0).text())
+def test_table_err(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
+    table = RefGeoXyPlotTable(plot._plots, plot)
+    plot.set_ref_geometry_fn("abc")
+    qtbot.waitUntil(lambda: "NameNotDefined" in table.item(0, 0).text())
 
 
-def test_refgeo_save(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
-    qtbot.waitUntil(lambda: cast(XyRefGeoModel, splitter._dump_model()).ref_geo == [])
+def test_refgeo_save(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
+    qtbot.waitUntil(lambda: cast(XyRefGeoModel, plot._dump_model()).ref_geo == [])
 
-    splitter._xy_plots.set_ref_geometry_fn("([-1, 1], [-1, -1])")
-    qtbot.waitUntil(lambda: cast(XyRefGeoModel, splitter._dump_model()).ref_geo == ["([-1, 1], [-1, -1])"])
+    plot.set_ref_geometry_fn("([-1, 1], [-1, -1])")
+    qtbot.waitUntil(lambda: cast(XyRefGeoModel, plot._dump_model()).ref_geo == ["([-1, 1], [-1, -1])"])
 
 
-def test_refgeo_load(qtbot: QtBot, splitter: XyPlotSplitter) -> None:
-    model = cast(XyRefGeoModel, splitter._dump_model())
+def test_refgeo_load(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
+    table = RefGeoXyPlotTable(plot._plots, plot)
+    model = cast(XyRefGeoModel, plot._dump_model())
 
     model.ref_geo = ["([-1, 1], [-1, -1])"]
-    splitter._load_model(model)
-    qtbot.waitUntil(lambda: splitter._table.rowCount() == 1)
-    assert splitter._table.item(0, 0).text() == "([-1, 1], [-1, -1])"
+    plot._load_model(model)
+    qtbot.waitUntil(lambda: table.rowCount() == 1)
+    assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"
 
     model.ref_geo = []
-    splitter._load_model(model)
-    qtbot.waitUntil(lambda: splitter._table.rowCount() == 0)
+    plot._load_model(model)
+    qtbot.waitUntil(lambda: table.rowCount() == 0)

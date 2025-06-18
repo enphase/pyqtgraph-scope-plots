@@ -17,7 +17,6 @@ from PySide6 import QtGui
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QSplitter
 from pydantic import BaseModel
-import pyqtgraph as pg
 
 from .multi_plot_widget import MultiPlotWidget
 from .xy_plot import BaseXyPlot, XyPlotWidget, XyPlotTable

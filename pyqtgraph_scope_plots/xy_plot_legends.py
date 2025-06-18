@@ -14,17 +14,33 @@
 from typing import Any, cast
 
 import pyqtgraph as pg
+from pydantic import BaseModel
 
+from . import HasSaveLoadDataConfig
+from .legend_plot_widget import ShowLegendsStateModel
 from .xy_plot_table import XyTable
 from .xy_plot import BaseXyPlot
 
 
-class XyTableLegends(XyTable):
+class XyTableLegends(XyTable, HasSaveLoadDataConfig):
     """Mixin into XyTable that allows legends to be shown."""
+
+    _MODEL_BASES = [ShowLegendsStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._show_legend: bool = False
+
+    def _write_model(self, model: BaseModel) -> None:
+        super()._write_model(model)
+        assert isinstance(model, ShowLegendsStateModel)
+        model.show_legends = self._show_legend
+
+    def _load_model(self, model: BaseModel) -> None:
+        super()._load_model(model)
+        assert isinstance(model, ShowLegendsStateModel)
+        if model.show_legends == True and not self._show_legend:
+            self.show_legends()
 
     def show_legends(self) -> None:
         self._show_legend = True

@@ -105,6 +105,9 @@ def test_table(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
 
 def test_table_deletion(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     table = RefGeoXyPlotTable(plot._plots, plot)
+    table.show()  # needed since we're interacting with the table
+    qtbot.addWidget(table)
+
     plot.set_ref_geometry_fn("([-1, 1], [-1, -1])")
     plot.set_ref_geometry_fn("([-1, 2], [-1, -1])")  # addition
     qtbot.waitUntil(lambda: table.rowCount() == 2)

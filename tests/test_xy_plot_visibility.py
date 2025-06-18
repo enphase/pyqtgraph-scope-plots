@@ -40,7 +40,6 @@ def test_visibility_table(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
 
 
 def test_visibility_save(qtbot: QtBot, plot: VisibilityXyPlotWidget) -> None:
-    print(plot._dump_model())
     qtbot.waitUntil(lambda: cast(VisibilityDataStateModel, plot._dump_model()).hidden_data == [])
 
     # TODO

@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import List, Type, Dict, Iterable
+from typing import List, Type, Dict, Iterable, Optional
 
 import pydantic
 from pydantic import BaseModel
@@ -38,21 +38,30 @@ class HasSaveLoadConfig:
     _MODEL_BASES: List[ModelMetaclass] = []  # defined in subclasses
 
     @classmethod
-    def _get_model_bases(cls) -> List[ModelMetaclass]:
-        """Returns the model bases of this class.
-        Inspects each subclasses' TOP_MODEL_BASES, so no implementation is required
-        if all the HasSaveLoadConfig are mixins into the top-level class.
+    def _create_class_model_bases(cls) -> Optional[List[ModelMetaclass]]:
+        """Returns the model base fragments for this class only. This is in addition to _MODEL_BASES
+        and allows dynamic creation of models."""
+        return None
+
+    @classmethod
+    def _get_all_model_bases(cls) -> List[ModelMetaclass]:
+        """Returns the model bases of this class, inspecting fragments
+        (from both _MODEL_BASES and get_model_fragments) for each superclass.
 
         Optionally override this if composition is used, for example saving / restore state of children."""
         model_bases = []
         for base in cls.__mro__:
             if issubclass(base, HasSaveLoadConfig) and "_MODEL_BASES" in base.__dict__:
                 model_bases.extend(base._MODEL_BASES)
+            if issubclass(base, HasSaveLoadConfig) and "_create_class_model_bases" in base.__dict__:
+                fn_bases = base._create_class_model_bases.__func__(cls)  # call with bottommost subclass
+                if fn_bases is not None:
+                    model_bases.extend(fn_bases)
         return model_bases
 
     @classmethod
     def _create_skeleton_model_type(cls) -> Type[BaseModel]:
-        model_bases = cls._get_model_bases()
+        model_bases = cls._get_all_model_bases()
         return pydantic.create_model(cls._TOP_MODEL_NAME, __base__=tuple(model_bases))  # type: ignore
 
     def _dump_model(self) -> BaseModel:
@@ -109,7 +118,7 @@ class HasSaveLoadDataConfig(HasSaveLoadConfig):
 
     @classmethod
     def _create_skeleton_model_type(cls) -> Type[BaseModel]:
-        model_bases = cls._get_model_bases()
+        model_bases = cls._get_all_model_bases()
         data_model_bases = cls._get_data_model_bases()
         model_bases.append(BaseTopModel)
         data_model_bases.append(DataTopModel)

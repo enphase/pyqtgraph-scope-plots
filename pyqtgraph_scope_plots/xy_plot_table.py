@@ -16,7 +16,8 @@ from typing import Any, List, Optional, Type
 
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QMessageBox, QWidget
-from pydantic import BaseModel
+from pydantic import BaseModel, create_model
+from pydantic._internal._model_construction import ModelMetaclass
 
 from .save_restore_model import BaseTopModel, HasSaveLoadDataConfig
 from .signals_table import ContextMenuSignalsTable, DraggableSignalsTable
@@ -32,8 +33,18 @@ class XyTableStateModel(BaseTopModel):
 class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasSaveLoadDataConfig):
     """Mixin into SignalsTable that adds the option to open an XY plot in a separate window."""
 
-    _MODEL_BASES = [XyTableStateModel]
     _XY_PLOT_TYPE: Type[BaseXyPlot] = XyPlotSplitter
+
+    @classmethod
+    def _create_class_model_bases(cls) -> Optional[List[ModelMetaclass]]:
+        print(cls)
+        return [
+            create_model(
+                "XyTableStateModel",
+                __base__=XyTableStateModel,
+                xy_windows=(Optional[List[cls._XY_PLOT_TYPE._create_skeleton_model_type()]], None),
+            )
+        ]
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -43,7 +54,7 @@ class XyTable(DraggableSignalsTable, ContextMenuSignalsTable, HasSaveLoadDataCon
 
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
-        assert isinstance(model, XyTableStateModel)
+        # assert isinstance(model, XyTableStateModel)
         model.xy_windows = []
         for xy_plot in self._xy_plots:
             model.xy_windows.append(xy_plot._dump_model())  # type: ignore

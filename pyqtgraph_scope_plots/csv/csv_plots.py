@@ -177,10 +177,10 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._watch_timer.timeout.connect(self._check_watch)
 
     @classmethod
-    def _get_model_bases(cls) -> List[ModelMetaclass]:
-        bases = super()._get_model_bases()
-        plot_bases = cls._PLOT_TYPE._get_model_bases()
-        table_bases = cls._TABLE_TYPE._get_model_bases()
+    def _get_all_model_bases(cls) -> List[ModelMetaclass]:
+        bases = super()._get_all_model_bases()
+        plot_bases = cls._PLOT_TYPE._get_all_model_bases()
+        table_bases = cls._TABLE_TYPE._get_all_model_bases()
         return bases + plot_bases + table_bases
 
     @classmethod

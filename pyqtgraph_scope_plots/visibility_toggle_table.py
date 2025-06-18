@@ -39,7 +39,11 @@ class VisibilityPlotWidget(MultiPlotWidget):
                 else:
                     curve.show()
 
-    # TODO hook on init to hide / unhide plotitems
+    def _update_plots(self):
+        super()._update_plots()
+        for data_item in self._hidden_data:
+            for curve in self._data_curves.get(data_item, []):
+                curve.hide()
 
 
 class VisibilityToggleSignalsTable(SignalsTable):

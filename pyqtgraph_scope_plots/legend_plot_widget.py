@@ -11,25 +11,24 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
+from abc import abstractmethod
 from typing import Any, Optional
 import pyqtgraph as pg
 from pydantic import BaseModel
 
-from pyqtgraph_scope_plots import MultiPlotWidget, HasSaveLoadDataConfig
+from .util import HasSaveLoadDataConfig
+from .multi_plot_widget import MultiPlotWidget
 
 
 class ShowLegendsStateModel(BaseModel):
     show_legends: Optional[bool] = None
 
 
-class LegendPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
-    """Adds a show-legend API. Once the legend is shown, it cannot be hidden again, since pyqtgraph
-    does not provide those APIs"""
-
+class BaseLegendSaveLoad(HasSaveLoadDataConfig):
     _MODEL_BASES = [ShowLegendsStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self._show_legend: bool = False
+        self._show_legend: bool = False  # inspect this to show legend on plot creation
         super().__init__(*args, **kwargs)
 
     def _write_model(self, model: BaseModel) -> None:
@@ -42,6 +41,16 @@ class LegendPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
         assert isinstance(model, ShowLegendsStateModel)
         if model.show_legends == True and not self._show_legend:
             self.show_legends()
+
+    @abstractmethod
+    def show_legends(self) -> None:
+        """Implement me to show legends in response to some action"""
+        ...
+
+
+class LegendPlotWidget(BaseLegendSaveLoad, MultiPlotWidget):
+    """Adds a show-legend API. Once the legend is shown, it cannot be hidden again, since pyqtgraph
+    does not provide those APIs"""
 
     def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
         plot_item = super()._init_plot_item(plot_item)

@@ -44,13 +44,12 @@ from ..animation_plot_table_widget import AnimationPlotsTableWidget
 from ..color_signals_table import ColorPickerSignalsTable, ColorPickerPlotWidget
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
-from pyqtgraph_scope_plots.util.save_restore_model import BaseTopModel, HasSaveLoadDataConfig
+from ..util import int_color, BaseTopModel, HasSaveLoadDataConfig
 from ..search_signals_table import SearchSignalsTable
 from ..stats_signals_table import StatsSignalsTable
 from ..time_axis import TimeAxisItem
 from ..timeshift_signals_table import TimeshiftSignalsTable, TimeshiftPlotWidget
 from ..transforms_signal_table import TransformsSignalsTable, TransformsPlotWidget
-from pyqtgraph_scope_plots.util.util import int_color
 from ..xy_plot import XyPlotWidget, XyDragDroppable, DeleteableXyPlotTable, SignalRemovalXyPlotTable, XyPlotTable
 from ..xy_plot_table import XyTable
 from ..xy_plot_splitter import XyPlotSplitter

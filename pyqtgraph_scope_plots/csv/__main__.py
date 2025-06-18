@@ -23,7 +23,7 @@ from PySide6.QtWidgets import QApplication
 
 from .csv_plots import CsvLoaderPlotsTableWidget
 from ..multi_plot_widget import MultiPlotWidget
-from pyqtgraph_scope_plots.util.util import int_color
+from ..util import int_color
 
 
 class CsvLoaderPlotsTableWindow(CsvLoaderPlotsTableWidget):

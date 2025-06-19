@@ -144,16 +144,22 @@ def test_refgeo_save(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     model_ref_geo = not_none(cast(XyRefGeoModel, plot._dump_model()).ref_geo)
     assert len(model_ref_geo) == 1
     assert model_ref_geo[0].expr == "([-1, 1], [-1, -1])"
+    assert model_ref_geo[0].color == "#ffffff"  # default
+
+    plot.set_ref_geometry_fn("([-1, 1], [-1, -1])", color=QColor("yellow"), index=0)
+    model_ref_geo = not_none(cast(XyRefGeoModel, plot._dump_model()).ref_geo)
+    assert model_ref_geo[0].color == "#ffff00"
 
 
 def test_refgeo_load(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     table = RefGeoXyPlotTable(plot._plots, plot)
     model = cast(XyRefGeoModel, plot._dump_model())
 
-    model.ref_geo = [XyRefGeoData(expr="([-1, 1], [-1, -1])")]
+    model.ref_geo = [XyRefGeoData(expr="([-1, 1], [-1, -1])", color="yellow")]
     plot._load_model(model)
     qtbot.waitUntil(lambda: table.rowCount() == 1)
     assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"
+    assert table.item(0, 0).foreground().color() == QColor("yellow")
 
     model.ref_geo = []
     plot._load_model(model)

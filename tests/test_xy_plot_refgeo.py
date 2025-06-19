@@ -20,8 +20,16 @@ from PySide6.QtCore import QPoint
 from PySide6.QtGui import QColor, Qt
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots import MultiPlotWidget, LinkedMultiPlotWidget, RefGeoXyPlotWidget, RefGeoXyPlotTable
-from pyqtgraph_scope_plots.xy_plot_refgeo import XyRefGeoModel
+from pyqtgraph_scope_plots import (
+    MultiPlotWidget,
+    LinkedMultiPlotWidget,
+    RefGeoXyPlotWidget,
+    RefGeoXyPlotTable,
+    VisibilityXyPlotTable,
+    VisibilityXyPlotWidget,
+)
+from pyqtgraph_scope_plots.util import not_none
+from pyqtgraph_scope_plots.xy_plot_refgeo import XyRefGeoModel, XyRefGeoData
 
 
 @pytest.fixture()
@@ -87,21 +95,21 @@ def test_table(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     table = RefGeoXyPlotTable(plot._plots, plot)
     plot.set_ref_geometry_fn("([-1, 1], [-1, -1])")
     qtbot.waitUntil(lambda: table.rowCount() == 1)
-    assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"
+    assert table.item(0, table.COL_X_NAME).text() == "([-1, 1], [-1, -1])"
 
     plot.set_ref_geometry_fn("([-1, 2], [-1, -1])")  # addition
     qtbot.waitUntil(lambda: table.rowCount() == 2)
-    assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"
-    assert table.item(1, 0).text() == "([-1, 2], [-1, -1])"
+    assert table.item(0, table.COL_X_NAME).text() == "([-1, 1], [-1, -1])"
+    assert table.item(1, table.COL_X_NAME).text() == "([-1, 2], [-1, -1])"
 
     plot.set_ref_geometry_fn("([-1, 0], [-1, -1])", 1)  # replacement
     qtbot.waitUntil(lambda: table.rowCount() == 2)
-    assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"
-    assert table.item(1, 0).text() == "([-1, 0], [-1, -1])"
+    assert table.item(0, table.COL_X_NAME).text() == "([-1, 1], [-1, -1])"
+    assert table.item(1, table.COL_X_NAME).text() == "([-1, 0], [-1, -1])"
 
     plot.set_ref_geometry_fn("", 0)  # deletion
     qtbot.waitUntil(lambda: table.rowCount() == 1)
-    assert table.item(0, 0).text() == "([-1, 0], [-1, -1])"
+    assert table.item(0, table.COL_X_NAME).text() == "([-1, 0], [-1, -1])"
 
 
 def test_table_deletion(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
@@ -137,21 +145,81 @@ def test_table_err(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
 
 
 def test_refgeo_save(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
-    qtbot.waitUntil(lambda: cast(XyRefGeoModel, plot._dump_model()).ref_geo == [])
+    assert cast(XyRefGeoModel, plot._dump_model()).ref_geo == []
 
     plot.set_ref_geometry_fn("([-1, 1], [-1, -1])")
-    qtbot.waitUntil(lambda: cast(XyRefGeoModel, plot._dump_model()).ref_geo == ["([-1, 1], [-1, -1])"])
+    model_ref_geo = not_none(cast(XyRefGeoModel, plot._dump_model()).ref_geo)
+    assert len(model_ref_geo) == 1
+    assert model_ref_geo[0].expr == "([-1, 1], [-1, -1])"
+    assert model_ref_geo[0].color == "#ffffff"  # default
+    assert model_ref_geo[0].hidden == False
+
+    plot.set_ref_geometry_fn("([-1, 1], [-1, -1])", color=QColor("yellow"), index=0)
+    model_ref_geo = not_none(cast(XyRefGeoModel, plot._dump_model()).ref_geo)
+    assert model_ref_geo[0].color == "#ffff00"
+
+    plot.hide_refgeo(0)
+    model_ref_geo = not_none(cast(XyRefGeoModel, plot._dump_model()).ref_geo)
+    assert model_ref_geo[0].hidden == True
 
 
 def test_refgeo_load(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     table = RefGeoXyPlotTable(plot._plots, plot)
     model = cast(XyRefGeoModel, plot._dump_model())
 
-    model.ref_geo = ["([-1, 1], [-1, -1])"]
+    model.ref_geo = [XyRefGeoData(expr="([-1, 1], [-1, -1])", color="yellow")]
     plot._load_model(model)
+    plot._update()
+    plot.sigXyDataItemsChanged.emit()
     qtbot.waitUntil(lambda: table.rowCount() == 1)
-    assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"
+    assert table.item(0, table.COL_X_NAME).text() == "([-1, 1], [-1, -1])"
+    assert table.item(0, table.COL_X_NAME).foreground().color() == QColor("yellow")
 
     model.ref_geo = []
     plot._load_model(model)
+    plot._update()
+    plot.sigXyDataItemsChanged.emit()
     qtbot.waitUntil(lambda: table.rowCount() == 0)
+
+
+class RefGeoWithVisibilityPlot(RefGeoXyPlotWidget, VisibilityXyPlotWidget):
+    pass
+
+
+class RefGeoWithVisibilityTable(RefGeoXyPlotTable, VisibilityXyPlotTable):
+    pass
+
+
+@pytest.fixture()
+def visibility_plot(qtbot: QtBot) -> RefGeoWithVisibilityPlot:
+    xy_plot = RefGeoWithVisibilityPlot(LinkedMultiPlotWidget())
+    qtbot.addWidget(xy_plot)
+    xy_plot.show()
+    qtbot.waitExposed(xy_plot)
+    return xy_plot
+
+
+def test_refgeo_visibility_table(qtbot: QtBot, visibility_plot: RefGeoWithVisibilityPlot) -> None:
+    table = RefGeoWithVisibilityTable(visibility_plot._plots, visibility_plot)
+    table._update()
+
+    visibility_plot.set_ref_geometry_fn("([-1, 1], [-1, -1])")
+    table.item(0, table.COL_VISIBILITY).setCheckState(Qt.CheckState.Unchecked)
+    assert not visibility_plot._refgeo_curves[0].isVisible()
+
+    table.item(0, table.COL_VISIBILITY).setCheckState(Qt.CheckState.Checked)
+    assert visibility_plot._refgeo_curves[0].isVisible()
+
+
+def test_refgeo_visibility_load(qtbot: QtBot, visibility_plot: RefGeoWithVisibilityPlot) -> None:
+    table = RefGeoWithVisibilityTable(visibility_plot._plots, visibility_plot)
+    table._update()
+    model = cast(XyRefGeoModel, visibility_plot._dump_model())
+
+    model.ref_geo = [XyRefGeoData(expr="([-1, 1], [-1, -1])", hidden=True)]
+    visibility_plot._load_model(model)
+    visibility_plot._update()
+    visibility_plot.sigXyDataItemsChanged.emit()
+    qtbot.waitUntil(lambda: table.rowCount() == 1)
+    assert table.item(0, table.COL_X_NAME).text() == "([-1, 1], [-1, -1])"
+    assert table.item(0, table.COL_VISIBILITY).checkState() == Qt.CheckState.Unchecked

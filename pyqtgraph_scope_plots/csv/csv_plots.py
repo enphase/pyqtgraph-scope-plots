@@ -75,7 +75,19 @@ class CsvLoaderStateModel(BaseTopModel):
 
 class FullXySplitter(XyPlotSplitter):
     class FullXyPlot(VisibilityXyPlotWidget, RefGeoXyPlotWidget, XyDragDroppable, XyPlotWidget):
-        pass
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            self._thickness: float = 1
+            super().__init__(*args, **kwargs)
+
+        def _update(self) -> None:
+            super()._update()
+            for item in self.items():
+                if isinstance(item, pg.PlotCurveItem):
+                    item.setPen(color=item.opts["pen"].color(), width=self._thickness)
+
+        def set_thickness(self, thickness: float) -> None:
+            self._thickness = thickness
+            self._update()
 
     class FullXyPlotTable(
         VisibilityXyPlotTable, RefGeoXyPlotTable, SignalRemovalXyPlotTable, DeleteableXyPlotTable, XyPlotTable
@@ -84,6 +96,10 @@ class FullXySplitter(XyPlotSplitter):
 
     _XY_PLOT_TYPE = FullXyPlot
     _XY_PLOT_TABLE_TYPE = FullXyPlotTable
+
+    def set_thickness(self, thickness: float) -> None:
+        assert isinstance(self._xy_plots, self.FullXyPlot)
+        self._xy_plots.set_thickness(thickness)
 
 
 class FullPlots(
@@ -141,6 +157,11 @@ class FullSignalsTable(
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)
         menu.addAction(self._remove_row_action)
+
+    def set_thickness(self, thickness: float) -> None:
+        for xy_plot in self._xy_plots:
+            assert isinstance(xy_plot, FullXySplitter)
+            xy_plot.set_thickness(thickness)
 
 
 class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, HasSaveLoadDataConfig):
@@ -204,12 +225,14 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
     def _on_line_width_action(self) -> None:
         assert isinstance(self._plots, FullPlots)
+        assert isinstance(self._table, FullSignalsTable)
         value, ok = QInputDialog().getDouble(
             self, "Set thickness", "Line thickness", self._plots._thickness, minValue=0
         )
         if not ok:
             return
         self._plots.set_thickness(value)
+        self._table.set_thickness(value)
 
     def _make_controls(self) -> QWidget:
         button_load = QToolButton()

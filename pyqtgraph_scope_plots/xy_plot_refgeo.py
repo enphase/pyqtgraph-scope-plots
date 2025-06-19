@@ -119,7 +119,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
             }
             try:
                 xs, ys = self._simpleeval.eval(refgeo_expr, refgeo_parsed)
-                curve = pg.PlotCurveItem(x=xs, y=ys)
+                curve = pg.PlotCurveItem(x=xs, y=ys, name=refgeo_expr)
                 self.addItem(curve)
                 self._refgeo_errs.append(None)
             except Exception as e:

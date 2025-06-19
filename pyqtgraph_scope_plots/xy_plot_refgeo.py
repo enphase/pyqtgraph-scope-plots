@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 from functools import partial
-from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional
+from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -67,7 +67,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._refgeo_fns: List[Tuple[str, Any, QColor]] = []  # (expr str, parsed, color)
-        self._refgeo_errs: List[Optional[Exception]] = []  # index-aligned with refgeo_fns
+        self._refgeo_curves: List[Union[pg.PlotCurveItem, Exception]] = []  # index-aligned with refgeo_fns
 
         # copy, since simpleeval internally mutates the functions dict
         self._simpleeval = simpleeval.EvalWithCompoundTypes(functions=self._SIMPLEEVAL_FNS.copy())
@@ -75,10 +75,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
         assert isinstance(model, XyRefGeoModel)
-        model.ref_geo = [
-            XyRefGeoData(expr=expr, color=color.name())
-            for expr, parsed, color in self._refgeo_fns
-        ]
+        model.ref_geo = [XyRefGeoData(expr=expr, color=color.name()) for expr, parsed, color in self._refgeo_fns]
 
     def _load_model(self, model: BaseModel) -> None:
         super()._load_model(model)
@@ -141,8 +138,10 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         filtered_data = {name: get_data_region(ts, ys) for name, (ts, ys) in self._plots._data.items()}
 
         # draw reference geometry
-        last_refgeo_err = any([err is not None for err in self._refgeo_errs])  # store last to emit on failing -> ok
-        self._refgeo_errs = []
+        last_refgeo_err = any(
+            [isinstance(curve, Exception) for curve in self._refgeo_curves]
+        )  # store last to emit on failing -> ok
+        self._refgeo_curves = []
         for expr, parsed, color in self._refgeo_fns:
             self._simpleeval.names = {
                 "data": filtered_data,
@@ -152,11 +151,11 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                 curve = pg.PlotCurveItem(x=xs, y=ys, name=expr)
                 curve.setPen(color=color)
                 self.addItem(curve)
-                self._refgeo_errs.append(None)
+                self._refgeo_curves.append(curve)
             except Exception as e:
-                self._refgeo_errs.append(e)
+                self._refgeo_curves.append(e)
 
-        if last_refgeo_err or any([err is not None for err in self._refgeo_errs]):
+        if last_refgeo_err or any([isinstance(curve, Exception) for curve in self._refgeo_curves]):
             self.sigXyDataItemsChanged.emit()
 
 
@@ -191,11 +190,9 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
         self.setRowCount(self._row_offset_refgeo + len(self._xy_plots._refgeo_fns))
         for row, (expr, _, color) in enumerate(self._xy_plots._refgeo_fns):
             item = SignalsTable._create_noneditable_table_item()
-            exc: Optional[Exception] = None
-            if len(self._xy_plots._refgeo_errs) > row:
-                exc = self._xy_plots._refgeo_errs[row]
-            if exc is not None:
-                item.setText(f"{expr}: {exc.__class__.__name__}: {exc}")
+            curve = self._xy_plots._refgeo_curves[row]
+            if isinstance(curve, Exception):
+                item.setText(f"{expr}: {curve.__class__.__name__}: {curve}")
             else:
                 item.setText(expr)
             item.setForeground(color)

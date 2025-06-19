@@ -88,21 +88,21 @@ def test_table(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     table = RefGeoXyPlotTable(plot._plots, plot)
     plot.set_ref_geometry_fn("([-1, 1], [-1, -1])")
     qtbot.waitUntil(lambda: table.rowCount() == 1)
-    assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"
+    assert table.item(0, table.COL_X_NAME).text() == "([-1, 1], [-1, -1])"
 
     plot.set_ref_geometry_fn("([-1, 2], [-1, -1])")  # addition
     qtbot.waitUntil(lambda: table.rowCount() == 2)
-    assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"
-    assert table.item(1, 0).text() == "([-1, 2], [-1, -1])"
+    assert table.item(0, table.COL_X_NAME).text() == "([-1, 1], [-1, -1])"
+    assert table.item(1, table.COL_X_NAME).text() == "([-1, 2], [-1, -1])"
 
     plot.set_ref_geometry_fn("([-1, 0], [-1, -1])", 1)  # replacement
     qtbot.waitUntil(lambda: table.rowCount() == 2)
-    assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"
-    assert table.item(1, 0).text() == "([-1, 0], [-1, -1])"
+    assert table.item(0, table.COL_X_NAME).text() == "([-1, 1], [-1, -1])"
+    assert table.item(1, table.COL_X_NAME).text() == "([-1, 0], [-1, -1])"
 
     plot.set_ref_geometry_fn("", 0)  # deletion
     qtbot.waitUntil(lambda: table.rowCount() == 1)
-    assert table.item(0, 0).text() == "([-1, 0], [-1, -1])"
+    assert table.item(0, table.COL_X_NAME).text() == "([-1, 0], [-1, -1])"
 
 
 def test_table_deletion(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
@@ -158,8 +158,8 @@ def test_refgeo_load(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     model.ref_geo = [XyRefGeoData(expr="([-1, 1], [-1, -1])", color="yellow")]
     plot._load_model(model)
     qtbot.waitUntil(lambda: table.rowCount() == 1)
-    assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"
-    assert table.item(0, 0).foreground().color() == QColor("yellow")
+    assert table.item(0, table.COL_X_NAME).text() == "([-1, 1], [-1, -1])"
+    assert table.item(0, table.COL_X_NAME).foreground().color() == QColor("yellow")
 
     model.ref_geo = []
     plot._load_model(model)

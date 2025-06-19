@@ -169,12 +169,16 @@ def test_refgeo_load(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
 
     model.ref_geo = [XyRefGeoData(expr="([-1, 1], [-1, -1])", color="yellow")]
     plot._load_model(model)
+    plot._update()
+    plot.sigXyDataItemsChanged.emit()
     qtbot.waitUntil(lambda: table.rowCount() == 1)
     assert table.item(0, table.COL_X_NAME).text() == "([-1, 1], [-1, -1])"
     assert table.item(0, table.COL_X_NAME).foreground().color() == QColor("yellow")
 
     model.ref_geo = []
     plot._load_model(model)
+    plot._update()
+    plot.sigXyDataItemsChanged.emit()
     qtbot.waitUntil(lambda: table.rowCount() == 0)
 
 
@@ -214,6 +218,8 @@ def test_refgeo_visibility_load(qtbot: QtBot, visibility_plot: RefGeoWithVisibil
 
     model.ref_geo = [XyRefGeoData(expr="([-1, 1], [-1, -1])", hidden=True)]
     visibility_plot._load_model(model)
+    visibility_plot._update()
+    visibility_plot.sigXyDataItemsChanged.emit()
     qtbot.waitUntil(lambda: table.rowCount() == 1)
     assert table.item(0, table.COL_X_NAME).text() == "([-1, 1], [-1, -1])"
     assert table.item(0, table.COL_VISIBILITY).checkState() == Qt.CheckState.Unchecked

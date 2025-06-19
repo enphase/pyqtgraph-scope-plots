@@ -13,11 +13,12 @@
 #    limitations under the License.
 
 import bisect
-from typing import Dict, Tuple, List, Any, Optional
+from abc import abstractmethod
+from typing import Dict, Tuple, List, Any, Optional, Protocol, cast
 
 import numpy as np
 import numpy.typing as npt
-from PySide6.QtCore import QMimeData, QPoint, Signal
+from PySide6.QtCore import QMimeData, QPoint, Signal, SignalInstance
 from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
 from PySide6.QtWidgets import QTableWidgetItem, QHeaderView, QMenu, QLabel
 
@@ -122,7 +123,10 @@ class ContextMenuSignalsTable(SignalsTable):
 class DeleteableSignalsTable(ContextMenuSignalsTable):
     """Mixin into SignalsTable that adds a hook for item deletion, both as hotkey and from a context menu."""
 
-    sigDataDeleted = Signal(object, object)  # List[rows], List[data_names]
+    sigDataDeleted: SignalInstance
+    # Multiple inheritance / mixins interact badly with signals, so the signal must be instantiated elsewhere,
+    # probably in the class extending these mixins. Add this line of code:
+    # sigDataDeleted = Signal(object, object)  # List[rows], List[data_names]
 
     _DELETE_ACTION_NAME = "Remove"
 
@@ -131,6 +135,10 @@ class DeleteableSignalsTable(ContextMenuSignalsTable):
         self._delete_row_action = QAction(self._DELETE_ACTION_NAME, self)
         self._delete_row_action.setShortcut(Qt.Key.Key_Delete)
         self._delete_row_action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)  # require widget focus to fire
+
+        assert hasattr(
+            self, "sigDataDeleted"
+        ), f"{self.__class__.__name__} must define sigDataDeleted, see documentation in DeleteableSignalsTable"
 
         def on_delete_rows() -> None:
             rows = list(set([item.row() for item in self.selectedItems()]))

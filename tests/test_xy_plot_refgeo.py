@@ -21,7 +21,8 @@ from PySide6.QtGui import QColor, Qt
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots import MultiPlotWidget, LinkedMultiPlotWidget, RefGeoXyPlotWidget, RefGeoXyPlotTable
-from pyqtgraph_scope_plots.xy_plot_refgeo import XyRefGeoModel
+from pyqtgraph_scope_plots.util import not_none
+from pyqtgraph_scope_plots.xy_plot_refgeo import XyRefGeoModel, XyRefGeoData
 
 
 @pytest.fixture()
@@ -137,17 +138,19 @@ def test_table_err(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
 
 
 def test_refgeo_save(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
-    qtbot.waitUntil(lambda: cast(XyRefGeoModel, plot._dump_model()).ref_geo == [])
+    assert cast(XyRefGeoModel, plot._dump_model()).ref_geo == []
 
     plot.set_ref_geometry_fn("([-1, 1], [-1, -1])")
-    qtbot.waitUntil(lambda: cast(XyRefGeoModel, plot._dump_model()).ref_geo == ["([-1, 1], [-1, -1])"])
+    model_ref_geo = not_none(cast(XyRefGeoModel, plot._dump_model()).ref_geo)
+    assert len(model_ref_geo) == 1
+    assert model_ref_geo[0].expr == "([-1, 1], [-1, -1])"
 
 
 def test_refgeo_load(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     table = RefGeoXyPlotTable(plot._plots, plot)
     model = cast(XyRefGeoModel, plot._dump_model())
 
-    model.ref_geo = ["([-1, 1], [-1, -1])"]
+    model.ref_geo = [XyRefGeoData(expr="([-1, 1], [-1, -1])")]
     plot._load_model(model)
     qtbot.waitUntil(lambda: table.rowCount() == 1)
     assert table.item(0, 0).text() == "([-1, 1], [-1, -1])"

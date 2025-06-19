@@ -17,18 +17,36 @@ from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional
 import numpy as np
 import numpy.typing as npt
 import simpleeval
-from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QMenu, QInputDialog, QLineEdit
+from PySide6.QtGui import QAction, QColor
+from PySide6.QtWidgets import QMenu, QInputDialog, QLineEdit, QColorDialog
 import pyqtgraph as pg
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from .util import HasSaveLoadConfig
 from .signals_table import SignalsTable, HasRegionSignalsTable
 from .xy_plot import XyPlotWidget, XyPlotTable, ContextMenuXyPlotTable, XyWindowModel, DeleteableXyPlotTable
 
 
+class XyRefGeoData(BaseModel):
+    expr: str
+    hidden: Optional[bool] = None
+    color: Optional[str] = None  # QColor name, e.g., '#ffea70' or 'red'
+
+
 class XyRefGeoModel(XyWindowModel):
-    ref_geo: List[str] = []
+    ref_geo: Optional[List[XyRefGeoData]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _upgrade_schema(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # previously, ref_geo used to be List[str]
+            if "ref_geo" in data and len(data["ref_geo"]) > 0 and isinstance(data["ref_geo"][0], str):
+                new_ref_geo = []
+                for ref_geo_expr in data["ref_geo"]:
+                    new_ref_geo.append({"expr": ref_geo_expr})
+                data["ref_geo"] = new_ref_geo
+        return data
 
 
 def _refgeo_polyline_fn(*pts: Tuple[float, float]) -> Tuple[Sequence[float], Sequence[float]]:
@@ -48,7 +66,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self._refgeo_fns: List[Tuple[str, Any]] = []  # (expr str, parsed)
+        self._refgeo_fns: List[Tuple[str, Any, QColor, bool]] = []  # (expr str, parsed, color, hidden)
         self._refgeo_errs: List[Optional[Exception]] = []  # index-aligned with refgeo_fns
 
         # copy, since simpleeval internally mutates the functions dict
@@ -57,24 +75,35 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
         assert isinstance(model, XyRefGeoModel)
-        model.ref_geo = [expr for expr, parsed in self._refgeo_fns]
+        model.ref_geo = [
+            XyRefGeoData(expr=expr, color=color.name(), hidden=hidden)
+            for expr, parsed, color, hidden in self._refgeo_fns
+        ]
 
     def _load_model(self, model: BaseModel) -> None:
         super()._load_model(model)
         assert isinstance(model, XyRefGeoModel)
+        if model.ref_geo is None:
+            return
+
         while len(self._refgeo_fns) > 0:  # delete existing
             self.set_ref_geometry_fn("", 0, update=False)
-        for expr in model.ref_geo:
+        for ref_geo in model.ref_geo:
             try:
-                self.set_ref_geometry_fn(expr, update=False)
+                color: Optional[QColor] = None
+                if ref_geo.color is not None:
+                    color = QColor(ref_geo.color)
+                self.set_ref_geometry_fn(ref_geo.expr, color=color, update=False)
             except Exception as e:
-                print(f"failed to restore ref geometry fn {expr}: {e}")  # TODO better logging
+                print(f"failed to restore ref geometry fn {ref_geo.expr}: {e}")  # TODO better logging
 
         # bulk update
         self._update()
         self.sigXyDataItemsChanged.emit()
 
-    def set_ref_geometry_fn(self, expr_str: str, index: Optional[int] = None, *, update: bool = True) -> None:
+    def set_ref_geometry_fn(
+        self, expr_str: str, index: Optional[int] = None, *, color: Optional[QColor] = None, update: bool = True
+    ) -> None:
         """Sets a reference geometry function at some index. Can raise SyntaxError on a parsing failure.
         If index is None, adds a new function. If valid index and empty string, deletes the function.
         Optionally set update to false to not fire signals / update to allow a future bulk update"""
@@ -87,9 +116,10 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
             return
         parsed = self._simpleeval.parse(expr_str)
         if index is not None:
-            self._refgeo_fns[index] = (expr_str, parsed)
+            orig = self._refgeo_fns[index]
+            self._refgeo_fns[index] = (expr_str, parsed, color or orig[2], orig[3])
         else:
-            self._refgeo_fns.append((expr_str, parsed))
+            self._refgeo_fns.append((expr_str, parsed, color or QColor("white"), False))
 
         if update:
             self._update()
@@ -113,13 +143,14 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         # draw reference geometry
         last_refgeo_err = any([err is not None for err in self._refgeo_errs])  # store last to emit on failing -> ok
         self._refgeo_errs = []
-        for refgeo_expr, refgeo_parsed in self._refgeo_fns:
+        for expr, parsed, color, hidden in self._refgeo_fns:
             self._simpleeval.names = {
                 "data": filtered_data,
             }
             try:
-                xs, ys = self._simpleeval.eval(refgeo_expr, refgeo_parsed)
-                curve = pg.PlotCurveItem(x=xs, y=ys, name=refgeo_expr)
+                xs, ys = self._simpleeval.eval(expr, parsed)
+                curve = pg.PlotCurveItem(x=xs, y=ys, name=expr)
+                curve.setPen(color=color)
                 self.addItem(curve)
                 self._refgeo_errs.append(None)
             except Exception as e:
@@ -137,27 +168,37 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
         self._row_offset_refgeo = 0
         self.cellDoubleClicked.connect(self._on_refgeo_double_click)
 
+        self._set_refgeo_color_action = QAction("Set reference geometry color", self)
+        self._set_refgeo_color_action.triggered.connect(self._on_set_refgeo_color)
+
     def _populate_context_menu(self, menu: QMenu) -> None:
         """Called when the context menu is created, to populate its items."""
         super()._populate_context_menu(menu)
         add_refgeo = QAction("Add reference geometry", self)
         add_refgeo.triggered.connect(partial(self._on_set_refgeo, None))
         menu.addAction(add_refgeo)
+        refgeo_rows = [item.row() >= self._row_offset_refgeo for item in self.selectedItems()]
+        if any(refgeo_rows):
+            self._set_refgeo_color_action.setEnabled(True)
+        else:
+            self._set_refgeo_color_action.setEnabled(False)
+        menu.addAction(self._set_refgeo_color_action)
 
     def _update(self) -> None:
         super()._update()
         assert isinstance(self._xy_plots, RefGeoXyPlotWidget)
         self._row_offset_refgeo = self.rowCount()
         self.setRowCount(self._row_offset_refgeo + len(self._xy_plots._refgeo_fns))
-        for row, (refgeo_expr, _) in enumerate(self._xy_plots._refgeo_fns):
+        for row, (expr, _, color, _) in enumerate(self._xy_plots._refgeo_fns):
             item = SignalsTable._create_noneditable_table_item()
             exc: Optional[Exception] = None
             if len(self._xy_plots._refgeo_errs) > row:
                 exc = self._xy_plots._refgeo_errs[row]
             if exc is not None:
-                item.setText(f"{refgeo_expr}: {exc.__class__.__name__}: {exc}")
+                item.setText(f"{expr}: {exc.__class__.__name__}: {exc}")
             else:
-                item.setText(refgeo_expr)
+                item.setText(expr)
+            item.setForeground(color)
             self.setItem(self._row_offset_refgeo + row, self.COL_X_NAME, item)
             self.setSpan(self._row_offset_refgeo + row, self.COL_X_NAME, 1, 2)
 
@@ -197,3 +238,12 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
             if row >= self._row_offset_refgeo:
                 self._xy_plots.set_ref_geometry_fn("", row - self._row_offset_refgeo)
         super()._rows_deleted_event(rows)
+
+    def _on_set_refgeo_color(self) -> None:
+        assert isinstance(self._xy_plots, RefGeoXyPlotWidget)
+        color = QColorDialog.getColor()
+        for row in set([item.row() for item in self.selectedItems()]):
+            refgeo_row = row - self._row_offset_refgeo
+            if refgeo_row >= 0:
+                orig_expr = self._xy_plots._refgeo_fns[refgeo_row][0]
+                self._xy_plots.set_ref_geometry_fn(orig_expr, refgeo_row, color=color)

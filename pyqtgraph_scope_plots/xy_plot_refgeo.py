@@ -66,7 +66,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self._refgeo_fns: List[Tuple[str, Any, QColor, bool]] = []  # (expr str, parsed, color, hidden)
+        self._refgeo_fns: List[Tuple[str, Any, QColor]] = []  # (expr str, parsed, color)
         self._refgeo_errs: List[Optional[Exception]] = []  # index-aligned with refgeo_fns
 
         # copy, since simpleeval internally mutates the functions dict
@@ -76,8 +76,8 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         super()._write_model(model)
         assert isinstance(model, XyRefGeoModel)
         model.ref_geo = [
-            XyRefGeoData(expr=expr, color=color.name(), hidden=hidden)
-            for expr, parsed, color, hidden in self._refgeo_fns
+            XyRefGeoData(expr=expr, color=color.name())
+            for expr, parsed, color in self._refgeo_fns
         ]
 
     def _load_model(self, model: BaseModel) -> None:
@@ -117,9 +117,9 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         parsed = self._simpleeval.parse(expr_str)
         if index is not None:
             orig = self._refgeo_fns[index]
-            self._refgeo_fns[index] = (expr_str, parsed, color or orig[2], orig[3])
+            self._refgeo_fns[index] = (expr_str, parsed, color or orig[2])
         else:
-            self._refgeo_fns.append((expr_str, parsed, color or QColor("white"), False))
+            self._refgeo_fns.append((expr_str, parsed, color or QColor("white")))
 
         if update:
             self._update()
@@ -143,7 +143,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         # draw reference geometry
         last_refgeo_err = any([err is not None for err in self._refgeo_errs])  # store last to emit on failing -> ok
         self._refgeo_errs = []
-        for expr, parsed, color, hidden in self._refgeo_fns:
+        for expr, parsed, color in self._refgeo_fns:
             self._simpleeval.names = {
                 "data": filtered_data,
             }
@@ -189,7 +189,7 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
         assert isinstance(self._xy_plots, RefGeoXyPlotWidget)
         self._row_offset_refgeo = self.rowCount()
         self.setRowCount(self._row_offset_refgeo + len(self._xy_plots._refgeo_fns))
-        for row, (expr, _, color, _) in enumerate(self._xy_plots._refgeo_fns):
+        for row, (expr, _, color) in enumerate(self._xy_plots._refgeo_fns):
             item = SignalsTable._create_noneditable_table_item()
             exc: Optional[Exception] = None
             if len(self._xy_plots._refgeo_errs) > row:

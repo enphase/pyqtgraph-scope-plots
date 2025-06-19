@@ -17,14 +17,16 @@ from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional, Union
 import numpy as np
 import numpy.typing as npt
 import simpleeval
-from PySide6.QtGui import QAction, QColor
-from PySide6.QtWidgets import QMenu, QInputDialog, QLineEdit, QColorDialog
+from PySide6.QtCore import QSignalBlocker
+from PySide6.QtGui import QAction, QColor, Qt
+from PySide6.QtWidgets import QMenu, QInputDialog, QLineEdit, QColorDialog, QTableWidgetItem
 import pyqtgraph as pg
 from pydantic import BaseModel, model_validator
 
 from .util import HasSaveLoadConfig
 from .signals_table import SignalsTable, HasRegionSignalsTable
 from .xy_plot import XyPlotWidget, XyPlotTable, ContextMenuXyPlotTable, XyWindowModel, DeleteableXyPlotTable
+from .xy_plot_visibility import VisibilityXyPlotTable
 
 
 class XyRefGeoData(BaseModel):
@@ -66,7 +68,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self._refgeo_fns: List[Tuple[str, Any, QColor]] = []  # (expr str, parsed, color)
+        self._refgeo_fns: List[Tuple[str, Any, QColor, bool]] = []  # (expr str, parsed, color, hidden)
         self._refgeo_curves: List[Union[pg.PlotCurveItem, Exception]] = []  # index-aligned with refgeo_fns
 
         # copy, since simpleeval internally mutates the functions dict
@@ -75,7 +77,10 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
         assert isinstance(model, XyRefGeoModel)
-        model.ref_geo = [XyRefGeoData(expr=expr, color=color.name()) for expr, parsed, color in self._refgeo_fns]
+        model.ref_geo = [
+            XyRefGeoData(expr=expr, color=color.name(), hidden=hidden)
+            for expr, parsed, color, hidden in self._refgeo_fns
+        ]
 
     def _load_model(self, model: BaseModel) -> None:
         super()._load_model(model)
@@ -90,7 +95,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                 color: Optional[QColor] = None
                 if ref_geo.color is not None:
                     color = QColor(ref_geo.color)
-                self.set_ref_geometry_fn(ref_geo.expr, color=color, update=False)
+                self.set_ref_geometry_fn(ref_geo.expr, color=color, hidden=ref_geo.hidden, update=False)
             except Exception as e:
                 print(f"failed to restore ref geometry fn {ref_geo.expr}: {e}")  # TODO better logging
 
@@ -99,7 +104,13 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         self.sigXyDataItemsChanged.emit()
 
     def set_ref_geometry_fn(
-        self, expr_str: str, index: Optional[int] = None, *, color: Optional[QColor] = None, update: bool = True
+        self,
+        expr_str: str,
+        index: Optional[int] = None,
+        *,
+        color: Optional[QColor] = None,
+        hidden: Optional[bool] = None,
+        update: bool = True,
     ) -> None:
         """Sets a reference geometry function at some index. Can raise SyntaxError on a parsing failure.
         If index is None, adds a new function. If valid index and empty string, deletes the function.
@@ -114,9 +125,16 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         parsed = self._simpleeval.parse(expr_str)
         if index is not None:
             orig = self._refgeo_fns[index]
-            self._refgeo_fns[index] = (expr_str, parsed, color or orig[2])
+            new_hidden = orig[3]
+            if hidden is not None:
+                new_hidden = hidden
+            self._refgeo_fns[index] = (expr_str, parsed, color or orig[2], new_hidden)
         else:
-            self._refgeo_fns.append((expr_str, parsed, color or QColor("white")))
+            if hidden is not None:
+                new_hidden = hidden
+            else:
+                new_hidden = False
+            self._refgeo_fns.append((expr_str, parsed, color or QColor("white"), new_hidden))
 
         if update:
             self._update()
@@ -142,7 +160,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
             [isinstance(curve, Exception) for curve in self._refgeo_curves]
         )  # store last to emit on failing -> ok
         self._refgeo_curves = []
-        for expr, parsed, color in self._refgeo_fns:
+        for expr, parsed, color, hidden in self._refgeo_fns:
             self._simpleeval.names = {
                 "data": filtered_data,
             }
@@ -150,6 +168,8 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                 xs, ys = self._simpleeval.eval(expr, parsed)
                 curve = pg.PlotCurveItem(x=xs, y=ys, name=expr)
                 curve.setPen(color=color)
+                if hidden:
+                    curve.hide()
                 self.addItem(curve)
                 self._refgeo_curves.append(curve)
             except Exception as e:
@@ -157,6 +177,17 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
 
         if last_refgeo_err or any([isinstance(curve, Exception) for curve in self._refgeo_curves]):
             self.sigXyDataItemsChanged.emit()
+
+    def hide_refgeo(self, index: int, hidden: bool = True) -> None:
+        prev = self._refgeo_fns[index]
+        self._refgeo_fns[index] = (prev[0], prev[1], prev[2], hidden)
+
+        curve = self._refgeo_curves[index]
+        if isinstance(curve, pg.PlotCurveItem):
+            if hidden:
+                curve.hide()
+            else:
+                curve.show()
 
 
 class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTable):
@@ -169,6 +200,7 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
 
         self._set_refgeo_color_action = QAction("Set reference geometry color", self)
         self._set_refgeo_color_action.triggered.connect(self._on_set_refgeo_color)
+        self.itemChanged.connect(self._on_refgeo_visibility_toggle)
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         """Called when the context menu is created, to populate its items."""
@@ -188,16 +220,28 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
         assert isinstance(self._xy_plots, RefGeoXyPlotWidget)
         self._row_offset_refgeo = self.rowCount()
         self.setRowCount(self._row_offset_refgeo + len(self._xy_plots._refgeo_fns))
-        for row, (expr, _, color) in enumerate(self._xy_plots._refgeo_fns):
-            item = SignalsTable._create_noneditable_table_item()
-            curve = self._xy_plots._refgeo_curves[row]
-            if isinstance(curve, Exception):
-                item.setText(f"{expr}: {curve.__class__.__name__}: {curve}")
-            else:
-                item.setText(expr)
-            item.setForeground(color)
-            self.setItem(self._row_offset_refgeo + row, self.COL_X_NAME, item)
-            self.setSpan(self._row_offset_refgeo + row, self.COL_X_NAME, 1, 2)
+        with QSignalBlocker(self):  # prevent hidden state from modifying hidden state
+            for row, (expr, _, color, hidden) in enumerate(self._xy_plots._refgeo_fns):
+                table_row = self._row_offset_refgeo + row
+                item = SignalsTable._create_noneditable_table_item()
+                curve = self._xy_plots._refgeo_curves[row]
+                if isinstance(curve, Exception):
+                    item.setText(f"{expr}: {curve.__class__.__name__}: {curve}")
+                else:
+                    item.setText(expr)
+                item.setForeground(color)
+                self.setItem(table_row, self.COL_X_NAME, item)
+                self.setSpan(table_row, self.COL_X_NAME, 1, 2)
+
+                if isinstance(self, VisibilityXyPlotTable):
+                    item = SignalsTable._create_noneditable_table_item()
+                    item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+                    if hidden:
+                        item.setCheckState(Qt.CheckState.Unchecked)
+                    else:
+                        item.setCheckState(Qt.CheckState.Checked)
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                    self.setItem(table_row, self.COL_VISIBILITY, item)
 
     def _on_refgeo_double_click(self, row: int, col: int) -> None:
         if row >= self._row_offset_refgeo and col == self.COL_X_NAME:
@@ -244,3 +288,10 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
             if refgeo_row >= 0:
                 orig_expr = self._xy_plots._refgeo_fns[refgeo_row][0]
                 self._xy_plots.set_ref_geometry_fn(orig_expr, refgeo_row, color=color)
+
+    def _on_refgeo_visibility_toggle(self, item: QTableWidgetItem) -> None:
+        assert isinstance(self._xy_plots, RefGeoXyPlotWidget) and isinstance(self, VisibilityXyPlotTable)
+        refgeo_row = item.row() - self._row_offset_refgeo
+        if item.column() != self.COL_VISIBILITY or refgeo_row < 0:
+            return
+        self._xy_plots.hide_refgeo(refgeo_row, item.checkState() == Qt.CheckState.Unchecked)

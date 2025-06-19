@@ -17,7 +17,7 @@ from typing import Dict, Tuple, List, Any, Optional
 
 import numpy as np
 import numpy.typing as npt
-from PySide6.QtCore import QMimeData, QPoint
+from PySide6.QtCore import QMimeData, QPoint, Signal
 from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
 from PySide6.QtWidgets import QTableWidgetItem, QHeaderView, QMenu, QLabel
 
@@ -122,6 +122,8 @@ class ContextMenuSignalsTable(SignalsTable):
 class DeleteableSignalsTable(ContextMenuSignalsTable):
     """Mixin into SignalsTable that adds a hook for item deletion, both as hotkey and from a context menu."""
 
+    sigDataDeleted = Signal(object, object)  # List[rows], List[data_names]
+
     _DELETE_ACTION_NAME = "Remove"
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -132,14 +134,12 @@ class DeleteableSignalsTable(ContextMenuSignalsTable):
 
         def on_delete_rows() -> None:
             rows = list(set([item.row() for item in self.selectedItems()]))
-            self._rows_deleted_event(rows)
+            all_data_names = list(self._data_items.keys())
+            data_names = [all_data_names[row] for row in rows]
+            self.sigDataDeleted.emit(rows, data_names)
 
         self._delete_row_action.triggered.connect(on_delete_rows)
         self.addAction(self._delete_row_action)
-
-    def _rows_deleted_event(self, rows: List[int]) -> None:
-        """IMPLEMENT ME. Called when the user does a delete action. Include a super() call."""
-        pass
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)

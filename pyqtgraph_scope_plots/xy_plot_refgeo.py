@@ -110,6 +110,9 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
     ) -> None:
         """Sets a reference geometry function at some index. Can raise SyntaxError on a parsing failure.
         If index is None, adds a new function. If valid index and empty string, deletes the function.
+
+        If color / hidden are not specified, keep the previous value (or use a default, if new).
+
         Optionally set update to false to not fire signals / update to allow a future bulk update"""
         if len(expr_str) == 0:
             if index is not None:
@@ -119,18 +122,17 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                     self.sigXyDataItemsChanged.emit()
             return
         parsed = self._simpleeval.parse(expr_str)
+
         if index is not None:
-            orig = self._refgeo_fns[index]
-            new_hidden = orig[3]
-            if hidden is not None:
-                new_hidden = hidden
-            self._refgeo_fns[index] = (expr_str, parsed, color or orig[2], new_hidden)
+            prev = self._refgeo_fns[index]
         else:
-            if hidden is not None:
-                new_hidden = hidden
-            else:
-                new_hidden = False
-            self._refgeo_fns.append((expr_str, parsed, color or QColor("white"), new_hidden))
+            prev = ("", None, QColor("white"), False)
+        new_fns = (expr_str, parsed, color if color is not None else prev[2], hidden if hidden is not None else prev[3])
+
+        if index is not None:
+            self._refgeo_fns[index] = new_fns
+        else:
+            self._refgeo_fns.append(new_fns)
 
         if update:
             self._update()
@@ -286,8 +288,10 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
                 self._xy_plots.set_ref_geometry_fn(orig_expr, refgeo_row, color=color)
 
     def _on_refgeo_visibility_toggle(self, item: QTableWidgetItem) -> None:
-        assert isinstance(self._xy_plots, RefGeoXyPlotWidget) and isinstance(self, VisibilityXyPlotTable)
         refgeo_row = item.row() - self._row_offset_refgeo
+        if not isinstance(self, VisibilityXyPlotTable):
+            return
         if item.column() != self.COL_VISIBILITY or refgeo_row < 0:
             return
+        assert isinstance(self._xy_plots, RefGeoXyPlotWidget)
         self._xy_plots.hide_refgeo(refgeo_row, item.checkState() == Qt.CheckState.Unchecked)

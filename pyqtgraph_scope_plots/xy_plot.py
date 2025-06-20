@@ -222,7 +222,7 @@ class XyPlotLinkedCursorWidget(XyPlotWidget):
             if x_index >= len(x_ts) or y_index >= len(y_ts) or x_ts[x_index] != t or y_ts[y_index] != t:
                 continue
             hover_pt = pg.ScatterPlotItem(x=[x_ys[x_index]], y=[y_ys[x_index]], symbol="o", brush=color)
-            self.addItem(hover_pt)
+            self.addItem(hover_pt, ignoreBounds=True)
             self._hover_pts.append(hover_pt)
 
 

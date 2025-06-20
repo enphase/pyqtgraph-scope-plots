@@ -100,7 +100,8 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
         """
         # closest point for each curve: (curve, index, distance)
         curve_index_dist: List[Tuple[pg.PlotDataItem, int, float]] = []
-        for data_item in self.listDataItems():  # type: pg.PlotDataItem
+        visible_data_items = [data_item for data_item in self.listDataItems() if data_item.isVisible()]
+        for data_item in visible_data_items:  # type: pg.PlotDataItem
             xpts, ypts = data_item.getData()
             if xpts is None or not len(xpts):
                 continue
@@ -235,7 +236,7 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
             self._hover_y_labels = []
             for y_pos, text, color in self._data_value_label_at(pos, precision_factor=0.1):
                 hover_pt = pg.ScatterPlotItem(x=[pos], y=[y_pos], symbol="o", brush=color)
-                self.addItem(hover_pt)
+                self.addItem(hover_pt, ignoreBounds=True)
                 self._hover_y_pts.append(hover_pt)
                 hover_label = pg.TextItem(text, anchor=self.LIVE_CURSOR_Y_ANCHOR, color=color)
                 hover_label.setPos(QPointF(pos, y_pos))

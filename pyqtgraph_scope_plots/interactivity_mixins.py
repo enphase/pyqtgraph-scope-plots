@@ -53,6 +53,8 @@ class HasDataValueAt(pg.PlotItem):  # type: ignore[misc]
     def _data_value_label_at(self, pos: float, precision_factor: float = 1.0) -> List[Tuple[float, str, QColor]]:
         outs = []
         for data_item in self.listDataItems():  # type: pg.PlotDataItem
+            if not data_item.isVisible():
+                continue
             xpts, ypts = data_item.getData()
             if xpts is None or not len(xpts):
                 continue

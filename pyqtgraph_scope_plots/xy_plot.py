@@ -211,6 +211,9 @@ class XyPlotLinkedCursorWidget(XyPlotWidget):
             return
 
         for x_name, y_name in self._xys:
+            xy_curves = self._xy_curves.get((x_name, y_name), [])
+            if not any([xy_curve.isVisible() for xy_curve in xy_curves]):
+                continue
             x_ts, x_ys = self._plots._data.get(x_name, ([], []))
             y_ts, y_ys = self._plots._data.get(y_name, ([], []))
             color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))

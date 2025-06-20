@@ -12,6 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 from abc import abstractmethod
+import bisect
 from typing import List, Tuple, Optional, Literal, Union, cast, Any, Dict
 
 import numpy as np
@@ -186,6 +187,40 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
                 curve.setPen(color=segment_color, width=1)
                 self.addItem(curve)
                 this_curve_list.append(curve)
+
+
+class XyPlotLinkedCursorWidget(XyPlotWidget):
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        assert isinstance(self._plots, LinkedMultiPlotWidget)
+        self._hover_pts: List[pg.ScatterPlotItem] = []
+
+        self._plots.sigHoverCursorChanged.connect(self._on_linked_hover_cursor_change)
+
+    def _on_linked_hover_cursor_change(self) -> None:
+        assert isinstance(self._plots, LinkedMultiPlotWidget)
+        for pts in self._hover_pts:  # clear old widgets as needed, then re-create
+            self.removeItem(pts)
+        self._hover_pts = []
+        t = self._plots._last_hover
+        if t is None:  # exit hover, delete points and done
+            return
+        if isinstance(self._plots._last_region, tuple) and (
+            t < self._plots._last_region[0] or t > self._plots._last_region[1]
+        ):
+            return
+
+        for x_name, y_name in self._xys:
+            x_ts, x_ys = self._plots._data.get(x_name, ([], []))
+            y_ts, y_ys = self._plots._data.get(y_name, ([], []))
+            color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
+            x_index = bisect.bisect_left(x_ts, t)
+            y_index = bisect.bisect_left(y_ts, t)
+            if x_index >= len(x_ts) or y_index >= len(y_ts) or x_ts[x_index] != t or y_ts[y_index] != t:
+                continue
+            hover_pt = pg.ScatterPlotItem(x=[x_ys[x_index]], y=[y_ys[x_index]], symbol="o", brush=color)
+            self.addItem(hover_pt)
+            self._hover_pts.append(hover_pt)
 
 
 class XyDragDroppable(BaseXyPlot):

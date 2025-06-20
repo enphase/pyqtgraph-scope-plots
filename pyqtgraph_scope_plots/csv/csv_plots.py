@@ -52,7 +52,14 @@ from ..stats_signals_table import StatsSignalsTable
 from ..time_axis import TimeAxisItem
 from ..timeshift_signals_table import TimeshiftSignalsTable, TimeshiftPlotWidget
 from ..transforms_signal_table import TransformsSignalsTable, TransformsPlotWidget
-from ..xy_plot import XyPlotWidget, XyDragDroppable, DeleteableXyPlotTable, SignalRemovalXyPlotTable, XyPlotTable
+from ..xy_plot import (
+    XyPlotWidget,
+    XyDragDroppable,
+    DeleteableXyPlotTable,
+    SignalRemovalXyPlotTable,
+    XyPlotTable,
+    XyPlotLinkedCursorWidget,
+)
 from ..xy_plot_table import XyTable
 from ..xy_plot_splitter import XyPlotSplitter
 from ..xy_plot_refgeo import RefGeoXyPlotWidget, RefGeoXyPlotTable
@@ -74,7 +81,9 @@ class CsvLoaderStateModel(BaseTopModel):
 
 
 class FullXySplitter(XyPlotSplitter):
-    class FullXyPlot(VisibilityXyPlotWidget, RefGeoXyPlotWidget, XyDragDroppable, XyPlotWidget):
+    class FullXyPlot(
+        VisibilityXyPlotWidget, RefGeoXyPlotWidget, XyDragDroppable, XyPlotLinkedCursorWidget, XyPlotWidget
+    ):
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             self._thickness: float = 1
             super().__init__(*args, **kwargs)

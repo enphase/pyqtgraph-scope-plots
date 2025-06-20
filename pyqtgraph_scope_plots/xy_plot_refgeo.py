@@ -168,6 +168,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                 curve.setPen(color=color)
                 if hidden:
                     curve.hide()
+                curve.setZValue(-100)
                 self.addItem(curve)
                 self._refgeo_curves.append(curve)
             except Exception as e:

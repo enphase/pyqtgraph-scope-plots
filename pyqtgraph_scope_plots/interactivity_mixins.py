@@ -160,6 +160,7 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
         if snap_data.snap_pos is not None:
             if self._hover_target is None:
                 self._hover_target = pg.TargetItem(movable=False)
+                self._hover_target.setZValue(1000)
                 self.addItem(self._hover_target, ignoreBounds=True)
             self._hover_target.setPos(snap_data.snap_pos)
         else:
@@ -196,6 +197,7 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
 
         self.hover_cursor: Optional[pg.InfiniteLine] = None
         self._hover_x_label: Optional[pg.TextItem] = None
+        self._hover_y_pts: List[pg.ScatterPlotItem] = []
         self._hover_y_labels: List[pg.TextItem] = []
 
         self.sigHoverSnapChanged.connect(self._update_live_cursor)
@@ -225,13 +227,18 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
                     self.removeItem(self._hover_x_label)
                     self._hover_x_label = None
 
+            for pts in self._hover_y_pts:  # clear old widgets as needed, then re-create
+                self.removeItem(pts)
+            self._hover_y_pts = []
             for label in self._hover_y_labels:  # clear old widgets as needed, then re-create
                 self.removeItem(label)
-                self._hover_y_labels = []
+            self._hover_y_labels = []
             for y_pos, text, color in self._data_value_label_at(pos, precision_factor=0.1):
-                hover_label = pg.TextItem(text, anchor=self.LIVE_CURSOR_Y_ANCHOR)
+                hover_pt = pg.ScatterPlotItem(x=[pos], y=[y_pos], symbol="o", brush=color)
+                self.addItem(hover_pt)
+                self._hover_y_pts.append(hover_pt)
+                hover_label = pg.TextItem(text, anchor=self.LIVE_CURSOR_Y_ANCHOR, color=color)
                 hover_label.setPos(QPointF(pos, y_pos))
-                hover_label.setColor(color)
                 self.addItem(hover_label, ignoreBounds=True)
                 self._hover_y_labels.append(hover_label)
         else:  # delete live cursor
@@ -241,6 +248,9 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
             if self._hover_x_label is not None:
                 self.removeItem(self._hover_x_label)
                 self._hover_x_label = None
+            for pts in self._hover_y_pts:  # clear old widgets as needed, then re-create
+                self.removeItem(pts)
+            self._hover_y_pts = []
             for label in self._hover_y_labels:
                 self.removeItem(label)
             self._hover_y_labels = []

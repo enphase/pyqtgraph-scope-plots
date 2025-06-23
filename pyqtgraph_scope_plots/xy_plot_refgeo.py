@@ -58,7 +58,7 @@ class XyRefGeoDrawer:
     This would generally be created by a function available to simpleeval, which should capture arguments."""
 
     @abstractmethod
-    def _draw(self, name: str) -> Sequence[pg.GraphicsObject]:
+    def _draw(self) -> Sequence[pg.GraphicsObject]:
         """Draws the reference geometry as objects that can be added to the plot"""
         ...
 
@@ -99,7 +99,7 @@ class XyRefGeoPolyline(XyRefGeoDrawer):
             f"""or, `{cls._fn_name()}(pts=[(x, y)])`"""
         )
 
-    def _draw(self, name: str) -> Sequence[pg.GraphicsObject]:
+    def _draw(self) -> Sequence[pg.GraphicsObject]:
         if self._x is not None and self._y is not None:
             assert self._pts is None, "both xy and pts specified"
             xs = self._x
@@ -110,7 +110,7 @@ class XyRefGeoPolyline(XyRefGeoDrawer):
             ys = [y for x, y in self._pts]
         else:
             raise ValueError("no data specified")
-        return [pg.PlotCurveItem(x=xs, y=ys, name=name)]
+        return [pg.PlotCurveItem(x=xs, y=ys)]
 
 
 class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
@@ -225,10 +225,6 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
             }
             try:
                 eval_result = self._simpleeval.eval(expr, parsed)
-                if "#" in expr:
-                    name = expr.split("#")[-1]  # TODO maybe a more robust solution w/ tokenize
-                else:
-                    name = None
 
                 if isinstance(eval_result, XyRefGeoDrawer):
                     drawers = [eval_result]
@@ -242,7 +238,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                 drawn_objs: List[pg.GraphicsObject] = []
                 for drawer in drawers:
                     assert isinstance(drawer, XyRefGeoDrawer)
-                    drawn_objs.extend(drawer._draw(name))
+                    drawn_objs.extend(drawer._draw())
 
                 for obj in drawn_objs:
                     if isinstance(obj, pg.PlotCurveItem) or isinstance(obj, pg.ScatterPlotItem):
@@ -250,7 +246,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                     if hidden:
                         obj.hide()
                     obj.setZValue(self._Z_VALUE_REFGEO)
-                    self.addItem(obj)
+                    self.addItem(obj, ignoreBounds=True)
                 self._refgeo_objs.append(drawn_objs)
             except Exception as e:
                 self._refgeo_objs.append(e)
@@ -306,10 +302,17 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
                 table_row = self._row_offset_refgeo + row
                 item = SignalsTable._create_noneditable_table_item()
                 objs = self._xy_plots._refgeo_objs[row]
-                if isinstance(objs, Exception):
-                    item.setText(f"{expr}: {objs.__class__.__name__}: {objs}")
+
+                if "#" in expr:
+                    name = expr.split("#")[-1] + ": "  # TODO maybe a more robust solution w/ tokenize
                 else:
-                    item.setText(expr)
+                    name = ""
+
+                if isinstance(objs, Exception):
+                    item.setText(f"{objs.__class__.__name__}: {objs}: {name}{expr}")
+                else:
+                    item.setText(f"{name}{expr}")
+
                 item.setForeground(color)
                 self.setItem(table_row, self.COL_X_NAME, item)
                 self.setSpan(table_row, self.COL_X_NAME, 1, 2)

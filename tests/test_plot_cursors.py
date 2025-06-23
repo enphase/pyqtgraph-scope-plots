@@ -17,6 +17,7 @@ from typing import cast
 import pyqtgraph as pg
 from PySide6.QtCore import QPointF, QPoint, QEvent
 from PySide6.QtGui import QColor, Qt, QMouseEvent
+from pyqtgraph import PlotCurveItem
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.util.util import not_none
@@ -28,9 +29,9 @@ def data_to_screen(plot_item: pg.PlotItem, x: float, y: float) -> QPoint:
 
 
 def init_plot(qtbot: QtBot, plot: pg.PlotWidget) -> None:
-    plot.plot(x=[0, 0.1, 1, 2], y=[0.01, 1, 1, 0], pen={"color": QColor("yellow")})
-    plot.plot(x=[0, 1, 2], y=[0.5, 0.25, 0.5], pen={"color": QColor("orange")})
-    plot.plot(x=[0, 1, 2], y=[0.7, 0.6, 0.5], pen={"color": QColor("blue")})
+    plot.addItem(PlotCurveItem(x=[0, 0.1, 1, 2], y=[0.01, 1, 1, 0], pen={"color": QColor("yellow")}))
+    plot.addItem(PlotCurveItem(x=[0, 1, 2], y=[0.5, 0.25, 0.5], pen={"color": QColor("orange")}))
+    plot.addItem(PlotCurveItem(x=[0, 1, 2], y=[0.7, 0.6, 0.5], pen={"color": QColor("blue")}))
     qtbot.wait(100)  # wait for plot to initialize and range to stabilize
     qtbot.mouseMove(plot.viewport(), QPoint(0, 0))  # provide initial position for hover
     qtbot.wait(100)
@@ -223,13 +224,13 @@ def test_poi_gui(qtbot: QtBot) -> None:
     )
     qtbot.waitUntil(lambda: len(plot_item.pois) == 1)
     assert plot_item.pois[0].pos().x() == 0
-    assert len(plot_item._poi_labels[plot_item.pois[0]]) == 3
-    assert plot_item._poi_labels[plot_item.pois[0]][0].toPlainText() == "0.010"
-    assert plot_item._poi_labels[plot_item.pois[0]][0].color == QColor("yellow")
-    assert plot_item._poi_labels[plot_item.pois[0]][1].toPlainText() == "0.500"
-    assert plot_item._poi_labels[plot_item.pois[0]][1].color == QColor("orange")
-    assert plot_item._poi_labels[plot_item.pois[0]][2].toPlainText() == "0.700"
-    assert plot_item._poi_labels[plot_item.pois[0]][2].color == QColor("blue")
+    assert len(plot_item._poi_items[plot_item.pois[0]]) == 3 * 2
+    assert plot_item._poi_items[plot_item.pois[0]][1].toPlainText() == "0.010"
+    assert plot_item._poi_items[plot_item.pois[0]][1].color == QColor("yellow")
+    assert plot_item._poi_items[plot_item.pois[0]][3].toPlainText() == "0.500"
+    assert plot_item._poi_items[plot_item.pois[0]][3].color == QColor("orange")
+    assert plot_item._poi_items[plot_item.pois[0]][5].toPlainText() == "0.700"
+    assert plot_item._poi_items[plot_item.pois[0]][5].color == QColor("blue")
 
     # must be near-exact
     qtbot.mouseClick(plot.viewport(), Qt.MouseButton.LeftButton, pos=data_to_screen(plot_item, 0, 0))  # force update

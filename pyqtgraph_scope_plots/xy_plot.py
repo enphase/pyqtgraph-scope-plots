@@ -12,6 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 from abc import abstractmethod
+import bisect
 from typing import List, Tuple, Optional, Literal, Union, cast, Any, Dict
 
 import numpy as np
@@ -22,6 +23,7 @@ from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidgetItem, QMenu
 from numpy import typing as npt
 from pydantic import BaseModel
 
+from .interactivity_mixins import LiveCursorPlot
 from .multi_plot_widget import DragTargetOverlay, MultiPlotWidget, LinkedMultiPlotWidget
 from .util import HasSaveLoadConfig, MixinColsTable
 from .signals_table import HasRegionSignalsTable, DraggableSignalsTable, SignalsTable
@@ -186,6 +188,83 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
                 curve.setPen(color=segment_color, width=1)
                 self.addItem(curve)
                 this_curve_list.append(curve)
+
+    def _get_visible_xys_at_t(self, t: float) -> List[Tuple[float, float, QColor]]:
+        """For a t, return all points (with color) on visible curves."""
+        if (
+            isinstance(self._plots, LinkedMultiPlotWidget)
+            and isinstance(self._plots._last_region, tuple)
+            and (t < self._plots._last_region[0] or t > self._plots._last_region[1])
+        ):
+            return []
+
+        outputs = []
+        for x_name, y_name in self._xys:
+            xy_curves = self._xy_curves.get((x_name, y_name), [])
+            if not any(xy_curve.isVisible() for xy_curve in xy_curves):
+                continue
+            x_ts, x_ys = self._plots._data.get(x_name, ([], []))
+            y_ts, y_ys = self._plots._data.get(y_name, ([], []))
+            x_index = bisect.bisect_left(x_ts, t)
+            y_index = bisect.bisect_left(y_ts, t)
+            if x_index >= len(x_ts) or y_index >= len(y_ts) or x_ts[x_index] != t or y_ts[y_index] != t:
+                continue
+            color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
+            outputs.append((x_ys[x_index], y_ys[y_index], color))
+        return outputs
+
+
+class XyPlotLinkedCursorWidget(XyPlotWidget):
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        assert isinstance(self._plots, LinkedMultiPlotWidget)
+        self._hover_pts: List[pg.ScatterPlotItem] = []
+
+        self._plots.sigHoverCursorChanged.connect(self._on_linked_hover_cursor_change)
+
+    def _update(self) -> None:
+        super()._update()
+        self._on_linked_hover_cursor_change()  # generate initial points
+
+    def _on_linked_hover_cursor_change(self) -> None:
+        assert isinstance(self._plots, LinkedMultiPlotWidget)
+        for pts in self._hover_pts:  # clear old widgets as needed, then re-create
+            self.removeItem(pts)
+        self._hover_pts = []
+
+        t = self._plots._last_hover
+        if t is None:
+            return
+        for x, y, color in self._get_visible_xys_at_t(t):
+            hover_pt = pg.ScatterPlotItem(x=[x], y=[y], symbol="o", brush=color)
+            hover_pt.setZValue(LiveCursorPlot._Z_VALUE_HOVER_TARGET)
+            self.addItem(hover_pt, ignoreBounds=True)
+            self._hover_pts.append(hover_pt)
+
+
+class XyPlotLinkedPoiWidget(XyPlotWidget):
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        assert isinstance(self._plots, LinkedMultiPlotWidget)
+        self._poi_pts: List[pg.ScatterPlotItem] = []
+
+        self._plots.sigPoiChanged.connect(self._on_linked_poi_change)
+
+    def _update(self) -> None:
+        super()._update()
+        self._on_linked_poi_change()  # generate initial points
+
+    def _on_linked_poi_change(self) -> None:
+        assert isinstance(self._plots, LinkedMultiPlotWidget)
+        for pts in self._poi_pts:  # clear old widgets as needed, then re-create
+            self.removeItem(pts)
+        self._poi_pts = []
+
+        for t in self._plots._last_pois:
+            for x, y, color in self._get_visible_xys_at_t(t):
+                poi_pt = pg.ScatterPlotItem(x=[x], y=[y], symbol="o", brush=color)
+                self.addItem(poi_pt, ignoreBounds=True)
+                self._poi_pts.append(poi_pt)
 
 
 class XyDragDroppable(BaseXyPlot):

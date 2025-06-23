@@ -34,6 +34,8 @@ from .plots_table_widget import PlotsTableWidget
 # xy and mixins
 from .xy_plot import (
     XyPlotWidget,
+    XyPlotLinkedCursorWidget,
+    XyPlotLinkedPoiWidget,
     XyDragDroppable,
     XyPlotTable,
     DeleteableXyPlotTable,
@@ -73,6 +75,8 @@ __all__ = [
     "LegendPlotWidget",
     "PlotsTableWidget",
     "XyPlotWidget",
+    "XyPlotLinkedCursorWidget",
+    "XyPlotLinkedPoiWidget",
     "XyDragDroppable",
     "XyPlotTable",
     "DeleteableXyPlotTable",

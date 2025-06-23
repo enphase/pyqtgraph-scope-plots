@@ -2,7 +2,7 @@ from typing import Tuple
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFontDatabase
-from PySide6.QtWidgets import QDialog, QWidget, QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox, QTextEdit
+from PySide6.QtWidgets import QDialog, QWidget, QVBoxLayout, QLabel, QDialogButtonBox, QTextEdit
 
 
 class CodeInputDialog(QDialog):

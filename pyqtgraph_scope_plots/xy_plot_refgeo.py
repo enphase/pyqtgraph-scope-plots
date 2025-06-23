@@ -16,16 +16,16 @@ from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
+import pyqtgraph as pg
 import simpleeval
 from PySide6.QtCore import QSignalBlocker
 from PySide6.QtGui import QAction, QColor, Qt
-from PySide6.QtWidgets import QMenu, QInputDialog, QLineEdit, QColorDialog, QTableWidgetItem
-import pyqtgraph as pg
+from PySide6.QtWidgets import QMenu, QColorDialog, QTableWidgetItem
 from pydantic import BaseModel, model_validator
 
 from .code_input_dialog import CodeInputDialog
-from .util import HasSaveLoadConfig
 from .signals_table import SignalsTable, HasRegionSignalsTable
+from .util import HasSaveLoadConfig
 from .xy_plot import XyPlotWidget, XyPlotTable, ContextMenuXyPlotTable, XyWindowModel, DeleteableXyPlotTable
 from .xy_plot_visibility import VisibilityXyPlotTable
 

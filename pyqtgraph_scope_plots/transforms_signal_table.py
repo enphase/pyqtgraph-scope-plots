@@ -19,7 +19,7 @@ import numpy as np
 import numpy.typing as npt
 import simpleeval
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QTableWidgetItem, QMenu, QInputDialog, QLineEdit
+from PySide6.QtWidgets import QTableWidgetItem, QMenu
 from pydantic import BaseModel
 
 from .code_input_dialog import CodeInputDialog

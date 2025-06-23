@@ -58,7 +58,7 @@ class XyRefGeoDrawer:
     This would generally be created by a function available to simpleeval, which should capture arguments."""
 
     @abstractmethod
-    def _draw(self) -> Sequence[pg.GraphicsObject]:
+    def _draw(self, name: str) -> Sequence[pg.GraphicsObject]:
         """Draws the reference geometry as objects that can be added to the plot"""
         ...
 
@@ -99,7 +99,7 @@ class XyRefGeoPolyline(XyRefGeoDrawer):
             f"""or, `{cls._fn_name()}(pts=[(x, y)])`"""
         )
 
-    def _draw(self) -> Sequence[pg.GraphicsObject]:
+    def _draw(self, name: str) -> Sequence[pg.GraphicsObject]:
         if self._x is not None and self._y is not None:
             assert self._pts is None, "both xy and pts specified"
             xs = self._x
@@ -110,7 +110,7 @@ class XyRefGeoPolyline(XyRefGeoDrawer):
             ys = [y for x, y in self._pts]
         else:
             raise ValueError("no data specified")
-        return [pg.PlotCurveItem(x=xs, y=ys)]
+        return [pg.PlotCurveItem(x=xs, y=ys, name=name)]
 
 
 class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
@@ -228,7 +228,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                 if "#" in expr:
                     name = expr.split("#")[-1]  # TODO maybe a more robust solution w/ tokenize
                 else:
-                    name = expr
+                    name = None
 
                 if isinstance(eval_result, XyRefGeoDrawer):
                     drawers = [eval_result]
@@ -242,12 +242,11 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                 drawn_objs: List[pg.GraphicsObject] = []
                 for drawer in drawers:
                     assert isinstance(drawer, XyRefGeoDrawer)
-                    drawn_objs.extend(drawer._draw())
+                    drawn_objs.extend(drawer._draw(name))
 
                 for obj in drawn_objs:
                     if isinstance(obj, pg.PlotCurveItem) or isinstance(obj, pg.ScatterPlotItem):
                         obj.setPen(color=color)
-                        obj.setObjectName(name)
                     if hidden:
                         obj.hide()
                     obj.setZValue(self._Z_VALUE_REFGEO)

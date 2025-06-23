@@ -53,6 +53,8 @@ class HasDataValueAt(pg.PlotItem):  # type: ignore[misc]
     def _data_value_label_at(self, pos: float, precision_factor: float = 1.0) -> List[Tuple[float, str, QColor]]:
         outs = []
         for data_item in self.listDataItems():  # type: pg.PlotDataItem
+            if not isinstance(data_item, pg.PlotCurveItem):  # ignore scatter points
+                continue
             if not data_item.isVisible():
                 continue
             xpts, ypts = data_item.getData()
@@ -538,17 +540,17 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
         super().__init__(*args, **kwargs)
 
         self.pois: List[pg.InfiniteLine] = []  # lines
-        self._poi_labels: Dict[pg.InfiniteLine, List[pg.TextItem]] = {}  # line -> labels
+        self._poi_items: Dict[pg.InfiniteLine, List[Union[pg.GraphicsObject]]] = {}
 
         self.sigRangeChanged.connect(self._update_all_poi_labels)
 
     def set_pois(self, pois: List[float]) -> None:
-        for poi, labels in self._poi_labels.items():
+        for poi, items in self._poi_items.items():
             self.removeItem(poi)
-            for label in labels:
-                self.removeItem(label)
+            for item in items:
+                self.removeItem(item)
         self.pois = []
-        self._poi_labels = {}
+        self._poi_items = {}
 
         for poi in pois:
             self._add_poi(poi)
@@ -556,29 +558,32 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
     def _on_poi_drag(self, cursor: pg.InfiniteLine) -> None:
         if self.hover_snap_point.snap_pos is not None:
             cursor.setPos(self.hover_snap_point.snap_pos)
-        for label in self._poi_labels[cursor]:
-            self.removeItem(label)
-        self._poi_labels[cursor] = []
-        self._generate_poi_labels(cursor)
+        for item in self._poi_items[cursor]:
+            self.removeItem(item)
+        self._poi_items[cursor] = []
+        self._generate_poi_items(cursor)
         self.sigPoiChanged.emit([poi.x() for poi in self.pois])
 
-    def _generate_poi_labels(self, cursor: pg.InfiniteLine) -> None:
+    def _generate_poi_items(self, cursor: pg.InfiniteLine) -> None:
         for y_pos, text, color in self._data_value_label_at(cursor.x(), precision_factor=0.1):
+            poi_pt = pg.ScatterPlotItem(x=[cursor.x()], y=[y_pos], symbol="o", brush=color)
+            self.addItem(poi_pt, ignoreBounds=True)
+            self._poi_items[cursor].append(poi_pt)
             y_label = pg.TextItem(anchor=self.POI_ANCHOR)
             y_label.setPos(QPointF(cursor.x(), y_pos))
             y_label.setText(text)
             y_label.setColor(color)
-            self._poi_labels[cursor].append(y_label)
             self.addItem(y_label, ignoreBounds=True)
+            self._poi_items[cursor].append(y_label)
 
     @Slot()
     def _update_all_poi_labels(self) -> None:
         """Regenerate text for all POI labels, eg to account for scale changes"""
-        for line, labels in self._poi_labels.items():
-            for label in labels:
-                self.removeItem(label)
-            self._poi_labels[line] = []
-            self._generate_poi_labels(line)
+        for line, items in self._poi_items.items():
+            for item in items:
+                self.removeItem(item)
+            self._poi_items[line] = []
+            self._generate_poi_items(line)
 
     def addItem(self, item: Any, *args: Any, **kargs: Any) -> None:
         super().addItem(item, *args, **kargs)
@@ -599,8 +604,8 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
         cursor.sigDragged.connect(self._on_poi_drag)
         self.addItem(cursor, ignoreBounds=True)
         self.pois.append(cursor)
-        self._poi_labels[cursor] = []
-        self._generate_poi_labels(cursor)
+        self._poi_items[cursor] = []
+        self._generate_poi_items(cursor)
         self.sigPoiChanged.emit([poi.x() for poi in self.pois])
 
     def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent) -> None:
@@ -620,10 +625,10 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
             deleted = False
             for poi in reversed(self.pois):
                 if poi.mouseHovering:
-                    if poi in self._poi_labels:
-                        for label in self._poi_labels[poi]:
-                            self.removeItem(label)
-                        del self._poi_labels[poi]
+                    if poi in self._poi_items:
+                        for item in self._poi_items[poi]:
+                            self.removeItem(item)
+                        del self._poi_items[poi]
                     self.pois.remove(poi)
                     self.removeItem(poi)
                     deleted = True

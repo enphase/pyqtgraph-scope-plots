@@ -125,8 +125,6 @@ class FullPlots(
     TransformsPlotWidget,
     PlotsTableWidget.Plots,
 ):
-    """Adds legend add functionality"""
-
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._thickness: float = 1
         super().__init__(*args, **kwargs)

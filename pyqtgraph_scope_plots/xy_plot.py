@@ -188,6 +188,30 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
                 self.addItem(curve)
                 this_curve_list.append(curve)
 
+    def _get_visible_xys_at_t(self, t: float) -> List[Tuple[float, float, QColor]]:
+        """For a t, return all points (with color) on visible curves."""
+        if (
+            isinstance(self._plots, LinkedMultiPlotWidget)
+            and isinstance(self._plots._last_region, tuple)
+            and (t < self._plots._last_region[0] or t > self._plots._last_region[1])
+        ):
+            return []
+
+        outputs = []
+        for x_name, y_name in self._xys:
+            xy_curves = self._xy_curves.get((x_name, y_name), [])
+            if not any([xy_curve.isVisible() for xy_curve in xy_curves]):
+                continue
+            x_ts, x_ys = self._plots._data.get(x_name, ([], []))
+            y_ts, y_ys = self._plots._data.get(y_name, ([], []))
+            x_index = bisect.bisect_left(x_ts, t)
+            y_index = bisect.bisect_left(y_ts, t)
+            if x_index >= len(x_ts) or y_index >= len(y_ts) or x_ts[x_index] != t or y_ts[y_index] != t:
+                continue
+            color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
+            outputs.append((x_ys[x_index], y_ys[y_index], color))
+        return outputs
+
 
 class XyPlotLinkedCursorWidget(XyPlotWidget):
     def __init__(self, *args: Any, **kwargs: Any):
@@ -196,27 +220,6 @@ class XyPlotLinkedCursorWidget(XyPlotWidget):
         self._hover_pts: List[pg.ScatterPlotItem] = []
 
         self._plots.sigHoverCursorChanged.connect(self._on_linked_hover_cursor_change)
-
-    def _get_visible_xy_at_t(self, x_name: str, y_name: str, t: float) -> Optional[Tuple[float, float]]:
-        """Returns the x, y points on the curve of a x_name, y_name, and t. Handles filtering by region
-        and by curve visibility."""
-        if (
-            isinstance(self._plots, LinkedMultiPlotWidget)
-            and isinstance(self._plots._last_region, tuple)
-            and (t < self._plots._last_region[0] or t > self._plots._last_region[1])
-        ):
-            return None
-
-        xy_curves = self._xy_curves.get((x_name, y_name), [])
-        if not any([xy_curve.isVisible() for xy_curve in xy_curves]):
-            return None
-        x_ts, x_ys = self._plots._data.get(x_name, ([], []))
-        y_ts, y_ys = self._plots._data.get(y_name, ([], []))
-        x_index = bisect.bisect_left(x_ts, t)
-        y_index = bisect.bisect_left(y_ts, t)
-        if x_index >= len(x_ts) or y_index >= len(y_ts) or x_ts[x_index] != t or y_ts[y_index] != t:
-            return None
-        return x_ys[x_index], y_ys[y_index]
 
     def _on_linked_hover_cursor_change(self) -> None:
         assert isinstance(self._plots, LinkedMultiPlotWidget)
@@ -227,13 +230,8 @@ class XyPlotLinkedCursorWidget(XyPlotWidget):
         t = self._plots._last_hover
         if t is None:
             return
-
-        for x_name, y_name in self._xys:
-            xy_pt = self._get_visible_xy_at_t(x_name, y_name, t)
-            if xy_pt is None:
-                continue
-            color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
-            hover_pt = pg.ScatterPlotItem(x=[xy_pt[0]], y=[xy_pt[1]], symbol="o", brush=color)
+        for x, y, color in self._get_visible_xys_at_t(t):
+            hover_pt = pg.ScatterPlotItem(x=[x], y=[y], symbol="o", brush=color)
             self.addItem(hover_pt, ignoreBounds=True)
             self._hover_pts.append(hover_pt)
 
@@ -253,12 +251,8 @@ class XyPlotLinkedPoiWidget(XyPlotWidget):
         self._poi_pts = []
 
         for t in self._plots._last_pois:
-            for x_name, y_name in self._xys:
-                xy_pt = self._get_visible_xy_at_t(x_name, y_name, t)
-                if xy_pt is None:
-                    continue
-                color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
-                hover_pt = pg.ScatterPlotItem(x=[xy_pt[0]], y=[xy_pt[1]], symbol="o", brush=color)
+            for x, y, color in self._get_visible_xys_at_t(t):
+                hover_pt = pg.ScatterPlotItem(x=[x], y=[y], symbol="o", brush=color)
                 self.addItem(hover_pt, ignoreBounds=True)
                 self._poi_pts.append(hover_pt)
 

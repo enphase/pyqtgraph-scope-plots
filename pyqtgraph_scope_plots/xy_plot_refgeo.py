@@ -23,6 +23,7 @@ from PySide6.QtWidgets import QMenu, QInputDialog, QLineEdit, QColorDialog, QTab
 import pyqtgraph as pg
 from pydantic import BaseModel, model_validator
 
+from .code_input_dialog import CodeInputDialog
 from .util import HasSaveLoadConfig
 from .signals_table import SignalsTable, HasRegionSignalsTable
 from .xy_plot import XyPlotWidget, XyPlotTable, ContextMenuXyPlotTable, XyWindowModel, DeleteableXyPlotTable
@@ -52,7 +53,7 @@ class XyRefGeoModel(XyWindowModel):
 
 
 def _refgeo_polyline_fn(*pts: Tuple[float, float]) -> Tuple[Sequence[float], Sequence[float]]:
-    """polyline(*pts: (x, y)) -> (xs, ys): turns of sequence of (x, y) points into (xs, ys)"""
+    """`polyline(*pts: (x, y))`: a polyline from a sequence of `(x, y)` points"""
     return [pt[0] for pt in pts], [pt[1] for pt in pts]
 
 
@@ -257,13 +258,12 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
 
         err_msg = ""
         while True:
-            text, ok = QInputDialog().getText(
+            text, ok = CodeInputDialog.getText(
                 self,
                 "Add reference geometry",
-                "Function for reference geometry, as (xs, ys), for example '([0, 1], [0, 1])' for a diagonal line. \n"
-                "Use 'data['...']' to access the data sequence, bounded to the selected region, by name. \n"
-                "These helper functions are available: \n" + fn_help_str + err_msg,
-                QLineEdit.EchoMode.Normal,
+                "Function for reference geometry, using the helper functions below.  \n"
+                "Use `data['...']` to access the data sequence, bounded to the selected region, by name.  \n"
+                "These helper functions are available:  \n" + fn_help_str + err_msg,
                 text,
             )
             if not ok:
@@ -273,7 +273,7 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
                 self._xy_plots.set_ref_geometry_fn(text, index)
                 return
             except SyntaxError as exc:
-                err_msg = f"\n\n{exc.__class__.__name__}: {exc}"
+                err_msg = f"""\n\n<br/>`{exc.__class__.__name__}: {exc}`"""
 
     def _rows_deleted_event(self, rows: List[int]) -> None:
         for row in reversed(sorted(rows)):

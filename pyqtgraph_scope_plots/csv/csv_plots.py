@@ -59,6 +59,7 @@ from ..xy_plot import (
     SignalRemovalXyPlotTable,
     XyPlotTable,
     XyPlotLinkedCursorWidget,
+    XyPlotLinkedPoiWidget,
 )
 from ..xy_plot_table import XyTable
 from ..xy_plot_splitter import XyPlotSplitter
@@ -82,7 +83,12 @@ class CsvLoaderStateModel(BaseTopModel):
 
 class FullXySplitter(XyPlotSplitter):
     class FullXyPlot(
-        VisibilityXyPlotWidget, RefGeoXyPlotWidget, XyDragDroppable, XyPlotLinkedCursorWidget, XyPlotWidget
+        VisibilityXyPlotWidget,
+        RefGeoXyPlotWidget,
+        XyDragDroppable,
+        XyPlotLinkedCursorWidget,
+        XyPlotLinkedPoiWidget,
+        XyPlotWidget,
     ):
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             self._thickness: float = 1

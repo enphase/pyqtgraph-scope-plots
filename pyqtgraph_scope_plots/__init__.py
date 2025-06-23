@@ -35,6 +35,7 @@ from .plots_table_widget import PlotsTableWidget
 from .xy_plot import (
     XyPlotWidget,
     XyPlotLinkedCursorWidget,
+    XyPlotLinkedPoiWidget,
     XyDragDroppable,
     XyPlotTable,
     DeleteableXyPlotTable,
@@ -75,6 +76,7 @@ __all__ = [
     "PlotsTableWidget",
     "XyPlotWidget",
     "XyPlotLinkedCursorWidget",
+    "XyPlotLinkedPoiWidget",
     "XyDragDroppable",
     "XyPlotTable",
     "DeleteableXyPlotTable",

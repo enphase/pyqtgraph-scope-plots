@@ -93,6 +93,8 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
     SNAP_DISTANCE_PX = 12
     MAX_PTS = 128  # if more than this many points in the window, give up
 
+    _Z_VALUE_SNAP_TARGET = 1000
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.hover_snap_point = HoverSnapData(QPointF(0, 0), None)  # stores the last hover state
@@ -165,7 +167,7 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
         if snap_data.snap_pos is not None:
             if self._hover_target is None:
                 self._hover_target = pg.TargetItem(movable=False)
-                self._hover_target.setZValue(1000)
+                self._hover_target.setZValue(self._Z_VALUE_SNAP_TARGET)
                 self.addItem(self._hover_target, ignoreBounds=True)
             self._hover_target.setPos(snap_data.snap_pos)
         else:
@@ -197,6 +199,8 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
     # TextItem anchor for the y value label
     LIVE_CURSOR_Y_ANCHOR: Tuple[float, float] = (0, 1)
 
+    _Z_VALUE_HOVER_TARGET = 100
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
@@ -211,6 +215,13 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
         """Sets the live cursor to some specified location, or deletes it (if None).
         If a y position is specified, draws the time label there, otherwise no time label.
         """
+        for pts in self._hover_y_pts:  # clear old widgets as needed, then re-create
+            self.removeItem(pts)
+        self._hover_y_pts = []
+        for label in self._hover_y_labels:
+            self.removeItem(label)
+        self._hover_y_labels = []
+
         if pos is not None:  # create or update live cursor
             if self.hover_cursor is None:  # create new widgets as needed
                 self.hover_cursor = pg.InfiniteLine(
@@ -232,17 +243,13 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
                     self.removeItem(self._hover_x_label)
                     self._hover_x_label = None
 
-            for pts in self._hover_y_pts:  # clear old widgets as needed, then re-create
-                self.removeItem(pts)
-            self._hover_y_pts = []
-            for label in self._hover_y_labels:  # clear old widgets as needed, then re-create
-                self.removeItem(label)
-            self._hover_y_labels = []
             for y_pos, text, color in self._data_value_label_at(pos, precision_factor=0.1):
                 hover_pt = pg.ScatterPlotItem(x=[pos], y=[y_pos], symbol="o", brush=color)
+                hover_pt.setZValue(self._Z_VALUE_HOVER_TARGET)
                 self.addItem(hover_pt, ignoreBounds=True)
                 self._hover_y_pts.append(hover_pt)
                 hover_label = pg.TextItem(text, anchor=self.LIVE_CURSOR_Y_ANCHOR, color=color)
+                hover_label.setZValue(self._Z_VALUE_HOVER_TARGET)
                 hover_label.setPos(QPointF(pos, y_pos))
                 self.addItem(hover_label, ignoreBounds=True)
                 self._hover_y_labels.append(hover_label)
@@ -253,12 +260,6 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
             if self._hover_x_label is not None:
                 self.removeItem(self._hover_x_label)
                 self._hover_x_label = None
-            for pts in self._hover_y_pts:  # clear old widgets as needed, then re-create
-                self.removeItem(pts)
-            self._hover_y_pts = []
-            for label in self._hover_y_labels:
-                self.removeItem(label)
-            self._hover_y_labels = []
         self.sigHoverCursorChanged.emit(pos)
 
     def _update_live_cursor(self, snap_data: HoverSnapData) -> None:

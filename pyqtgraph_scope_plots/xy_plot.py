@@ -23,6 +23,7 @@ from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidgetItem, QMenu
 from numpy import typing as npt
 from pydantic import BaseModel
 
+from .interactivity_mixins import LiveCursorPlot
 from .multi_plot_widget import DragTargetOverlay, MultiPlotWidget, LinkedMultiPlotWidget
 from .util import HasSaveLoadConfig, MixinColsTable
 from .signals_table import HasRegionSignalsTable, DraggableSignalsTable, SignalsTable
@@ -200,7 +201,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         outputs = []
         for x_name, y_name in self._xys:
             xy_curves = self._xy_curves.get((x_name, y_name), [])
-            if not any([xy_curve.isVisible() for xy_curve in xy_curves]):
+            if not any(xy_curve.isVisible() for xy_curve in xy_curves):
                 continue
             x_ts, x_ys = self._plots._data.get(x_name, ([], []))
             y_ts, y_ys = self._plots._data.get(y_name, ([], []))
@@ -221,6 +222,10 @@ class XyPlotLinkedCursorWidget(XyPlotWidget):
 
         self._plots.sigHoverCursorChanged.connect(self._on_linked_hover_cursor_change)
 
+    def _update(self) -> None:
+        super()._update()
+        self._on_linked_hover_cursor_change()  # generate initial points
+
     def _on_linked_hover_cursor_change(self) -> None:
         assert isinstance(self._plots, LinkedMultiPlotWidget)
         for pts in self._hover_pts:  # clear old widgets as needed, then re-create
@@ -232,6 +237,7 @@ class XyPlotLinkedCursorWidget(XyPlotWidget):
             return
         for x, y, color in self._get_visible_xys_at_t(t):
             hover_pt = pg.ScatterPlotItem(x=[x], y=[y], symbol="o", brush=color)
+            hover_pt.setZValue(LiveCursorPlot._Z_VALUE_HOVER_TARGET)
             self.addItem(hover_pt, ignoreBounds=True)
             self._hover_pts.append(hover_pt)
 
@@ -244,6 +250,10 @@ class XyPlotLinkedPoiWidget(XyPlotWidget):
 
         self._plots.sigPoiChanged.connect(self._on_linked_poi_change)
 
+    def _update(self) -> None:
+        super()._update()
+        self._on_linked_poi_change()  # generate initial points
+
     def _on_linked_poi_change(self) -> None:
         assert isinstance(self._plots, LinkedMultiPlotWidget)
         for pts in self._poi_pts:  # clear old widgets as needed, then re-create
@@ -252,9 +262,9 @@ class XyPlotLinkedPoiWidget(XyPlotWidget):
 
         for t in self._plots._last_pois:
             for x, y, color in self._get_visible_xys_at_t(t):
-                hover_pt = pg.ScatterPlotItem(x=[x], y=[y], symbol="o", brush=color)
-                self.addItem(hover_pt, ignoreBounds=True)
-                self._poi_pts.append(hover_pt)
+                poi_pt = pg.ScatterPlotItem(x=[x], y=[y], symbol="o", brush=color)
+                self.addItem(poi_pt, ignoreBounds=True)
+                self._poi_pts.append(poi_pt)
 
 
 class XyDragDroppable(BaseXyPlot):

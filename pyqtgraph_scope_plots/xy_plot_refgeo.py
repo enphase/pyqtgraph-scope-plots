@@ -66,6 +66,8 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         "polyline": _refgeo_polyline_fn
     }  # optional additional available in refgeo expressions
 
+    _Z_VALUE_REFGEO = -100  # below other geometry
+
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._refgeo_fns: List[Tuple[str, Any, QColor, bool]] = []  # (expr str, parsed, color, hidden)
@@ -168,7 +170,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                 curve.setPen(color=color)
                 if hidden:
                     curve.hide()
-                curve.setZValue(-100)
+                curve.setZValue(self._Z_VALUE_REFGEO)
                 self.addItem(curve)
                 self._refgeo_curves.append(curve)
             except Exception as e:

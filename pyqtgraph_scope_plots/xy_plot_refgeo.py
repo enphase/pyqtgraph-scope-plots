@@ -11,8 +11,9 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
+from abc import abstractmethod
 from functools import partial
-from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional, Union
+from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional, Union, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -52,9 +53,64 @@ class XyRefGeoModel(XyWindowModel):
         return data
 
 
-def _refgeo_polyline_fn(*pts: Tuple[float, float]) -> Tuple[Sequence[float], Sequence[float]]:
-    """`polyline(*pts: (x, y))`: a polyline from a sequence of `(x, y)` points"""
-    return [pt[0] for pt in pts], [pt[1] for pt in pts]
+class XyRefGeoDrawer:
+    """Abstract base class for something that can draw reference geometry.
+    This would generally be created by a function available to simpleeval, which should capture arguments."""
+
+    @abstractmethod
+    def _draw(self) -> Sequence[pg.GraphicsObject]:
+        """Draws the reference geometry as objects that can be added to the plot"""
+        ...
+
+    @classmethod
+    @abstractmethod
+    def _fn_name(cls) -> str:
+        """Returns the function name (will be defined by infrastructure) available to the user that wraps
+        this class's instantiation"""
+        ...
+
+    @classmethod
+    @abstractmethod
+    def _fn_doc(cls) -> str:
+        """Returns a short, one-bullet-point documentation for this function"""
+        ...
+
+
+class XyRefGeoPolyline(XyRefGeoDrawer):
+    def __init__(
+        self,
+        *,
+        x: Optional[Sequence[float]] = None,
+        y: Optional[Sequence[float]] = None,
+        pts: Optional[Sequence[Tuple[float, float]]] = None,
+    ):
+        self._x = x
+        self._y = y
+        self._pts = pts
+
+    @classmethod
+    def _fn_name(cls) -> str:
+        return "polyline"
+
+    @classmethod
+    def _fn_doc(cls) -> str:
+        return (
+            f"""`{cls._fn_name()}(x=[...], y=[...])`: draws a polyline through x, y points  \n"""
+            f"""or, `{cls._fn_name()}(pts=[(x, y)])`"""
+        )
+
+    def _draw(self) -> Sequence[pg.GraphicsObject]:
+        if self._x is not None and self._y is not None:
+            assert self._pts is None, "both xy and pts specified"
+            xs = self._x
+            ys = self._y
+        elif self._pts is not None:
+            assert self._x is None and self._y is None, "both xy and pts specified"
+            xs = [x for x, y in self._pts]
+            ys = [y for x, y in self._pts]
+        else:
+            raise ValueError("no data specified")
+        return [pg.PlotCurveItem(x=xs, y=ys)]
 
 
 class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
@@ -63,19 +119,21 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
 
     _MODEL_BASES = [XyRefGeoModel]
 
-    _SIMPLEEVAL_FNS: Dict[str, Callable[[Any], Any]] = {
-        "polyline": _refgeo_polyline_fn
-    }  # optional additional available in refgeo expressions
+    _REFGEO_CLASSES: List[Type[XyRefGeoDrawer]] = [XyRefGeoPolyline]
 
     _Z_VALUE_REFGEO = -100  # below other geometry
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._refgeo_fns: List[Tuple[str, Any, QColor, bool]] = []  # (expr str, parsed, color, hidden)
-        self._refgeo_curves: List[Union[pg.PlotCurveItem, Exception]] = []  # index-aligned with refgeo_fns
+        self._refgeo_objs: List[Union[List[pg.GraphicsObject], Exception]] = []  # index-aligned with refgeo_fns
 
         # copy, since simpleeval internally mutates the functions dict
-        self._simpleeval = simpleeval.EvalWithCompoundTypes(functions=self._SIMPLEEVAL_FNS.copy())
+        simpleeval_fns = {
+            refgeo_class._fn_name(): lambda *args, **kwargs: refgeo_class(*args, **kwargs)
+            for refgeo_class in self._REFGEO_CLASSES
+        }
+        self._simpleeval = simpleeval.EvalWithCompoundTypes(functions=simpleeval_fns)
 
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
@@ -158,42 +216,60 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
 
         # draw reference geometry
         last_refgeo_err = any(
-            [isinstance(curve, Exception) for curve in self._refgeo_curves]
+            [isinstance(objs, Exception) for objs in self._refgeo_objs]
         )  # store last to emit on failing -> ok
-        self._refgeo_curves = []
+        self._refgeo_objs = []
         for expr, parsed, color, hidden in self._refgeo_fns:
             self._simpleeval.names = {
                 "data": filtered_data,
             }
             try:
-                xs, ys = self._simpleeval.eval(expr, parsed)
+                eval_result = self._simpleeval.eval(expr, parsed)
                 if "#" in expr:
                     name = expr.split("#")[-1]  # TODO maybe a more robust solution w/ tokenize
                 else:
                     name = expr
-                curve = pg.PlotCurveItem(x=xs, y=ys, name=name)
-                curve.setPen(color=color)
-                if hidden:
-                    curve.hide()
-                curve.setZValue(self._Z_VALUE_REFGEO)
-                self.addItem(curve)
-                self._refgeo_curves.append(curve)
-            except Exception as e:
-                self._refgeo_curves.append(e)
 
-        if last_refgeo_err or any([isinstance(curve, Exception) for curve in self._refgeo_curves]):
+                if isinstance(eval_result, XyRefGeoDrawer):
+                    drawers = [eval_result]
+                elif isinstance(eval_result, (list, tuple)):
+                    drawers = eval_result
+                else:
+                    raise TypeError(
+                        f"unknown returned type {type(eval_result)}, expected reference geometry object or list of such"
+                    )
+
+                drawn_objs: List[pg.GraphicsObject] = []
+                for drawer in drawers:
+                    assert isinstance(drawer, XyRefGeoDrawer)
+                    drawn_objs.extend(drawer._draw())
+
+                for obj in drawn_objs:
+                    if isinstance(obj, pg.PlotCurveItem) or isinstance(obj, pg.ScatterPlotItem):
+                        obj.setPen(color=color)
+                        obj.setObjectName(name)
+                    if hidden:
+                        obj.hide()
+                    obj.setZValue(self._Z_VALUE_REFGEO)
+                    self.addItem(obj)
+                self._refgeo_objs.append(drawn_objs)
+            except Exception as e:
+                self._refgeo_objs.append(e)
+
+        if last_refgeo_err or any([isinstance(objs, Exception) for objs in self._refgeo_objs]):
             self.sigXyDataItemsChanged.emit()
 
     def hide_refgeo(self, index: int, hidden: bool = True) -> None:
         prev = self._refgeo_fns[index]
         self._refgeo_fns[index] = (prev[0], prev[1], prev[2], hidden)
 
-        curve = self._refgeo_curves[index]
-        if isinstance(curve, pg.PlotCurveItem):
-            if hidden:
-                curve.hide()
-            else:
-                curve.show()
+        objs = self._refgeo_objs[index]
+        if not isinstance(objs, Exception):
+            for obj in objs:
+                if hidden:
+                    obj.hide()
+                else:
+                    obj.show()
 
 
 class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTable):
@@ -230,9 +306,9 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
             for row, (expr, _, color, hidden) in enumerate(self._xy_plots._refgeo_fns):
                 table_row = self._row_offset_refgeo + row
                 item = SignalsTable._create_noneditable_table_item()
-                curve = self._xy_plots._refgeo_curves[row]
-                if isinstance(curve, Exception):
-                    item.setText(f"{expr}: {curve.__class__.__name__}: {curve}")
+                objs = self._xy_plots._refgeo_objs[row]
+                if isinstance(objs, Exception):
+                    item.setText(f"{expr}: {objs.__class__.__name__}: {objs}")
                 else:
                     item.setText(expr)
                 item.setForeground(color)
@@ -258,7 +334,7 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
         text = ""
         if index is not None:
             text = self._xy_plots._refgeo_fns[index][0]
-        fn_help_str = "\n".join([f"- {fn.__doc__}" for fn_name, fn in self._xy_plots._SIMPLEEVAL_FNS.items()])
+        fn_help_str = "\n".join([f"- {refgeo_class._fn_doc()}" for refgeo_class in self._xy_plots._REFGEO_CLASSES])
 
         err_msg = ""
         while True:

@@ -72,7 +72,7 @@ class XyRefGeoDrawer:
     @classmethod
     @abstractmethod
     def _fn_doc(cls) -> str:
-        """Returns a short, one-bullet-point documentation for this function"""
+        """Returns a short, one-bullet-point documentation for this function, in Qt Markdown"""
         ...
 
 
@@ -90,13 +90,13 @@ class XyRefGeoPolyline(XyRefGeoDrawer):
 
     @classmethod
     def _fn_name(cls) -> str:
-        return "polyline"
+        return "plot"
 
     @classmethod
     def _fn_doc(cls) -> str:
         return (
-            f"""`{cls._fn_name()}(x=[...], y=[...])`: draws a polyline through x, y points  \n"""
-            f"""or, `{cls._fn_name()}(pts=[(x, y)])`"""
+            f"""`{cls._fn_name()}(x=[...], y=[...])`: draws a polyline through the specified points  \n"""
+            f"""or, `{cls._fn_name()}(pts=[*(x, y)])`"""
         )
 
     def _draw(self) -> Sequence[pg.GraphicsObject]:
@@ -113,13 +113,45 @@ class XyRefGeoPolyline(XyRefGeoDrawer):
         return [pg.PlotCurveItem(x=xs, y=ys)]
 
 
+class XyRefGeoVLine(XyRefGeoDrawer):
+    def __init__(self, x: float):
+        self._x = x
+
+    @classmethod
+    def _fn_name(cls) -> str:
+        return "axvline"
+
+    @classmethod
+    def _fn_doc(cls) -> str:
+        return f"""`{cls._fn_name()}(x)`: draws a vertical line"""
+
+    def _draw(self) -> Sequence[pg.GraphicsObject]:
+        return [pg.InfiniteLine(pos=(self._x, 0))]
+
+
+class XyRefGeoHLine(XyRefGeoDrawer):
+    def __init__(self, y: float):
+        self._y = y
+
+    @classmethod
+    def _fn_name(cls) -> str:
+        return "axhline"
+
+    @classmethod
+    def _fn_doc(cls) -> str:
+        return f"""`{cls._fn_name()}(x)`: draws a horizontal line"""
+
+    def _draw(self) -> Sequence[pg.GraphicsObject]:
+        return [pg.InfiniteLine(pos=(0, self._y), angle=0)]
+
+
 class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
     """Mixin into XyPlotWidget that adds support for reference geometry as a polyline.
     For signal purposes, reference geometry is counted as a data item change."""
 
     _MODEL_BASES = [XyRefGeoModel]
 
-    _REFGEO_CLASSES: List[Type[XyRefGeoDrawer]] = [XyRefGeoPolyline]
+    _REFGEO_CLASSES: List[Type[XyRefGeoDrawer]] = [XyRefGeoVLine, XyRefGeoHLine, XyRefGeoPolyline]
 
     _Z_VALUE_REFGEO = -100  # below other geometry
 
@@ -129,10 +161,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         self._refgeo_objs: List[Union[List[pg.GraphicsObject], Exception]] = []  # index-aligned with refgeo_fns
 
         # copy, since simpleeval internally mutates the functions dict
-        simpleeval_fns = {
-            refgeo_class._fn_name(): lambda *args, **kwargs: refgeo_class(*args, **kwargs)
-            for refgeo_class in self._REFGEO_CLASSES
-        }
+        simpleeval_fns = {refgeo_class._fn_name(): refgeo_class for refgeo_class in self._REFGEO_CLASSES}
         self._simpleeval = simpleeval.EvalWithCompoundTypes(functions=simpleeval_fns)
 
     def _write_model(self, model: BaseModel) -> None:
@@ -187,7 +216,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         if index is not None:
             prev = self._refgeo_fns[index]
         else:
-            prev = ("", None, QColor("white"), False)
+            prev = ("", None, QColor("darkGray"), False)
         new_fns = (expr_str, parsed, color if color is not None else prev[2], hidden if hidden is not None else prev[3])
 
         if index is not None:
@@ -218,6 +247,10 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         last_refgeo_err = any(
             [isinstance(objs, Exception) for objs in self._refgeo_objs]
         )  # store last to emit on failing -> ok
+        for objs in self._refgeo_objs:
+            if not isinstance(objs, Exception):
+                for obj in objs:
+                    self.removeItem(obj)
         self._refgeo_objs = []
         for expr, parsed, color, hidden in self._refgeo_fns:
             self._simpleeval.names = {
@@ -227,7 +260,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                 eval_result = self._simpleeval.eval(expr, parsed)
 
                 if isinstance(eval_result, XyRefGeoDrawer):
-                    drawers = [eval_result]
+                    drawers: Sequence[XyRefGeoDrawer] = [eval_result]
                 elif isinstance(eval_result, (list, tuple)):
                     drawers = eval_result
                 else:
@@ -241,7 +274,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                     drawn_objs.extend(drawer._draw())
 
                 for obj in drawn_objs:
-                    if isinstance(obj, pg.PlotCurveItem) or isinstance(obj, pg.ScatterPlotItem):
+                    if isinstance(obj, (pg.PlotCurveItem, pg.ScatterPlotItem, pg.InfiniteLine)):
                         obj.setPen(color=color)
                     if hidden:
                         obj.hide()
@@ -301,17 +334,20 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
             for row, (expr, _, color, hidden) in enumerate(self._xy_plots._refgeo_fns):
                 table_row = self._row_offset_refgeo + row
                 item = SignalsTable._create_noneditable_table_item()
-                objs = self._xy_plots._refgeo_objs[row]
+                if row < len(self._xy_plots._refgeo_objs):
+                    objs = self._xy_plots._refgeo_objs[row]
+                else:
+                    objs = []
 
                 if "#" in expr:
-                    name = expr.split("#")[-1] + ": "  # TODO maybe a more robust solution w/ tokenize
+                    name = expr.split("#")[-1].lstrip()  # TODO maybe a more robust solution w/ tokenize
                 else:
-                    name = ""
+                    name = expr
 
                 if isinstance(objs, Exception):
-                    item.setText(f"{objs.__class__.__name__}: {objs}: {name}{expr}")
+                    item.setText(f"{objs.__class__.__name__}: {objs}: {name}")
                 else:
-                    item.setText(f"{name}{expr}")
+                    item.setText(f"{name}")
 
                 item.setForeground(color)
                 self.setItem(table_row, self.COL_X_NAME, item)

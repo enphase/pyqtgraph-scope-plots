@@ -2,7 +2,7 @@ from typing import Tuple
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFontDatabase
-from PySide6.QtWidgets import QDialog, QWidget, QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox
+from PySide6.QtWidgets import QDialog, QWidget, QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox, QTextEdit
 
 
 class CodeInputDialog(QDialog):
@@ -17,7 +17,7 @@ class CodeInputDialog(QDialog):
         label_widget.setText(label)
         layout.addWidget(label_widget)
 
-        self._editor_widget = QLineEdit()
+        self._editor_widget = QTextEdit()
         self._editor_widget.setText(initial)
         self._editor_widget.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
         layout.addWidget(self._editor_widget)
@@ -32,6 +32,6 @@ class CodeInputDialog(QDialog):
         dialog = cls(parent, title, label, initial)
         result = dialog.exec_()
         if result == QDialog.DialogCode.Accepted:
-            return dialog._editor_widget.text(), True
+            return dialog._editor_widget.toPlainText(), True
         else:
-            return dialog._editor_widget.text(), False
+            return dialog._editor_widget.toPlainText(), False

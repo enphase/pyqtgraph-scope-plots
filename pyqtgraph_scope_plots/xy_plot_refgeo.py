@@ -167,7 +167,11 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
             }
             try:
                 xs, ys = self._simpleeval.eval(expr, parsed)
-                curve = pg.PlotCurveItem(x=xs, y=ys, name=expr)
+                if "#" in expr:
+                    name = expr.split("#")[-1]  # TODO maybe a more robust solution w/ tokenize
+                else:
+                    name = expr
+                curve = pg.PlotCurveItem(x=xs, y=ys, name=name)
                 curve.setPen(color=color)
                 if hidden:
                     curve.hide()
@@ -263,6 +267,7 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
                 "Add reference geometry",
                 "Function for reference geometry, using the helper functions below.  \n"
                 "Use `data['...']` to access the data sequence, bounded to the selected region, by name.  \n"
+                "Optionally, set the name using a comment after the function.  \n"
                 "These helper functions are available:  \n" + fn_help_str + err_msg,
                 text,
             )

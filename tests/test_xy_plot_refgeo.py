@@ -124,6 +124,13 @@ def test_table(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     assert table.item(0, table.COL_X_NAME).text() == "plot(x=[-1, 0], y=[-1, -1])"
 
 
+def test_table_name(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
+    table = RefGeoXyPlotTable(plot._plots, plot)
+    plot.set_ref_geometry_fn("# a name\nplot(x=[-1, 1], y=[-1, -1])")
+    qtbot.waitUntil(lambda: table.rowCount() == 1)
+    assert table.item(0, table.COL_X_NAME).text() == "a name"
+
+
 def test_table_deletion(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     table = RefGeoXyPlotTable(plot._plots, plot)
     table.show()  # needed since we're interacting with the table

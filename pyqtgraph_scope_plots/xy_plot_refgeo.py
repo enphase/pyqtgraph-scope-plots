@@ -55,13 +55,12 @@ class XyRefGeoModel(XyWindowModel):
 
 class XyRefGeoDrawer:
     """Abstract base class for something that can draw reference geometry.
-    This would generally be created by a function available to simpleeval, which should capture arguments."""
+    This also defines the function name (as an alias for __init__) for simpleeval to bind."""
 
     @classmethod
     @abstractmethod
     def _fn_name(cls) -> str:
-        """Returns the function name (will be defined by infrastructure) available to the user that wraps
-        this class's instantiation"""
+        """Returns the function name to construct this object in simpleeval"""
         ...
 
     @classmethod
@@ -390,8 +389,9 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
                 else:
                     objs = []
 
-                if "#" in expr:
-                    name = expr.split("#")[-1].lstrip()  # TODO maybe a more robust solution w/ tokenize
+                if expr[0] == "#":
+                    split = expr.split("\n")
+                    name = split[0][1:].lstrip()
                 else:
                     name = expr
 
@@ -432,7 +432,7 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
                 "Add reference geometry",
                 "Define reference geometry using the functions below, or a list / tuple of such.  \n"
                 "Use `data['...']` to access the data sequence, bounded to the selected region, by name.  \n"
-                "Optionally, set the name using a comment after the function.  \n"
+                "Optionally, set the name using a comment on the first line.  \n"
                 "These functions are available:  \n" + fn_help_str + err_msg,
                 text,
             )

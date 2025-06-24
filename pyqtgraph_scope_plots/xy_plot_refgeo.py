@@ -431,8 +431,10 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
                 "Define reference geometry using the functions below, or a list / tuple of such.  \n"
                 "Use `data['...']` to access the data sequence, bounded to the selected region, by name.  \n"
                 "Optionally, set the name using a comment on the first line.  \n"
+                "Multiple lines of code (nonfunctional line breaks aside) not supported.  \n"
                 "These functions are available:  \n" + fn_help_str + err_msg,
                 text,
+                multiline=True,
             )
             if not ok:
                 return

@@ -153,8 +153,23 @@ class XyRefGeoPolyline(XyRefGeoBasePoints):
 
 
 class XyRefGeoScatter(XyRefGeoBasePoints):
-    def __init__(self, **kwargs: Any):
+    _MARKER_MAP = {  # map from matplotlib style to pyqtgraph style
+        "o": "o",
+        "x": "x",
+        "+": "+",
+        "v": "t",
+        "^": "t1",
+        "<": "t3",
+        ">": "t2",
+        "*": "star",
+        "D": "d",
+        "p": "p",
+        "h": "h",  # bestagons
+    }
+
+    def __init__(self, *, marker: Union[str, Sequence[str]] = "o", **kwargs: Any):
         super().__init__(**kwargs)
+        self._marker = marker
 
     @classmethod
     def _fn_name(cls) -> str:
@@ -162,11 +177,22 @@ class XyRefGeoScatter(XyRefGeoBasePoints):
 
     @classmethod
     def _fn_doc(cls) -> str:
-        return f"""`{cls._fn_name()}(x=[...], y=[...] | pts=[(x, y), ...])`: draws the specified points"""
+        return f"""`{cls._fn_name()}(x=[...], y=[...] | pts=[(x, y), ...], [marker='{''.join(cls._MARKER_MAP.keys())}'|[...]])`: draws the specified points"""
 
     def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
         xs, ys = self._get_xy()
-        return [pg.ScatterPlotItem(x=xs, y=ys, pen=color, brush=color)]
+        if isinstance(self._marker, str):
+            pg_symbol: Union[str, List[str]] = self._MARKER_MAP.get(self._marker)
+            assert pg_symbol is not None, f"unknown marker {self._marker}"
+        elif isinstance(self._marker, list):
+            pg_symbol = []
+            for marker_elt in self._marker:
+                pg_elt = self._MARKER_MAP.get(marker_elt)
+                assert pg_elt is not None, f"unknown marker {marker_elt}"
+                pg_symbol.append(pg_elt)
+        else:
+            raise TypeError("unknown marker type")
+        return [pg.ScatterPlotItem(x=xs, y=ys, pen=color, brush=color, symbol=pg_symbol)]
 
 
 class XyRefGeoText(XyRefGeoDrawer):

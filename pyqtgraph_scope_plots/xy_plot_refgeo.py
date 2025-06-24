@@ -76,43 +76,6 @@ class XyRefGeoDrawer:
         ...
 
 
-class XyRefGeoPolyline(XyRefGeoDrawer):
-    def __init__(
-        self,
-        *,
-        x: Optional[Sequence[float]] = None,
-        y: Optional[Sequence[float]] = None,
-        pts: Optional[Sequence[Tuple[float, float]]] = None,
-    ):
-        self._x = x
-        self._y = y
-        self._pts = pts
-
-    @classmethod
-    def _fn_name(cls) -> str:
-        return "plot"
-
-    @classmethod
-    def _fn_doc(cls) -> str:
-        return (
-            f"""`{cls._fn_name()}(x=[...], y=[...])`: draws a polyline through the specified points  \n"""
-            f"""or, `{cls._fn_name()}(pts=[*(x, y)])`"""
-        )
-
-    def _draw(self) -> Sequence[pg.GraphicsObject]:
-        if self._x is not None and self._y is not None:
-            assert self._pts is None, "both xy and pts specified"
-            xs = self._x
-            ys = self._y
-        elif self._pts is not None:
-            assert self._x is None and self._y is None, "both xy and pts specified"
-            xs = [x for x, y in self._pts]
-            ys = [y for x, y in self._pts]
-        else:
-            raise ValueError("no data specified")
-        return [pg.PlotCurveItem(x=xs, y=ys)]
-
-
 class XyRefGeoVLine(XyRefGeoDrawer):
     def __init__(self, x: float):
         self._x = x
@@ -145,13 +108,81 @@ class XyRefGeoHLine(XyRefGeoDrawer):
         return [pg.InfiniteLine(pos=(0, self._y), angle=0)]
 
 
+class XyRefGeoBasePoints(XyRefGeoDrawer):
+    """Base class that accepts either (xs, ys) or pts, and presents a unified (xs, ys) internal interface"""
+
+    def __init__(
+        self,
+        *,
+        x: Optional[Sequence[float]] = None,
+        y: Optional[Sequence[float]] = None,
+        pts: Optional[Sequence[Tuple[float, float]]] = None,
+    ):
+        self._x = x
+        self._y = y
+        self._pts = pts
+
+    def _get_xy(self) -> Tuple[Sequence[float], Sequence[float]]:
+        if self._x is not None and self._y is not None:
+            assert self._pts is None, "both xy and pts specified"
+            xs = self._x
+            ys = self._y
+        elif self._pts is not None:
+            assert self._x is None and self._y is None, "both xy and pts specified"
+            xs = [x for x, y in self._pts]
+            ys = [y for x, y in self._pts]
+        else:
+            raise ValueError("no data specified")
+        return xs, ys
+
+
+class XyRefGeoPolyline(XyRefGeoBasePoints):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def _fn_name(cls) -> str:
+        return "plot"
+
+    @classmethod
+    def _fn_doc(cls) -> str:
+        return (
+            f"""`{cls._fn_name()}(x=[...], y=[...])`: draws a polyline through the specified points  \n"""
+            f"""or, `{cls._fn_name()}(pts=[*(x, y)])`"""
+        )
+
+    def _draw(self) -> Sequence[pg.GraphicsObject]:
+        xs, ys = self._get_xy()
+        return [pg.PlotCurveItem(x=xs, y=ys)]
+
+
+class XyRefGeoScatter(XyRefGeoBasePoints):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def _fn_name(cls) -> str:
+        return "scatter"
+
+    @classmethod
+    def _fn_doc(cls) -> str:
+        return (
+            f"""`{cls._fn_name()}(x=[...], y=[...])`: draws the specified points  \n"""
+            f"""or, `{cls._fn_name()}(pts=[*(x, y)])`"""
+        )
+
+    def _draw(self) -> Sequence[pg.GraphicsObject]:
+        xs, ys = self._get_xy()
+        return [pg.ScatterPlotItem(x=xs, y=ys)]
+
+
 class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
     """Mixin into XyPlotWidget that adds support for reference geometry as a polyline.
     For signal purposes, reference geometry is counted as a data item change."""
 
     _MODEL_BASES = [XyRefGeoModel]
 
-    _REFGEO_CLASSES: List[Type[XyRefGeoDrawer]] = [XyRefGeoVLine, XyRefGeoHLine, XyRefGeoPolyline]
+    _REFGEO_CLASSES: List[Type[XyRefGeoDrawer]] = [XyRefGeoVLine, XyRefGeoHLine, XyRefGeoPolyline, XyRefGeoScatter]
 
     _Z_VALUE_REFGEO = -100  # below other geometry
 
@@ -276,6 +307,8 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                 for obj in drawn_objs:
                     if isinstance(obj, (pg.PlotCurveItem, pg.ScatterPlotItem, pg.InfiniteLine)):
                         obj.setPen(color=color)
+                    if isinstance(obj, (pg.PlotCurveItem, pg.ScatterPlotItem)):
+                        obj.setBrush(color=color)
                     if hidden:
                         obj.hide()
                     obj.setZValue(self._Z_VALUE_REFGEO)

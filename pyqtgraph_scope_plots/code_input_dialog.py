@@ -31,7 +31,4 @@ class CodeInputDialog(QDialog):
     def getText(cls, parent: QWidget, title: str, label: str, initial: str = "") -> Tuple[str, bool]:
         dialog = cls(parent, title, label, initial)
         result = dialog.exec_()
-        if result == QDialog.DialogCode.Accepted:
-            return dialog._editor_widget.toPlainText(), True
-        else:
-            return dialog._editor_widget.toPlainText(), False
+        return dialog._editor_widget.toPlainText(), result == QDialog.DialogCode.Accepted

@@ -13,7 +13,7 @@
 #    limitations under the License.
 from abc import abstractmethod
 from functools import partial
-from typing import Any, List, Tuple, Dict, Sequence, Callable, Optional, Union, Type
+from typing import Any, List, Tuple, Sequence, Optional, Union, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -57,11 +57,6 @@ class XyRefGeoDrawer:
     """Abstract base class for something that can draw reference geometry.
     This would generally be created by a function available to simpleeval, which should capture arguments."""
 
-    @abstractmethod
-    def _draw(self) -> Sequence[pg.GraphicsObject]:
-        """Draws the reference geometry as objects that can be added to the plot"""
-        ...
-
     @classmethod
     @abstractmethod
     def _fn_name(cls) -> str:
@@ -73,6 +68,11 @@ class XyRefGeoDrawer:
     @abstractmethod
     def _fn_doc(cls) -> str:
         """Returns a short, one-bullet-point documentation for this function, in Qt Markdown"""
+        ...
+
+    @abstractmethod
+    def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
+        """Draws the reference geometry as objects that can be added to the plot"""
         ...
 
 
@@ -88,8 +88,8 @@ class XyRefGeoVLine(XyRefGeoDrawer):
     def _fn_doc(cls) -> str:
         return f"""`{cls._fn_name()}(x)`: draws a vertical line"""
 
-    def _draw(self) -> Sequence[pg.GraphicsObject]:
-        return [pg.InfiniteLine(pos=(self._x, 0))]
+    def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
+        return [pg.InfiniteLine(pos=(self._x, 0), pen=color)]
 
 
 class XyRefGeoHLine(XyRefGeoDrawer):
@@ -104,8 +104,8 @@ class XyRefGeoHLine(XyRefGeoDrawer):
     def _fn_doc(cls) -> str:
         return f"""`{cls._fn_name()}(x)`: draws a horizontal line"""
 
-    def _draw(self) -> Sequence[pg.GraphicsObject]:
-        return [pg.InfiniteLine(pos=(0, self._y), angle=0)]
+    def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
+        return [pg.InfiniteLine(pos=(0, self._y), angle=0, pen=color)]
 
 
 class XyRefGeoBasePoints(XyRefGeoDrawer):
@@ -147,13 +147,12 @@ class XyRefGeoPolyline(XyRefGeoBasePoints):
     @classmethod
     def _fn_doc(cls) -> str:
         return (
-            f"""`{cls._fn_name()}(x=[...], y=[...])`: draws a polyline through the specified points  \n"""
-            f"""or, `{cls._fn_name()}(pts=[*(x, y)])`"""
+            f"""`{cls._fn_name()}(x=[...], y=[...] | pts=[*(x, y)])`: draws a polyline through the specified points"""
         )
 
-    def _draw(self) -> Sequence[pg.GraphicsObject]:
+    def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
         xs, ys = self._get_xy()
-        return [pg.PlotCurveItem(x=xs, y=ys)]
+        return [pg.PlotCurveItem(x=xs, y=ys, pen=color)]
 
 
 class XyRefGeoScatter(XyRefGeoBasePoints):
@@ -166,14 +165,11 @@ class XyRefGeoScatter(XyRefGeoBasePoints):
 
     @classmethod
     def _fn_doc(cls) -> str:
-        return (
-            f"""`{cls._fn_name()}(x=[...], y=[...])`: draws the specified points  \n"""
-            f"""or, `{cls._fn_name()}(pts=[*(x, y)])`"""
-        )
+        return f"""`{cls._fn_name()}(x=[...], y=[...] | pts=[*(x, y)])`: draws the specified points"""
 
-    def _draw(self) -> Sequence[pg.GraphicsObject]:
+    def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
         xs, ys = self._get_xy()
-        return [pg.ScatterPlotItem(x=xs, y=ys)]
+        return [pg.ScatterPlotItem(x=xs, y=ys, pen=color, brush=color)]
 
 
 class XyRefGeoText(XyRefGeoDrawer):
@@ -190,8 +186,8 @@ class XyRefGeoText(XyRefGeoDrawer):
     def _fn_doc(cls) -> str:
         return f"""`{cls._fn_name()}(x, y, text)`: draw text at the specified point"""
 
-    def _draw(self) -> Sequence[pg.GraphicsObject]:
-        text_item = pg.TextItem(text=self._text)
+    def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
+        text_item = pg.TextItem(text=self._text, color=color)
         text_item.setPos(QPointF(self._x, self._y))
         return [text_item]
 
@@ -328,13 +324,9 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                 drawn_objs: List[pg.GraphicsObject] = []
                 for drawer in drawers:
                     assert isinstance(drawer, XyRefGeoDrawer)
-                    drawn_objs.extend(drawer._draw())
+                    drawn_objs.extend(drawer._draw(color))
 
                 for obj in drawn_objs:
-                    if isinstance(obj, (pg.PlotCurveItem, pg.ScatterPlotItem, pg.InfiniteLine)):
-                        obj.setPen(color=color)
-                    if isinstance(obj, (pg.PlotCurveItem, pg.ScatterPlotItem)):
-                        obj.setBrush(color=color)
                     if hidden:
                         obj.hide()
                     obj.setZValue(self._Z_VALUE_REFGEO)
@@ -438,10 +430,10 @@ class RefGeoXyPlotTable(DeleteableXyPlotTable, ContextMenuXyPlotTable, XyPlotTab
             text, ok = CodeInputDialog.getText(
                 self,
                 "Add reference geometry",
-                "Function for reference geometry, using the helper functions below.  \n"
+                "Define reference geometry using the functions below, or a list / tuple of such.  \n"
                 "Use `data['...']` to access the data sequence, bounded to the selected region, by name.  \n"
                 "Optionally, set the name using a comment after the function.  \n"
-                "These helper functions are available:  \n" + fn_help_str + err_msg,
+                "These functions are available:  \n" + fn_help_str + err_msg,
                 text,
             )
             if not ok:

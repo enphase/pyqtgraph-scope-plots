@@ -153,8 +153,23 @@ class XyRefGeoPolyline(XyRefGeoBasePoints):
 
 
 class XyRefGeoScatter(XyRefGeoBasePoints):
-    def __init__(self, **kwargs: Any):
+    _MARKER_MAP = {  # map from matplotlib style to pyqtgraph style
+        "o": "o",
+        "x": "x",
+        "+": "+",
+        "v": "t",
+        "^": "t1",
+        "<": "t3",
+        ">": "t2",
+        "*": "star",
+        "D": "d",
+        "p": "p",
+        "h": "h",  # bestagons
+    }
+
+    def __init__(self, *, marker: Union[str, Sequence[str]] = "o", **kwargs: Any):
         super().__init__(**kwargs)
+        self._marker = marker
 
     @classmethod
     def _fn_name(cls) -> str:
@@ -162,18 +177,38 @@ class XyRefGeoScatter(XyRefGeoBasePoints):
 
     @classmethod
     def _fn_doc(cls) -> str:
-        return f"""`{cls._fn_name()}(x=[...], y=[...] | pts=[(x, y), ...])`: draws the specified points"""
+        return f"""`{cls._fn_name()}(x=[...], y=[...] | pts=[(x, y), ...], [marker='{''.join(cls._MARKER_MAP.keys())}'|[...]])`: draws the specified points"""
 
     def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
         xs, ys = self._get_xy()
-        return [pg.ScatterPlotItem(x=xs, y=ys, pen=color, brush=color)]
+        if isinstance(self._marker, str):
+            pg_symbol: Optional[Union[str, List[str]]] = self._MARKER_MAP.get(self._marker)
+            assert pg_symbol is not None, f"unknown marker {self._marker}"
+        elif isinstance(self._marker, list):
+            pg_symbol = []
+            for marker_elt in self._marker:
+                pg_elt = self._MARKER_MAP.get(marker_elt)
+                assert pg_elt is not None, f"unknown marker {marker_elt}"
+                pg_symbol.append(pg_elt)
+        else:
+            raise TypeError("unknown marker type")
+        return [pg.ScatterPlotItem(x=xs, y=ys, pen=color, brush=color, symbol=pg_symbol)]
 
 
 class XyRefGeoText(XyRefGeoDrawer):
-    def __init__(self, x: float, y: float, text: str):
+    _HORIZONTAL_ALIGN_ANCHOR = {  # map from matplotlib style alignment to pyqtgraph anchor
+        "left": 0.0,
+        "center": 0.5,
+        "right": 1.0,
+    }
+    _VERTICAL_ALIGN_ANCHOR = {"bottom": 1.0, "center": 0.5, "top": 0.0}
+
+    def __init__(self, x: float, y: float, text: str, *, ha: str = "left", va: str = "bottom"):
         self._x = x
         self._y = y
         self._text = text
+        self._ha = ha
+        self._va = va
 
     @classmethod
     def _fn_name(cls) -> str:
@@ -181,10 +216,17 @@ class XyRefGeoText(XyRefGeoDrawer):
 
     @classmethod
     def _fn_doc(cls) -> str:
-        return f"""`{cls._fn_name()}(x, y, text)`: draw text at the specified point"""
+        return (
+            f"""`{cls._fn_name()}(x, y, text, [ha="{'|'.join(cls._HORIZONTAL_ALIGN_ANCHOR.keys())}"], """
+            f"""[va="{'|'.join(cls._VERTICAL_ALIGN_ANCHOR.keys())}"])`: draw text at the specified point"""
+        )
 
     def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
-        text_item = pg.TextItem(text=self._text, color=color)
+        anchor_x = self._HORIZONTAL_ALIGN_ANCHOR.get(self._ha)
+        assert anchor_x is not None, f"unknown ha {self._ha}"
+        anchor_y = self._VERTICAL_ALIGN_ANCHOR.get(self._va)
+        assert anchor_y is not None, f"unknown va {self._va}"
+        text_item = pg.TextItem(text=self._text, color=color, anchor=(anchor_x, anchor_y))
         text_item.setPos(QPointF(self._x, self._y))
         return [text_item]
 

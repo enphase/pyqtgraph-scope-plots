@@ -41,18 +41,18 @@ def plot(qtbot: QtBot) -> RefGeoXyPlotWidget:
     return xy_plot
 
 
-def test_square_points(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
+def test_square_plot_xys(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     with mock.patch.object(plot, "addItem") as mock_add_item:
-        plot.set_ref_geometry_fn("([-1, 1, 1, -1, -1], [-1, -1, 1, 1, -1])")
+        plot.set_ref_geometry_fn("plot(x=[-1, 1, 1, -1, -1], y=[-1, -1, 1, 1, -1])")
         mock_add_item.assert_called_once()
         curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
         assert list(curve.xData) == [-1, 1, 1, -1, -1]
         assert list(curve.yData) == [-1, -1, 1, 1, -1]
 
 
-def test_polyline_fn(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
+def test_square_plot_pts(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     with mock.patch.object(plot, "addItem") as mock_add_item:
-        plot.set_ref_geometry_fn("polyline((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))")
+        plot.set_ref_geometry_fn("plot(pts=[(-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1)])")
         mock_add_item.assert_called_once()
         curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
         assert list(curve.xData) == [-1, 1, 1, -1, -1]
@@ -64,14 +64,14 @@ def test_data(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     plot._plots.set_data({"x": ([0, 1, 2], [0, 1, 2])})
 
     with mock.patch.object(plot, "addItem") as mock_add_item:
-        plot.set_ref_geometry_fn("polyline((-1, data['x'][-1]), (1, data['x'][-1]))")
+        plot.set_ref_geometry_fn("plot(pts=[(-1, data['x'][-1]), (1, data['x'][-1])])")
         mock_add_item.assert_called_once()
         curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
         assert list(curve.xData) == [-1, 1]
         assert list(curve.yData) == [2, 2]
 
     with mock.patch.object(plot, "addItem") as mock_add_item:
-        plot.set_ref_geometry_fn("polyline((-1, data['x'][-1]), (1, data['x'][0]))", 0)
+        plot.set_ref_geometry_fn("plot(pts=[(-1, data['x'][-1]), (1, data['x'][0])])", 0)
         mock_add_item.assert_called_once()
         curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
         assert list(curve.xData) == [-1, 1]
@@ -84,7 +84,7 @@ def test_data_region(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     cast(LinkedMultiPlotWidget, plot._plots)._on_region_change(None, (0, 1))
 
     with mock.patch.object(plot, "addItem") as mock_add_item:
-        plot.set_ref_geometry_fn("polyline((data['x'][0], -1), (data['x'][-1], 1))")
+        plot.set_ref_geometry_fn("plot(pts=[(data['x'][0], -1), (data['x'][-1], 1)])")
         mock_add_item.assert_called_once()
         curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
         assert list(curve.xData) == [0, 1]

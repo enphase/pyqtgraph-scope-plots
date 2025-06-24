@@ -45,7 +45,7 @@ def test_square_plot_xys(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     with mock.patch.object(plot, "addItem") as mock_add_item:
         plot.set_ref_geometry_fn("plot(x=[-1, 1, 1, -1, -1], y=[-1, -1, 1, 1, -1])")
         mock_add_item.assert_called_once()
-        curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
+        curve = cast(pg.PlotCurveItem, mock_add_item.call_args.args[0])
         assert list(curve.xData) == [-1, 1, 1, -1, -1]
         assert list(curve.yData) == [-1, -1, 1, 1, -1]
 
@@ -54,9 +54,21 @@ def test_square_plot_pts(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     with mock.patch.object(plot, "addItem") as mock_add_item:
         plot.set_ref_geometry_fn("plot(pts=[(-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1)])")
         mock_add_item.assert_called_once()
-        curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
+        curve = cast(pg.PlotCurveItem, mock_add_item.call_args.args[0])
         assert list(curve.xData) == [-1, 1, 1, -1, -1]
         assert list(curve.yData) == [-1, -1, 1, 1, -1]
+
+
+def test_multi_plot(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
+    with mock.patch.object(plot, "addItem") as mock_add_item:
+        plot.set_ref_geometry_fn("plot(pts=[(-1, -1), (1, -1)]), plot(pts=[(1, 1), (-1, 1)])")
+        mock_add_item.assert_called()
+        curve = cast(pg.PlotCurveItem, mock_add_item.call_args_list[0].args[0])
+        assert list(curve.xData) == [-1, 1]
+        assert list(curve.yData) == [-1, -1]
+        curve = cast(pg.PlotCurveItem, mock_add_item.call_args_list[1].args[0])
+        assert list(curve.xData) == [1, -1]
+        assert list(curve.yData) == [1, 1]
 
 
 def test_data(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
@@ -66,14 +78,14 @@ def test_data(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     with mock.patch.object(plot, "addItem") as mock_add_item:
         plot.set_ref_geometry_fn("plot(pts=[(-1, data['x'][-1]), (1, data['x'][-1])])")
         mock_add_item.assert_called_once()
-        curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
+        curve = cast(pg.PlotCurveItem, mock_add_item.call_args.args[0])
         assert list(curve.xData) == [-1, 1]
         assert list(curve.yData) == [2, 2]
 
     with mock.patch.object(plot, "addItem") as mock_add_item:
         plot.set_ref_geometry_fn("plot(pts=[(-1, data['x'][-1]), (1, data['x'][0])])", 0)
         mock_add_item.assert_called_once()
-        curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
+        curve = cast(pg.PlotCurveItem, mock_add_item.call_args.args[0])
         assert list(curve.xData) == [-1, 1]
         assert list(curve.yData) == [2, 0]
 
@@ -86,7 +98,7 @@ def test_data_region(qtbot: QtBot, plot: RefGeoXyPlotWidget) -> None:
     with mock.patch.object(plot, "addItem") as mock_add_item:
         plot.set_ref_geometry_fn("plot(pts=[(data['x'][0], -1), (data['x'][-1], 1)])")
         mock_add_item.assert_called_once()
-        curve = cast(pg.PlotCurveItem, mock_add_item.call_args[0][0])
+        curve = cast(pg.PlotCurveItem, mock_add_item.call_args.args[0])
         assert list(curve.xData) == [0, 1]
         assert list(curve.yData) == [-1, 1]
 

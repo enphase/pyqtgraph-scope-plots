@@ -19,7 +19,7 @@ import numpy as np
 import numpy.typing as npt
 import pyqtgraph as pg
 import simpleeval
-from PySide6.QtCore import QSignalBlocker
+from PySide6.QtCore import QSignalBlocker, QPointF
 from PySide6.QtGui import QAction, QColor, Qt
 from PySide6.QtWidgets import QMenu, QColorDialog, QTableWidgetItem
 from pydantic import BaseModel, model_validator
@@ -176,13 +176,39 @@ class XyRefGeoScatter(XyRefGeoBasePoints):
         return [pg.ScatterPlotItem(x=xs, y=ys)]
 
 
+class XyRefGeoText(XyRefGeoDrawer):
+    def __init__(self, x: float, y: float, text: str):
+        self._x = x
+        self._y = y
+        self._text = text
+
+    @classmethod
+    def _fn_name(cls) -> str:
+        return "text"
+
+    @classmethod
+    def _fn_doc(cls) -> str:
+        return f"""`{cls._fn_name()}(x, y, text)`: draw text at the specified point"""
+
+    def _draw(self) -> Sequence[pg.GraphicsObject]:
+        text_item = pg.TextItem(text=self._text)
+        text_item.setPos(QPointF(self._x, self._y))
+        return [text_item]
+
+
 class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
     """Mixin into XyPlotWidget that adds support for reference geometry as a polyline.
     For signal purposes, reference geometry is counted as a data item change."""
 
     _MODEL_BASES = [XyRefGeoModel]
 
-    _REFGEO_CLASSES: List[Type[XyRefGeoDrawer]] = [XyRefGeoVLine, XyRefGeoHLine, XyRefGeoPolyline, XyRefGeoScatter]
+    _REFGEO_CLASSES: List[Type[XyRefGeoDrawer]] = [
+        XyRefGeoVLine,
+        XyRefGeoHLine,
+        XyRefGeoPolyline,
+        XyRefGeoScatter,
+        XyRefGeoText,
+    ]
 
     _Z_VALUE_REFGEO = -100  # below other geometry
 

@@ -216,14 +216,16 @@ class XyRefGeoText(XyRefGeoDrawer):
 
     @classmethod
     def _fn_doc(cls) -> str:
-        return f"""`{cls._fn_name()}(x, y, text, [ha="{'|'.join(cls._HORIZONTAL_ALIGN_ANCHOR.keys())}"], "
-        f"[va="{'|'.join(cls._VERTICAL_ALIGN_ANCHOR.keys())}"])`: draw text at the specified point"""
+        return (
+            f"""`{cls._fn_name()}(x, y, text, [ha="{'|'.join(cls._HORIZONTAL_ALIGN_ANCHOR.keys())}"], """
+            f"""[va="{'|'.join(cls._VERTICAL_ALIGN_ANCHOR.keys())}"])`: draw text at the specified point"""
+        )
 
     def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
         anchor_x = self._HORIZONTAL_ALIGN_ANCHOR.get(self._ha)
-        assert anchor_x is not None, f"unknown horizontalalignment {self._ha}"
+        assert anchor_x is not None, f"unknown ha {self._ha}"
         anchor_y = self._VERTICAL_ALIGN_ANCHOR.get(self._va)
-        assert anchor_y is not None, f"unknown verticalalignment {self._va}"
+        assert anchor_y is not None, f"unknown va {self._va}"
         text_item = pg.TextItem(text=self._text, color=color, anchor=(anchor_x, anchor_y))
         text_item.setPos(QPointF(self._x, self._y))
         return [text_item]

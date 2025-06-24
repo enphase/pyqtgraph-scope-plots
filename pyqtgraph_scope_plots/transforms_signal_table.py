@@ -19,9 +19,10 @@ import numpy as np
 import numpy.typing as npt
 import simpleeval
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QTableWidgetItem, QMenu, QInputDialog, QLineEdit
+from PySide6.QtWidgets import QTableWidgetItem, QMenu
 from pydantic import BaseModel
 
+from .code_input_dialog import CodeInputDialog
 from .multi_plot_widget import MultiPlotWidget
 from .signals_table import ContextMenuSignalsTable
 from .util import IdentityCacheDict, DataTopModel, HasSaveLoadDataConfig, BaseTopModel, not_none
@@ -246,12 +247,11 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
 
         err_msg = ""
         while True:
-            text, ok = QInputDialog().getText(
+            text, ok = CodeInputDialog.getText(
                 self,
                 f"Function for {', '.join(selected_data_names)}",
-                "Function code, use 'x' for current value, 't' for the timestamp, and\n"
-                "'data['...']' or 'data.get('...')' to access other data at the same timestamp" + err_msg,
-                QLineEdit.EchoMode.Normal,
+                "Function code, use `x` for current value, `t` for the timestamp, and  \n  "
+                "`data['...']` or `data.get('...')` to access other data at the same timestamp" + err_msg,
                 text,
             )
             if not ok:
@@ -261,4 +261,4 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
                 self._plots.set_transform(selected_data_names, text)
                 return
             except SyntaxError as exc:
-                err_msg = f"\n\n{exc.__class__.__name__}: {exc}"
+                err_msg = f"""\n\n<br/>`{exc.__class__.__name__}: {exc}`"""

@@ -21,6 +21,7 @@ from PySide6.QtWidgets import QInputDialog
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots import MultiPlotWidget, TransformsSignalsTable, TransformsPlotWidget
+from pyqtgraph_scope_plots.code_input_dialog import CodeInputDialog
 from pyqtgraph_scope_plots.transforms_signal_table import TransformsDataStateModel
 from pyqtgraph_scope_plots.util.util import not_none
 from .common_testdata import DATA
@@ -85,7 +86,7 @@ def test_transform_ui(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> N
     target = transforms_table.visualItemRect(
         not_none(transforms_table.item(1, transforms_table.COL_TRANSFORM))
     ).center()
-    with mock.patch.object(QInputDialog, "getText") as mock_input:  # allow getting with longer data
+    with mock.patch.object(CodeInputDialog, "getText") as mock_input:  # allow getting with longer data
         mock_input.return_value = ("x + data['0']", True)
         menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
         qtbot.waitUntil(lambda: transforms_plots._apply_transform("1", DATA).tolist() == [0.51, 1.25, 0.5])
@@ -98,7 +99,7 @@ def test_transform_ui_syntaxerror(qtbot: QtBot, transforms_plots: TransformsPlot
     target = transforms_table.visualItemRect(
         not_none(transforms_table.item(0, transforms_table.COL_TRANSFORM))
     ).center()
-    with mock.patch.object(QInputDialog, "getText") as mock_input:  # test error on missing values
+    with mock.patch.object(CodeInputDialog, "getText") as mock_input:  # test error on missing values
         mock_value = ("is", True)  # Python keyword, invalid syntax
 
         def mock_value_update(*args: Any, **kwargs: Any) -> Tuple[str, bool]:
@@ -118,19 +119,19 @@ def test_transform_ui_error(qtbot: QtBot, transforms_plots: TransformsPlotWidget
     target = transforms_table.visualItemRect(
         not_none(transforms_table.item(0, transforms_table.COL_TRANSFORM))
     ).center()
-    with mock.patch.object(QInputDialog, "getText") as mock_input:  # test error on missing values
+    with mock.patch.object(CodeInputDialog, "getText") as mock_input:  # test error on missing values
         mock_input.return_value = ("ducks", True)
         menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
         qtbot.waitUntil(lambda: isinstance(transforms_plots._apply_transform("0", DATA), Exception))  # must evaluate
         qtbot.waitUntil(lambda: "NameNotDefined" in transforms_table.item(0, transforms_table.COL_TRANSFORM).text())
 
-    with mock.patch.object(QInputDialog, "getText") as mock_input:  # test error on missing values
+    with mock.patch.object(CodeInputDialog, "getText") as mock_input:  # test error on missing values
         mock_input.return_value = ("x + data['1']", True)
         menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
         qtbot.waitUntil(lambda: isinstance(transforms_plots._apply_transform("0", DATA), Exception))  # must evaluate
         qtbot.waitUntil(lambda: "KeyError" in transforms_table.item(0, transforms_table.COL_TRANSFORM).text())
 
-    with mock.patch.object(QInputDialog, "getText") as mock_input:  # test error on missing values
+    with mock.patch.object(CodeInputDialog, "getText") as mock_input:  # test error on missing values
         mock_input.return_value = ("'ducks'", True)
         menu_action_by_name(context_menu(qtbot, transforms_table, target), "set function").trigger()
         qtbot.waitUntil(lambda: isinstance(transforms_plots._apply_transform("0", DATA), Exception))  # must evaluate

@@ -182,7 +182,7 @@ class XyRefGeoScatter(XyRefGeoBasePoints):
     def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
         xs, ys = self._get_xy()
         if isinstance(self._marker, str):
-            pg_symbol: Union[str, List[str]] = self._MARKER_MAP.get(self._marker)
+            pg_symbol: Optional[Union[str, List[str]]] = self._MARKER_MAP.get(self._marker)
             assert pg_symbol is not None, f"unknown marker {self._marker}"
         elif isinstance(self._marker, list):
             pg_symbol = []
@@ -196,10 +196,19 @@ class XyRefGeoScatter(XyRefGeoBasePoints):
 
 
 class XyRefGeoText(XyRefGeoDrawer):
-    def __init__(self, x: float, y: float, text: str):
+    _HORIZONTAL_ALIGN_ANCHOR = {  # map from matplotlib style alignment to pyqtgraph anchor
+        "left": 0.0,
+        "center": 0.5,
+        "right": 1.0,
+    }
+    _VERTICAL_ALIGN_ANCHOR = {"bottom": 1.0, "center": 0.5, "top": 0.0}
+
+    def __init__(self, x: float, y: float, text: str, *, ha: str = "left", va: str = "bottom"):
         self._x = x
         self._y = y
         self._text = text
+        self._ha = ha
+        self._va = va
 
     @classmethod
     def _fn_name(cls) -> str:
@@ -207,10 +216,15 @@ class XyRefGeoText(XyRefGeoDrawer):
 
     @classmethod
     def _fn_doc(cls) -> str:
-        return f"""`{cls._fn_name()}(x, y, text)`: draw text at the specified point"""
+        return f"""`{cls._fn_name()}(x, y, text, [ha="{'|'.join(cls._HORIZONTAL_ALIGN_ANCHOR.keys())}"], "
+        f"[va="{'|'.join(cls._VERTICAL_ALIGN_ANCHOR.keys())}"])`: draw text at the specified point"""
 
     def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
-        text_item = pg.TextItem(text=self._text, color=color)
+        anchor_x = self._HORIZONTAL_ALIGN_ANCHOR.get(self._ha)
+        assert anchor_x is not None, f"unknown horizontalalignment {self._ha}"
+        anchor_y = self._VERTICAL_ALIGN_ANCHOR.get(self._va)
+        assert anchor_y is not None, f"unknown verticalalignment {self._va}"
+        text_item = pg.TextItem(text=self._text, color=color, anchor=(anchor_x, anchor_y))
         text_item.setPos(QPointF(self._x, self._y))
         return [text_item]
 

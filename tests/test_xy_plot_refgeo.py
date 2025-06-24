@@ -224,6 +224,7 @@ def test_refgeo_visibility_table(qtbot: QtBot, visibility_plot: RefGeoWithVisibi
 
     visibility_plot.set_ref_geometry_fn("plot(x=[-1, 1], y=[-1, -1])")
     table.item(0, table.COL_VISIBILITY).setCheckState(Qt.CheckState.Unchecked)
+    assert isinstance(visibility_plot._refgeo_objs[0], list)
     assert not visibility_plot._refgeo_objs[0][0].isVisible()
 
     table.item(0, table.COL_VISIBILITY).setCheckState(Qt.CheckState.Checked)

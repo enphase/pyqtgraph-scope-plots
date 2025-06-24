@@ -101,7 +101,7 @@ class XyRefGeoHLine(XyRefGeoDrawer):
 
     @classmethod
     def _fn_doc(cls) -> str:
-        return f"""`{cls._fn_name()}(x)`: draws a horizontal line"""
+        return f"""`{cls._fn_name()}(y)`: draws a horizontal line"""
 
     def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
         return [pg.InfiniteLine(pos=(0, self._y), angle=0, pen=color)]
@@ -136,7 +136,7 @@ class XyRefGeoBasePoints(XyRefGeoDrawer):
 
 
 class XyRefGeoPolyline(XyRefGeoBasePoints):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
     @classmethod
@@ -145,9 +145,7 @@ class XyRefGeoPolyline(XyRefGeoBasePoints):
 
     @classmethod
     def _fn_doc(cls) -> str:
-        return (
-            f"""`{cls._fn_name()}(x=[...], y=[...] | pts=[*(x, y)])`: draws a polyline through the specified points"""
-        )
+        return f"""`{cls._fn_name()}(x=[...], y=[...] | pts=[(x, y), ...])`: draws a polyline through the specified points"""
 
     def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
         xs, ys = self._get_xy()
@@ -155,7 +153,7 @@ class XyRefGeoPolyline(XyRefGeoBasePoints):
 
 
 class XyRefGeoScatter(XyRefGeoBasePoints):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
     @classmethod
@@ -164,7 +162,7 @@ class XyRefGeoScatter(XyRefGeoBasePoints):
 
     @classmethod
     def _fn_doc(cls) -> str:
-        return f"""`{cls._fn_name()}(x=[...], y=[...] | pts=[*(x, y)])`: draws the specified points"""
+        return f"""`{cls._fn_name()}(x=[...], y=[...] | pts=[(x, y), ...])`: draws the specified points"""
 
     def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
         xs, ys = self._get_xy()

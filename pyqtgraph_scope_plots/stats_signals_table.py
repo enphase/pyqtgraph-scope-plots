@@ -13,13 +13,14 @@
 #    limitations under the License.
 
 import math
-import queue
+import time
 import weakref
-from typing import Dict, Tuple, List, Any, NamedTuple
+from functools import partial
+from typing import Dict, Tuple, List, Any
 
 import numpy as np
 import numpy.typing as npt
-from PySide6.QtCore import Signal, QObject, QThread
+from PySide6.QtCore import Signal, QObject, QThread, QMutex, QMutexLocker
 from PySide6.QtWidgets import QTableWidgetItem
 
 from .signals_table import HasRegionSignalsTable
@@ -46,63 +47,77 @@ class StatsSignalsTable(HasRegionSignalsTable):
 
     _FULL_RANGE = (-float("inf"), float("inf"))
 
-    class StatsCalculatorSignals(QObject):
+    class StatsCalculatorWorker(QObject):
+        """Stats calculated in a separate thread to avoid blocking the main GUI thread when large regions
+        are selected. The thread is persistent.
+        This uses shared state variable to communicate the next computation task with a request signal to
+        wake up the thread. Earlier, unserviced requests are clobbered."""
+
+        request = Signal()
         update = Signal(object, object, object)  # input array, region, {stat (by offset col) -> value}
 
-    class StatsCalculatorThread(QThread):
-        """Stats calculated in a separate thread to avoid blocking the main GUI thread when large regions
-        are selected.
-        This thread is persistent and monitors its queue for requests to work. Requests (near)immediately
-        override whatever previous computation was in progress and are not queued.
-        Thread sleeps when current task and queue is empty."""
+        def __init__(self):
+            super().__init__()
+            self._request_mutex = QMutex()
+            self._request_data: List[
+                Tuple[weakref.ref[npt.NDArray[np.float64]], weakref.ref[npt.NDArray[np.float64]]]
+            ] = []
+            self._last_data = self._request_data
+            self._request_region: Tuple[float, float] = StatsSignalsTable._FULL_RANGE
+            self._last_region = self._request_region
+            self._debounce_target: int = 0  # earliest time to execute this task, for debouncing
+            self.request.connect(self._process)
 
-        class Task(NamedTuple):
-            """A request for computing statistics of some ys and region (over xs, inclusive).
-            data is stored as a weakref to terminate computation early if data goes out of scope"""
+        def update_task(
+            self,
+            data: List[Tuple[weakref.ref[npt.NDArray[np.float64]], weakref.ref[npt.NDArray[np.float64]]]],
+            region: Tuple[float, float],
+            delay_ms: int,
+        ) -> None:
+            """Called from the main thread to update the task."""
+            with QMutexLocker(self._request_mutex):
+                self._request_data = data
+                self._request_region = region
+                if delay_ms > 0:
+                    self._debounce_target = time.time_ns() + delay_ms * 1000000
+            self.request.emit()
 
-            data: List[Tuple[weakref.ref[npt.NDArray[np.float64]], weakref.ref[npt.NDArray[np.float64]]]]
-            region: Tuple[float, float]
+        # @Slot()
+        def _process(self) -> None:
+            """Runs an iteration of processing the request, if it is new."""
+            with QMutexLocker(self._request_mutex):
+                request_data = self._request_data
+                request_region = self._request_region
+                debounce_target = self._debounce_target
+            if request_data == self._last_data and request_region == self._last_region:
+                return
+            delay_time = debounce_target - time.time_ns()
+            if delay_time > 0:
+                QThread.msleep(delay_time // 1000000)
+                with QMutexLocker(self._request_mutex):
+                    if request_data != self._request_data or request_region != self._request_region:
+                        return  # data changed, run in next _process
 
-        def __init__(self, parent: Any):
-            super().__init__(parent)
-            self.signals = StatsSignalsTable.StatsCalculatorSignals()
-            self.queue: queue.Queue[StatsSignalsTable.StatsCalculatorThread.Task] = queue.Queue()
+            self._last_data = request_data
+            self._last_region = request_region
 
-        def run(self) -> None:
-            while True:
-                task = self.queue.get()  # always get a task
+            for xs_ys_ref in request_data:
+                with QMutexLocker(self._request_mutex):
+                    if self._debounce_target != debounce_target:
+                        return
 
-                stable: bool = False
-                while not stable:
-                    stable = True
-                    QThread.msleep(100)  # add a delay to filter out fast updates, e.g. moving cursor
-                    while True:  # get the latest task, clobbering earlier ones
-                        try:
-                            task = self.queue.get(timeout=0)
-                            stable = False
-                        except queue.Empty:
-                            break
-
-                for xs_ys_ref in task.data:
-                    if not self.queue.empty():  # new task, drop current task
-                        break
-
-                    xs = xs_ys_ref[0]()
-                    ys = xs_ys_ref[1]()
-                    if xs is None or ys is None:  # skip objects that have been deleted
-                        continue
-                    low_index, high_index = HasRegionSignalsTable._indices_of_region(xs, task.region)
-                    if low_index is None or high_index is None:  # empty set
-                        ys_region = np.array([])
-                    else:
-                        ys_region = ys[low_index:high_index]
-                    stats_dict = self._calculate_stats(ys_region)
-                    self.signals.update.emit(ys, task.region, stats_dict)
-                    QThread.msleep(1)  # yield the thread to ensure this is low priority
-
-        def terminate_wait(self) -> None:
-            self.terminate()
-            self.wait()  # needed otherwise pytest fails on Linux
+                xs = xs_ys_ref[0]()
+                ys = xs_ys_ref[1]()
+                if xs is None or ys is None:  # skip objects that have been deleted
+                    continue
+                low_index, high_index = HasRegionSignalsTable._indices_of_region(xs, request_region)
+                if low_index is None or high_index is None:  # empty set
+                    ys_region = np.array([])
+                else:
+                    ys_region = ys[low_index:high_index]
+                stats_dict = self._calculate_stats(ys_region)
+                self.update.emit(ys, request_region, stats_dict)
+                QThread.yieldCurrentThread()  # yield the thread to ensure this is low priority
 
         @classmethod
         def _calculate_stats(cls, ys: npt.NDArray[np.float64]) -> Dict[int, float]:
@@ -137,13 +152,21 @@ class StatsSignalsTable(HasRegionSignalsTable):
         self._full_range_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
         self._region_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
 
-        self._plots.sigDataUpdated.connect(self._update_stats_task)
-        self._plots.sigCursorRangeChanged.connect(self._update_stats_task)
+        self._plots.sigDataUpdated.connect(lambda: self._update_stats_task(0))
+        self._plots.sigCursorRangeChanged.connect(lambda: self._update_stats_task(100))
 
-        self._stats_compute_thread = self.StatsCalculatorThread(self)
-        self._stats_compute_thread.signals.update.connect(self._on_stats_updated)
-        self._stats_compute_thread.start(QThread.Priority.LowestPriority)
-        self.destroyed.connect(lambda: self._stats_compute_thread.terminate_wait())
+        stats_thread = QThread()  # not owned by this to allow this to be destroyed
+        stats_thread.start(QThread.Priority.LowestPriority)
+        self.destroyed.connect(partial(self._on_destroyed, stats_thread))
+
+        self._stats_worker = self.StatsCalculatorWorker()
+        self._stats_worker.moveToThread(stats_thread)
+        self._stats_worker.update.connect(self._on_stats_updated)
+
+    @staticmethod
+    def _on_destroyed(thread_object: QThread):
+        thread_object.quit()
+        thread_object.wait()
 
     def _on_stats_updated(
         self, input_arr: npt.NDArray[np.float64], input_region: Tuple[float, float], stats_dict: Dict[int, float]
@@ -156,7 +179,7 @@ class StatsSignalsTable(HasRegionSignalsTable):
         if input_region == region:  # update display as needed
             self._update_stats_display()
 
-    def _update_stats_task(self) -> None:
+    def _update_stats_task(self, delay_ms: int) -> None:
         region = HasRegionSignalsTable._region_of_plot(self._plots)
         data_items = [  # filter out enum types
             (name, (xs, ys)) for name, (xs, ys) in self._plots._data.items() if np.issubdtype(ys.dtype, np.number)
@@ -169,12 +192,8 @@ class StatsSignalsTable(HasRegionSignalsTable):
             ]
         else:
             needed_stats = [(weakref.ref(xs), weakref.ref(ys)) for name, (xs, ys) in data_items]
-        try:
-            self._stats_compute_thread.queue.get(block=False, timeout=0)  # clear a prior element
-        except queue.Empty:
-            pass
-        self._stats_compute_thread.queue.put(self.StatsCalculatorThread.Task(needed_stats, region), block=False)
 
+        self._stats_worker.update_task(needed_stats, region, delay_ms)
         self._update_stats_display()
 
     def _update_stats_display(self) -> None:

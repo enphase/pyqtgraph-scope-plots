@@ -92,9 +92,9 @@ class HasRegionSignalsTable(SignalsTable):
         Expands the region slightly to account for floating point imprecision"""
         ROUNDING_FACTOR = 2e-7
 
-        region = (region[0] - region[0] * ROUNDING_FACTOR, region[1] + region[1] * ROUNDING_FACTOR)
-        low_index = bisect.bisect_left(ts, region[0])  # inclusive
-        high_index = bisect.bisect_right(ts, region[1])  # exclusive
+        tolerance = (region[1] - region[0]) * ROUNDING_FACTOR
+        low_index = bisect.bisect_left(list(ts), region[0] - tolerance)  # inclusive
+        high_index = bisect.bisect_right(list(ts), region[1] + tolerance)  # exclusive
         if low_index >= high_index:  # empty set
             return None, None
         else:

@@ -20,7 +20,7 @@ from typing import Dict, Tuple, List, Any
 
 import numpy as np
 import numpy.typing as npt
-from PySide6.QtCore import Signal, QObject, QThread, QMutex, QMutexLocker, Qt
+from PySide6.QtCore import Signal, QObject, QThread, QMutex, QMutexLocker
 from PySide6.QtWidgets import QTableWidgetItem
 
 from .signals_table import HasRegionSignalsTable

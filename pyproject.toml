@@ -71,7 +71,7 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["tests.*"]
-disable_error_code = ["union-attr"]
+disable_error_code = ["union-attr", "no-untyped-call"]
 
 [tool.pytest]
 qt_api = "pyside6"

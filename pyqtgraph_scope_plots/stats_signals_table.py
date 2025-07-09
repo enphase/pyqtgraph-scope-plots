@@ -74,7 +74,8 @@ class StatsSignalsTable(HasRegionSignalsTable):
             region: Tuple[float, float],
             delay_ms: int,
         ) -> None:
-            """Called from the main thread to update the task."""
+            """Called from the main thread to request a stats calculation be run on the input data set
+            over the input region, and with an optional debouncing delay before starting."""
             with QMutexLocker(self._request_mutex):
                 self._request_data = data
                 self._request_region = region

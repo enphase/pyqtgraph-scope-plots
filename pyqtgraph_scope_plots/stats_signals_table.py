@@ -20,7 +20,7 @@ from typing import Dict, Tuple, List, Any
 
 import numpy as np
 import numpy.typing as npt
-from PySide6.QtCore import Signal, QObject, QThread, QMutex, QMutexLocker
+from PySide6.QtCore import Signal, QObject, QThread, QMutex, QMutexLocker, Qt
 from PySide6.QtWidgets import QTableWidgetItem
 
 from .signals_table import HasRegionSignalsTable
@@ -65,7 +65,7 @@ class StatsSignalsTable(HasRegionSignalsTable):
             self._last_data = self._request_data
             self._request_region: Tuple[float, float] = StatsSignalsTable._FULL_RANGE
             self._last_region = self._request_region
-            self._debounce_target: int = 0  # earliest time to execute this task, for debouncing
+            self._debounce_target_ns: int = 0  # earliest time to execute this task, for debouncing
             self.request.connect(self._process)
 
         def update_task(
@@ -79,17 +79,17 @@ class StatsSignalsTable(HasRegionSignalsTable):
                 self._request_data = data
                 self._request_region = region
                 if delay_ms > 0:
-                    self._debounce_target = time.time_ns() + delay_ms * 1000000
+                    self._debounce_target_ns = time.time_ns() + delay_ms * 1000000
             self.request.emit()
 
         def _process(self) -> None:
             """Processes the current request, if it is new."""
             while True:  # wait for debounce target to stabilize
                 with QMutexLocker(self._request_mutex):
-                    debounce_target = self._debounce_target
-                delay_time = debounce_target - time.time_ns()
-                if delay_time > 0:
-                    QThread.msleep(delay_time // 1000000)
+                    debounce_target_ns = self._debounce_target_ns
+                delay_time_ns = debounce_target_ns - time.time_ns()
+                if delay_time_ns > 0:
+                    QThread.msleep(delay_time_ns // 1000000)
                 else:
                     break
 
@@ -103,7 +103,7 @@ class StatsSignalsTable(HasRegionSignalsTable):
 
             for xs_ys_ref in request_data:
                 with QMutexLocker(self._request_mutex):
-                    if self._debounce_target != debounce_target:
+                    if self._debounce_target_ns != debounce_target_ns:
                         return
 
                 xs = xs_ys_ref[0]()
@@ -152,8 +152,8 @@ class StatsSignalsTable(HasRegionSignalsTable):
         self._full_range_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
         self._region_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
 
-        self._plots.sigDataUpdated.connect(lambda: self._update_stats_task(0))
-        self._plots.sigCursorRangeChanged.connect(lambda: self._update_stats_task(100))
+        self._plots.sigDataUpdated.connect(lambda: self._update_stats_task(0, False))
+        self._plots.sigCursorRangeChanged.connect(lambda: self._update_stats_task(100, True))
 
         stats_thread = QThread()  # not owned by this to allow this to be destroyed
         stats_thread.start(QThread.Priority.LowestPriority)
@@ -177,9 +177,9 @@ class StatsSignalsTable(HasRegionSignalsTable):
         elif input_region == region:
             self._region_stats.set(input_arr, region, [], stats_dict)
         if input_region == region:  # update display as needed
-            self._update_stats_display()
+            self._update_stats_display(False)
 
-    def _update_stats_task(self, delay_ms: int) -> None:
+    def _update_stats_task(self, delay_ms: int, clear_table: bool) -> None:
         region = HasRegionSignalsTable._region_of_plot(self._plots)
         data_items = [  # filter out enum types
             (name, (xs, ys)) for name, (xs, ys) in self._plots._data.items() if np.issubdtype(ys.dtype, np.number)
@@ -194,9 +194,9 @@ class StatsSignalsTable(HasRegionSignalsTable):
             needed_stats = [(weakref.ref(xs), weakref.ref(ys)) for name, (xs, ys) in data_items]
 
         self._stats_worker.update_task(needed_stats, region, delay_ms)
-        self._update_stats_display()
+        self._update_stats_display(clear_table)
 
-    def _update_stats_display(self) -> None:
+    def _update_stats_display(self, clear_table: bool) -> None:
         for row, name in enumerate(self._data_items.keys()):
             xs, ys = self._plots._data.get(name, (None, None))
             if xs is None or ys is None:
@@ -211,8 +211,9 @@ class StatsSignalsTable(HasRegionSignalsTable):
                 stats_dict = self._region_stats.get(ys, region, [], {})
 
             for col_offset in self.STATS_COLS:
+                item = not_none(self.item(row, self.COL_STAT + col_offset))
                 if col_offset in stats_dict:
-                    text_value = self._plots.render_value(name, stats_dict[col_offset])
+                    item.setText(self._plots.render_value(name, stats_dict[col_offset]))
                 else:
-                    text_value = ""
-                not_none(self.item(row, self.COL_STAT + col_offset)).setText(text_value)
+                    if clear_table:
+                        item.setText("")

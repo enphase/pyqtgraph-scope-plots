@@ -93,8 +93,8 @@ class HasRegionSignalsTable(SignalsTable):
         ROUNDING_FACTOR = 2e-7
 
         tolerance = (region[1] - region[0]) * ROUNDING_FACTOR
-        low_index = bisect.bisect_left(list(ts), region[0] - tolerance)  # inclusive
-        high_index = bisect.bisect_right(list(ts), region[1] + tolerance)  # exclusive
+        low_index = bisect.bisect_left(ts, region[0] - tolerance)  # inclusive
+        high_index = bisect.bisect_right(ts, region[1] + tolerance)  # exclusive
         if low_index >= high_index:  # empty set
             return None, None
         else:

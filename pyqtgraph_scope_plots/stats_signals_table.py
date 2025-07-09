@@ -56,7 +56,7 @@ class StatsSignalsTable(HasRegionSignalsTable):
         request = Signal()
         update = Signal(object, object, object)  # input array, region, {stat (by offset col) -> value}
 
-        def __init__(self):
+        def __init__(self) -> None:
             super().__init__()
             self._request_mutex = QMutex()
             self._request_data: List[
@@ -164,7 +164,7 @@ class StatsSignalsTable(HasRegionSignalsTable):
         self._stats_worker.update.connect(self._on_stats_updated)
 
     @staticmethod
-    def _on_destroyed(thread_object: QThread):
+    def _on_destroyed(thread_object: QThread) -> None:
         thread_object.quit()
         thread_object.wait()
 

@@ -82,22 +82,22 @@ class StatsSignalsTable(HasRegionSignalsTable):
                     self._debounce_target = time.time_ns() + delay_ms * 1000000
             self.request.emit()
 
-        # @Slot()
         def _process(self) -> None:
-            """Runs an iteration of processing the request, if it is new."""
+            """Processes the current request, if it is new."""
+            while True:  # wait for debounce target to stabilize
+                with QMutexLocker(self._request_mutex):
+                    debounce_target = self._debounce_target
+                delay_time = debounce_target - time.time_ns()
+                if delay_time > 0:
+                    QThread.msleep(delay_time // 1000000)
+                else:
+                    break
+
             with QMutexLocker(self._request_mutex):
                 request_data = self._request_data
                 request_region = self._request_region
-                debounce_target = self._debounce_target
             if request_data == self._last_data and request_region == self._last_region:
                 return
-            delay_time = debounce_target - time.time_ns()
-            if delay_time > 0:
-                QThread.msleep(delay_time // 1000000)
-                with QMutexLocker(self._request_mutex):
-                    if request_data != self._request_data or request_region != self._request_region:
-                        return  # data changed, run in next _process
-
             self._last_data = request_data
             self._last_region = request_region
 
@@ -117,7 +117,7 @@ class StatsSignalsTable(HasRegionSignalsTable):
                     ys_region = ys[low_index:high_index]
                 stats_dict = self._calculate_stats(ys_region)
                 self.update.emit(ys, request_region, stats_dict)
-                QThread.yieldCurrentThread()  # yield the thread to ensure this is low priority
+                QThread.msleep(1)  # yield the thread to ensure this is low priority
 
         @classmethod
         def _calculate_stats(cls, ys: npt.NDArray[np.float64]) -> Dict[int, float]:

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "pyqtgraph-scope-plots"
 description = "Scope like plot utilities for pyqtgraph"
 readme = "README.md"
-version = "1.4.0"
+version = "1.4.1"
 authors = [
     { name = "Richard Lin", email = "richardlin@enphaseenergy.com" }
 ]
@@ -71,7 +71,7 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["tests.*"]
-disable_error_code = ["union-attr"]
+disable_error_code = ["union-attr", "no-untyped-call"]
 
 [tool.pytest]
 qt_api = "pyside6"

@@ -15,12 +15,11 @@
 import math
 import time
 import weakref
-from functools import partial
 from typing import Dict, Tuple, List, Any
 
 import numpy as np
 import numpy.typing as npt
-from PySide6.QtCore import Signal, QObject, QThread, QMutex, QMutexLocker, QThreadPool, QRunnable
+from PySide6.QtCore import Signal, QThread, QMutex, QMutexLocker, QThreadPool, QRunnable, QObject
 from PySide6.QtWidgets import QTableWidgetItem
 
 from .signals_table import HasRegionSignalsTable
@@ -47,8 +46,9 @@ class StatsSignalsTable(HasRegionSignalsTable):
 
     _FULL_RANGE = (-float("inf"), float("inf"))
 
-    request = Signal()
-    update = Signal(object, object, object)  # input array, region, {stat (by offset col) -> value}
+    class StatsCalculatorSignals(QObject):
+        # signals don't work with mixins, so this is in its own object
+        update = Signal(object, object, object)  # input array, region, {stat (by offset col) -> value}
 
     class StatsCalculatorWorker(QRunnable):
         """Stats calculated in a separate thread to avoid blocking the main GUI thread when large regions
@@ -94,7 +94,7 @@ class StatsSignalsTable(HasRegionSignalsTable):
                 else:
                     ys_region = ys[low_index:high_index]
                 stats_dict = self._calculate_stats(ys_region)
-                self._parent.update.emit(ys, request_region, stats_dict)
+                self._parent._stats_signals.update.emit(ys, request_region, stats_dict)
                 QThread.msleep(1)  # yield the thread to ensure this is low priority
 
         @classmethod
@@ -143,6 +143,9 @@ class StatsSignalsTable(HasRegionSignalsTable):
 
         # stats threading
         self._stats_threadpool = QThreadPool(maxThreadCount=1)
+        self._stats_threadpool.setThreadPriority(QThread.Priority.LowestPriority)
+        self._stats_signals = self.StatsCalculatorSignals()
+        self._stats_signals.update.connect(self._on_stats_updated)
 
     def _on_stats_updated(
         self, input_arr: npt.NDArray[np.float64], input_region: Tuple[float, float], stats_dict: Dict[int, float]

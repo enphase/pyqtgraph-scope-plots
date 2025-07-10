@@ -142,7 +142,8 @@ class StatsSignalsTable(HasRegionSignalsTable):
         self._debounce_target_ns: int = 0  # earliest time to execute this task, for debouncing
 
         # stats threading
-        self._stats_threadpool = QThreadPool(maxThreadCount=1)
+        self._stats_threadpool = QThreadPool()
+        self._stats_threadpool.setMaxThreadCount(1)
         self._stats_threadpool.setThreadPriority(QThread.Priority.LowestPriority)
         self._stats_signals = self.StatsCalculatorSignals()
         self._stats_signals.update.connect(self._on_stats_updated)

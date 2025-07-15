@@ -74,7 +74,7 @@ class StatsSignalsTable(HasRegionSignalsTable):
             with QMutexLocker(self._parent._request_mutex):
                 request_data = self._parent._request_data
                 request_region = self._parent._request_region
-                if request_data == self._parent._last_data and request_region == self._parent._last_region:
+                if request_data is self._parent._last_data and request_region == self._parent._last_region:
                     return
                 self._parent._last_data = request_data
                 self._parent._last_region = request_region

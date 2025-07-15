@@ -511,6 +511,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         data = self._data
         self._set_data({})  # blank the data while updates happen, for performance
         self._load_model(model)
+        self._disable_stats_action.setChecked(self._table._stats_calculation_disabled)
 
         # force-update data items and data
         data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(self._data_items.items())]

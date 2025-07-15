@@ -15,18 +15,23 @@
 import math
 import time
 import weakref
-from typing import Dict, Tuple, List, Any
+from typing import Dict, Tuple, List, Any, Optional
 
 import numpy as np
 import numpy.typing as npt
 from PySide6.QtCore import Signal, QThread, QMutex, QMutexLocker, QThreadPool, QRunnable, QObject, Qt
 from PySide6.QtWidgets import QTableWidgetItem
+from pydantic import BaseModel
 
 from .signals_table import HasRegionSignalsTable
-from .util import IdentityCacheDict, not_none
+from .util import IdentityCacheDict, HasSaveLoadDataConfig, not_none
 
 
-class StatsSignalsTable(HasRegionSignalsTable):
+class StatsTableStateModel(BaseModel):
+    stats_disabled: Optional[bool] = None
+
+
+class StatsSignalsTable(HasRegionSignalsTable, HasSaveLoadDataConfig):
     """Mixin into SignalsTable with statistics rows. Optional range to specify computation of statistics.
     Values passed into set_data must all be numeric."""
 
@@ -150,6 +155,17 @@ class StatsSignalsTable(HasRegionSignalsTable):
         self._stats_threadpool.setThreadPriority(QThread.Priority.LowestPriority)
         self._stats_signals = self.StatsCalculatorSignals()
         self._stats_signals.update.connect(self._on_stats_updated)
+
+    def _write_model(self, model: BaseModel) -> None:
+        assert isinstance(model, StatsTableStateModel)
+        super()._write_model(model)
+        model.stats_disabled = self._stats_calculation_disabled
+
+    def _load_model(self, model: BaseModel) -> None:
+        assert isinstance(model, StatsTableStateModel)
+        super()._load_model(model)
+        if model.stats_disabled is not None:
+            self.disable_stats(model.stats_disabled)
 
     def disable_stats(self, disable: bool = True):
         """Call this to disable stats calculation and to blank the table, or re-enable the calculation."""

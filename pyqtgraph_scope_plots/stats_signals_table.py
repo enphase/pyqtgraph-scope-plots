@@ -19,7 +19,7 @@ from typing import Dict, Tuple, List, Any
 
 import numpy as np
 import numpy.typing as npt
-from PySide6.QtCore import Signal, QThread, QMutex, QMutexLocker, QThreadPool, QRunnable, QObject
+from PySide6.QtCore import Signal, QThread, QMutex, QMutexLocker, QThreadPool, QRunnable, QObject, Qt
 from PySide6.QtWidgets import QTableWidgetItem
 
 from .signals_table import HasRegionSignalsTable
@@ -80,6 +80,8 @@ class StatsSignalsTable(HasRegionSignalsTable):
                 self._parent._last_region = request_region
 
             for xs_ys_ref in request_data:
+                if self._parent._stats_calculation_disabled:  # terminate if disabled
+                    return
                 with QMutexLocker(self._parent._request_mutex):
                     if self._parent._debounce_target_ns != debounce_target_ns:
                         return
@@ -134,6 +136,7 @@ class StatsSignalsTable(HasRegionSignalsTable):
         self._plots.sigCursorRangeChanged.connect(lambda: self._update_stats_task(100, True))
 
         # shared state for current stats request
+        self._stats_calculation_disabled = False
         self._request_mutex = QMutex()
         self._request_data: List[Tuple[weakref.ref[npt.NDArray[np.float64]], weakref.ref[npt.NDArray[np.float64]]]] = []
         self._last_data = self._request_data
@@ -148,6 +151,19 @@ class StatsSignalsTable(HasRegionSignalsTable):
         self._stats_signals = self.StatsCalculatorSignals()
         self._stats_signals.update.connect(self._on_stats_updated)
 
+    def disable_stats(self, disable: bool = True):
+        """Call this to disable stats calculation and to blank the table, or re-enable the calculation."""
+        self._stats_calculation_disabled = disable
+        for row, name in enumerate(self._data_items.keys()):
+            for col in self.STATS_COLS:
+                item = not_none(self.item(row, self.COL_STAT + col))
+                if disable:  # clear table on disable
+                    item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+                    item.setText("")
+                else:
+                    item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEnabled)
+                    self._update_stats_task(0, True)  # populate the table again
+
     def _on_stats_updated(
         self, input_arr: npt.NDArray[np.float64], input_region: Tuple[float, float], stats_dict: Dict[int, float]
     ) -> None:
@@ -160,6 +176,9 @@ class StatsSignalsTable(HasRegionSignalsTable):
             self._update_stats_display(False)
 
     def _update_stats_task(self, delay_ms: int, clear_table: bool) -> None:
+        if self._stats_calculation_disabled:  # don't create a calculation task if disabled
+            return
+
         region = HasRegionSignalsTable._region_of_plot(self._plots)
         data_items = [  # filter out enum types
             (name, (xs, ys)) for name, (xs, ys) in self._plots._data.items() if np.issubdtype(ys.dtype, np.number)
@@ -183,6 +202,9 @@ class StatsSignalsTable(HasRegionSignalsTable):
         self._update_stats_display(clear_table)
 
     def _update_stats_display(self, clear_table: bool) -> None:
+        if self._stats_calculation_disabled:  # don't update the display if disabled
+            return
+
         for row, name in enumerate(self._data_items.keys()):
             xs, ys = self._plots._data.get(name, (None, None))
             if xs is None or ys is None:

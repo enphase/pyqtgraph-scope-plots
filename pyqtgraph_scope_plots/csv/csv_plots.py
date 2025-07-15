@@ -247,6 +247,10 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._plots.set_thickness(value)
         self._table.set_thickness(value)
 
+    def _on_disable_stats(self) -> None:
+        assert isinstance(self._table, StatsSignalsTable)
+        self._table.disable_stats(self._disable_stats_action.isChecked())
+
     def _make_controls(self) -> QWidget:
         button_load = QToolButton()
         button_load.setText("Load CSV")
@@ -295,6 +299,10 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         line_width_action = QAction("Set Line Width", button_menu)
         line_width_action.triggered.connect(self._on_line_width_action)
         button_menu.addAction(line_width_action)
+        self._disable_stats_action = QAction("Disable Stats", button_menu)
+        self._disable_stats_action.setCheckable(True)
+        self._disable_stats_action.toggled.connect(self._on_disable_stats)
+        button_menu.addAction(self._disable_stats_action)
         animation_action = QAction("Create Animation", button_menu)
         animation_action.triggered.connect(partial(self._start_animation_ui_flow, ""))
         button_menu.addAction(animation_action)

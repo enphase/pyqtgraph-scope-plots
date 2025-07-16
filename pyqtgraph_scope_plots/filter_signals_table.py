@@ -54,8 +54,6 @@ class FilterOverlay(QWidget):
         self._filter_input.setText("")
         self._results.setText("")
         self.show()
-        self.raise_()
-        self.activateWindow()
         self.setFocus()
 
     def focusInEvent(self, event: QFocusEvent, /) -> None:

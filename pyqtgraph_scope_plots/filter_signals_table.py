@@ -16,8 +16,8 @@ from functools import partial
 from typing import Any
 
 from PySide6.QtCore import QKeyCombination, QPoint
-from PySide6.QtGui import QAction, Qt, QFocusEvent, QCloseEvent
-from PySide6.QtWidgets import QWidget, QLineEdit, QHBoxLayout, QPushButton, QLabel, QMenu
+from PySide6.QtGui import QAction, Qt, QFocusEvent, QCloseEvent, QColor
+from PySide6.QtWidgets import QWidget, QLineEdit, QHBoxLayout, QPushButton, QLabel, QMenu, QGraphicsDropShadowEffect
 
 from .signals_table import ContextMenuSignalsTable
 
@@ -26,7 +26,7 @@ class FilterOverlay(QWidget):
     def __init__(self, table: "FilterSignalsTable"):
         super().__init__(table)
         self._table = table
-        self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
+        self.setAutoFillBackground(True)
 
         self._filter_input = QLineEdit(self)
         self._filter_input.setMinimumWidth(200)
@@ -34,10 +34,6 @@ class FilterOverlay(QWidget):
         self._filter_input.setPlaceholderText("filter")
         self._filter_input.textEdited.connect(partial(self._on_filter, 0))
         self._filter_input.returnPressed.connect(partial(self._on_filter, 1))  # same as next
-
-        self._close_button = QPushButton("×")
-        self._close_button.setMaximumWidth(20)
-        self._close_button.clicked.connect(self._on_close)
 
         self._close_action = QAction("Close", self)
         self._close_action.setShortcut(Qt.Key.Key_Escape)
@@ -50,7 +46,6 @@ class FilterOverlay(QWidget):
 
         layout = QHBoxLayout(self)
         layout.addWidget(self._filter_input)
-        layout.addWidget(self._close_button)
         layout.addWidget(self._results)
         layout.setContentsMargins(0, 0, 0, 0)
 
@@ -59,6 +54,7 @@ class FilterOverlay(QWidget):
         self._filter_input.setText("")
         self._results.setText("")
         self.show()
+        self.raise_()
         self.activateWindow()
         self.setFocus()
 
@@ -105,7 +101,7 @@ class FilterSignalsTable(ContextMenuSignalsTable):
         menu.addAction(self._filter_action)
 
     def _on_filter(self) -> FilterOverlay:
-        self._filter_overlay.move(self.mapToGlobal(QPoint(0, 0)))
+        self._filter_overlay.move(QPoint(0, 0))
         self._filter_overlay.start()
         return self._filter_overlay
 

@@ -134,6 +134,8 @@ class StatsSignalsTable(HasRegionSignalsTable, HasSaveLoadDataConfig):
         self.setHorizontalHeaderItem(self.COL_STAT + self.COL_STAT_STDEV, QTableWidgetItem("StDev"))
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self._stats_calculation_disabled = False
+
         super().__init__(*args, **kwargs)
         # since calculating stats across the full range is VERY EXPENSIVE, cache the results
         self._full_range_stats = IdentityCacheDict[npt.NDArray[np.float64], Dict[int, float]]()  # array -> stats dict
@@ -143,7 +145,6 @@ class StatsSignalsTable(HasRegionSignalsTable, HasSaveLoadDataConfig):
         self._plots.sigCursorRangeChanged.connect(lambda: self._update_stats_task(100, True))
 
         # shared state for current stats request
-        self._stats_calculation_disabled = False
         self._request_mutex = QMutex()
         self._request_data: List[Tuple[weakref.ref[npt.NDArray[np.float64]], weakref.ref[npt.NDArray[np.float64]]]] = []
         self._last_data = self._request_data
@@ -158,6 +159,10 @@ class StatsSignalsTable(HasRegionSignalsTable, HasSaveLoadDataConfig):
         self._stats_signals = self.StatsCalculatorSignals()
         self._stats_signals.update.connect(self._on_stats_updated)
 
+    def _update(self) -> None:
+        super()._update()
+        self._update_stats_disabled()
+
     def _write_model(self, model: BaseModel) -> None:
         assert isinstance(model, StatsTableStateModel)
         super()._write_model(model)
@@ -169,18 +174,27 @@ class StatsSignalsTable(HasRegionSignalsTable, HasSaveLoadDataConfig):
         if model.stats_disabled is not None:
             self.disable_stats(model.stats_disabled)
 
-    def disable_stats(self, disable: bool = True):
+    def stats_disabled(self) -> bool:
+        """Returns whether stats calculation is disabled."""
+        return self._stats_calculation_disabled
+
+    def disable_stats(self, disable: bool = True) -> None:
         """Call this to disable stats calculation and to blank the table, or re-enable the calculation."""
         self._stats_calculation_disabled = disable
+        self._update_stats_disabled()
+        if not disable:
+            self._update_stats_task(0, True)  # populate the table again
+
+    def _update_stats_disabled(self) -> None:
+        """Updates the table visuals for stats disabled"""
         for row, name in enumerate(self._data_items.keys()):
             for col in self.STATS_COLS:
                 item = not_none(self.item(row, self.COL_STAT + col))
-                if disable:  # clear table on disable
+                if self._stats_calculation_disabled:  # clear table on disable
                     item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
                     item.setText("")
                 else:
                     item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEnabled)
-                    self._update_stats_task(0, True)  # populate the table again
 
     def _on_stats_updated(
         self, input_arr: npt.NDArray[np.float64], input_region: Tuple[float, float], stats_dict: Dict[int, float]

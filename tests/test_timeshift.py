@@ -35,6 +35,7 @@ def timeshifts_plots(qtbot: QtBot) -> TimeshiftPlotWidget:
 
 def test_timeshift(qtbot: QtBot, timeshifts_plots: TimeshiftPlotWidget) -> None:
     timeshifts_table = TimeshiftSignalsTable(timeshifts_plots)
+    timeshifts_table._update()
     # test empty
     qtbot.waitUntil(lambda: timeshifts_plots._apply_timeshift("0", DATA).tolist() == [0.0, 0.1, 1.0, 2.0])
     timeshifts_plots.set_timeshift(["0"], 1)
@@ -50,6 +51,7 @@ def test_timeshift(qtbot: QtBot, timeshifts_plots: TimeshiftPlotWidget) -> None:
 
 def test_timeshift_table(qtbot: QtBot, timeshifts_plots: TimeshiftPlotWidget) -> None:
     timeshifts_table = TimeshiftSignalsTable(timeshifts_plots)
+    timeshifts_table._update()
     timeshifts_table.item(0, timeshifts_table.COL_TIMESHIFT).setText("1")
     timeshifts_table.cellChanged.emit(0, timeshifts_table.COL_TIMESHIFT)
     qtbot.waitUntil(lambda: timeshifts_plots._apply_timeshift("0", DATA).tolist() == [1.0, 1.1, 2.0, 3.0])

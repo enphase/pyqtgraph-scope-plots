@@ -90,3 +90,16 @@ def test_region_empty(qtbot: QtBot, table: StatsSignalsTable) -> None:
     assert table.item(2, table.COL_STAT + table.COL_STAT_AVG).text() == ""
     assert table.item(2, table.COL_STAT + table.COL_STAT_RMS).text() == ""
     assert table.item(2, table.COL_STAT + table.COL_STAT_STDEV).text() == ""
+
+
+def test_disable_enable(qtbot: QtBot, table: StatsSignalsTable) -> None:
+    qtbot.waitUntil(lambda: table.item(0, table.COL_STAT + table.COL_STAT_MIN).text() != "")
+
+    table.disable_stats(True)
+    qtbot.waitUntil(lambda: table.item(0, table.COL_STAT + table.COL_STAT_MIN).text() == "")
+    for row in [0, 1, 2]:
+        for col in table.STATS_COLS:
+            assert table.item(row, table.COL_STAT + col).text() == ""
+
+    table.disable_stats(False)
+    qtbot.waitUntil(lambda: table.item(0, table.COL_STAT + table.COL_STAT_MIN).text() != "")

@@ -49,6 +49,8 @@ class StatsSignalsTable(HasRegionSignalsTable, HasSaveLoadDataConfig):
         COL_STAT_STDEV,
     ]
 
+    _MODEL_BASES = [StatsTableStateModel]
+
     _FULL_RANGE = (-float("inf"), float("inf"))
 
     class StatsCalculatorSignals(QObject):

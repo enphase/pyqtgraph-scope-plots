@@ -11,12 +11,14 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
+from typing import cast
 
 import pytest
 from pytestqt.qtbot import QtBot
 
 
 from pyqtgraph_scope_plots import LinkedMultiPlotWidget, StatsSignalsTable
+from pyqtgraph_scope_plots.stats_signals_table import StatsTableStateModel
 from .common_testdata import DATA_ITEMS, DATA
 
 
@@ -102,4 +104,26 @@ def test_disable_enable(qtbot: QtBot, table: StatsSignalsTable) -> None:
             assert table.item(row, table.COL_STAT + col).text() == ""
 
     table.disable_stats(False)
+    qtbot.waitUntil(lambda: table.item(0, table.COL_STAT + table.COL_STAT_MIN).text() != "")
+
+
+def test_stats_table_save(qtbot: QtBot, table: StatsSignalsTable) -> None:
+    assert cast(StatsTableStateModel, table._dump_data_model([])).stats_disabled == False
+
+    table.disable_stats(True)
+    assert cast(StatsTableStateModel, table._dump_data_model([])).stats_disabled == True
+
+    table.disable_stats(False)
+    assert cast(StatsTableStateModel, table._dump_data_model([])).stats_disabled == False
+
+
+def test_stats_table_load(qtbot: QtBot, table: StatsSignalsTable) -> None:
+    model = cast(StatsTableStateModel, table._dump_data_model([]))
+
+    model.stats_disabled = True
+    table._load_model(model)
+    qtbot.waitUntil(lambda: table.item(0, table.COL_STAT + table.COL_STAT_MIN).text() == "")
+
+    model.stats_disabled = False
+    table._load_model(model)
     qtbot.waitUntil(lambda: table.item(0, table.COL_STAT + table.COL_STAT_MIN).text() != "")

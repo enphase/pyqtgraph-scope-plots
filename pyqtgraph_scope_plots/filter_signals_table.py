@@ -12,12 +12,11 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from functools import partial
 from typing import Any
 
 from PySide6.QtCore import QKeyCombination, QPoint
-from PySide6.QtGui import QAction, Qt, QFocusEvent, QCloseEvent, QColor
-from PySide6.QtWidgets import QWidget, QLineEdit, QHBoxLayout, QPushButton, QLabel, QMenu, QGraphicsDropShadowEffect
+from PySide6.QtGui import QAction, Qt, QFocusEvent, QCloseEvent
+from PySide6.QtWidgets import QWidget, QLineEdit, QHBoxLayout, QLabel, QMenu
 
 from .signals_table import ContextMenuSignalsTable
 
@@ -32,8 +31,7 @@ class FilterOverlay(QWidget):
         self._filter_input.setMinimumWidth(200)
         self._filter_input.setMaximumWidth(200)
         self._filter_input.setPlaceholderText("filter")
-        self._filter_input.textEdited.connect(partial(self._on_filter, 0))
-        self._filter_input.returnPressed.connect(partial(self._on_filter, 1))  # same as next
+        self._filter_input.textEdited.connect(self._on_filter)
 
         self._close_action = QAction("Close", self)
         self._close_action.setShortcut(Qt.Key.Key_Escape)
@@ -65,8 +63,7 @@ class FilterOverlay(QWidget):
     def closeEvent(self, event: QCloseEvent) -> None:
         self._table._apply_filter("")  # clear filters on close
 
-    def _on_filter(self, *args: Any) -> None:
-        text = self._filter_input.text()
+    def _on_filter(self, text: str) -> None:
         count = self._table._apply_filter(text)
 
         if not text:

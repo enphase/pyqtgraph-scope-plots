@@ -35,9 +35,9 @@ class FilterOverlay(QWidget):
 
         self._close_action = QAction("Close", self)
         self._close_action.setShortcut(Qt.Key.Key_Escape)
-        self._close_action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)  # require widget focus to fire
+        self._close_action.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self._close_action.triggered.connect(self._on_close)
-        self._filter_input.addAction(self._close_action)
+        self.addAction(self._close_action)
 
         self._results = QLabel("")
         self._results.setMinimumWidth(0)

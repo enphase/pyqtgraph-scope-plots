@@ -69,13 +69,11 @@ class FilterOverlay(QWidget):
 
         if not text:
             self._results.setText("")
-            self.adjustSize()
         elif count == 0:  # no results
             self._results.setText(f"no matches")
-            self.adjustSize()
         else:
             self._results.setText(f"{count} matches")
-            self.adjustSize()
+        self.adjustSize()
 
 
 class FilterSignalsTable(ContextMenuSignalsTable):

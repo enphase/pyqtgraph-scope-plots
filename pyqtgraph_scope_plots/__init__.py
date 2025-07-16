@@ -23,6 +23,7 @@ from .time_axis import TimeAxisItem
 from .multi_plot_widget import MultiPlotWidget, LinkedMultiPlotWidget, DroppableMultiPlotWidget
 from .signals_table import SignalsTable, DeleteableSignalsTable, DraggableSignalsTable
 from .search_signals_table import SearchSignalsTable
+from .filter_signals_table import FilterSignalsTable
 from .stats_signals_table import StatsSignalsTable
 from .color_signals_table import ColorPickerPlotWidget, ColorPickerSignalsTable
 from .timeshift_signals_table import TimeshiftPlotWidget, TimeshiftSignalsTable
@@ -63,6 +64,7 @@ __all__ = [
     "DeleteableSignalsTable",
     "DraggableSignalsTable",
     "SearchSignalsTable",
+    "FilterSignalsTable",
     "StatsSignalsTable",
     "ColorPickerPlotWidget",
     "ColorPickerSignalsTable",

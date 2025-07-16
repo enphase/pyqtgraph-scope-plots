@@ -54,7 +54,8 @@ class FilterOverlay(QWidget):
         self.show()
         self.setFocus()
 
-    def focusInEvent(self, event: QFocusEvent, /) -> None:
+    def focusInEvent(self, event: QFocusEvent) -> None:
+        super().focusInEvent(event)
         self._filter_input.setFocus()
 
     def _on_close(self) -> None:
@@ -62,6 +63,7 @@ class FilterOverlay(QWidget):
         self._table.setFocus()  # revert focus to parent
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        super().closeEvent(event)
         self._table._apply_filter("")  # clear filters on close
 
     def _on_filter(self, text: str) -> None:
@@ -105,7 +107,7 @@ class FilterSignalsTable(ContextMenuSignalsTable):
         matches = 0
         for row in range(0, self.rowCount()):
             item = self.item(row, self.COL_NAME)
-            if item and ((not text) or all([text_elt in item.text().lower() for text_elt in text_elts])):
+            if item and ((not text) or all(text_elt in item.text().lower() for text_elt in text_elts)):
                 self.showRow(row)
                 matches += 1
             else:

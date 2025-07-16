@@ -16,7 +16,7 @@ import itertools
 import os.path
 import time
 from functools import partial
-from typing import Dict, Tuple, Any, List, Optional, Callable, Sequence, cast, Set, Iterable, Type
+from typing import Dict, Tuple, Any, List, Optional, Callable, Sequence, cast, Set, Iterable, Type, Union, TextIO
 
 import numpy as np
 import numpy.typing as npt
@@ -483,10 +483,13 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         if not filename:  # nothing selected, user canceled
             return
         with open(filename, "r") as f:
-            model = self._create_skeleton_model_type()(**yaml.load(f, Loader=TupleSafeLoader))
-
-        assert isinstance(model, CsvLoaderStateModel)
+            model = self._parse_config(f)
         self._do_load_config(filename, model)
+
+    def _parse_config(self, f: Union[TextIO, str]) -> CsvLoaderStateModel:
+        loaded = self._create_skeleton_model_type()(**yaml.load(f, Loader=TupleSafeLoader))
+        assert isinstance(loaded, CsvLoaderStateModel)
+        return loaded
 
     def _do_load_config(self, filename: str, model: CsvLoaderStateModel) -> None:
         if model.csv_files is not None:

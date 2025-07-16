@@ -38,6 +38,7 @@ def plots(qtbot: QtBot) -> DroppableMultiPlotWidget:
 
 def test_plot_merge(qtbot: QtBot, plots: DroppableMultiPlotWidget) -> None:
     table = SignalsTable(plots)
+    table._update()
 
     qtbot.waitUntil(lambda: plots.count() == 3)  # wait for plots to be ready
 

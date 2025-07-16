@@ -15,10 +15,10 @@
 from typing import cast
 
 import pytest
-from PySide6.QtGui import QColor, Qt
+from PySide6.QtGui import Qt
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots import MultiPlotWidget, VisibilityPlotWidget, VisibilityToggleSignalsTable
+from pyqtgraph_scope_plots import VisibilityPlotWidget, VisibilityToggleSignalsTable
 from pyqtgraph_scope_plots.visibility_toggle_table import VisibilityDataStateModel
 from .common_testdata import DATA_ITEMS, DATA
 
@@ -63,6 +63,7 @@ def test_visibility(qtbot: QtBot, visibility_plots: VisibilityPlotWidget) -> Non
 
 def test_visibility_table(qtbot: QtBot, visibility_plots: VisibilityPlotWidget) -> None:
     visibility_table = VisibilityToggleSignalsTable(visibility_plots)
+    visibility_table._update()
     visibility_table.item(1, visibility_table.COL_VISIBILITY).setCheckState(Qt.CheckState.Unchecked)
     qtbot.waitUntil(lambda: not visibility_plots._data_curves["1"][0].isVisible())
     assert visibility_plots._data_curves["0"][0].isVisible()  # check unchanged

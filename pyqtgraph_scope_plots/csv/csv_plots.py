@@ -47,7 +47,7 @@ from ..color_signals_table import ColorPickerSignalsTable, ColorPickerPlotWidget
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
 from ..util import int_color, BaseTopModel, HasSaveLoadDataConfig
-from ..search_signals_table import SearchSignalsTable
+from ..filter_signals_table import FilterSignalsTable
 from ..stats_signals_table import StatsSignalsTable
 from ..time_axis import TimeAxisItem
 from ..timeshift_signals_table import TimeshiftSignalsTable, TimeshiftPlotWidget
@@ -148,7 +148,7 @@ class FullSignalsTable(
     ColorPickerSignalsTable,
     TimeshiftSignalsTable,
     TransformsSignalsTable,
-    SearchSignalsTable,
+    FilterSignalsTable,
     StatsSignalsTable,
     PlotsTableWidget.SignalsTable,
 ):

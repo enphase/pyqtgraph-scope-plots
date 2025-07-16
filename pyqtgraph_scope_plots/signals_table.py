@@ -57,7 +57,6 @@ class SignalsTable(MixinColsTable):
 
         self._data_items: Dict[str, QColor] = {}
 
-        self._update()
         self._plots.sigDataItemsUpdated.connect(self._update)
 
     def _update(self) -> None:

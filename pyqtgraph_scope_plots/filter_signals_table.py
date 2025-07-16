@@ -12,22 +12,21 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-import math
 from functools import partial
-from typing import Any, List
+from typing import Any
 
 from PySide6.QtCore import QKeyCombination, QPoint
-from PySide6.QtGui import QAction, Qt, QFocusEvent
-from PySide6.QtWidgets import QWidget, QLineEdit, QHBoxLayout, QPushButton, QLabel, QTableWidgetItem, QMenu
+from PySide6.QtGui import QAction, Qt, QFocusEvent, QCloseEvent
+from PySide6.QtWidgets import QWidget, QLineEdit, QHBoxLayout, QPushButton, QLabel, QMenu
 
-from .signals_table import ContextMenuSignalsTable, SignalsTable
+from .signals_table import ContextMenuSignalsTable
 
 
 class FilterOverlay(QWidget):
     def __init__(self, table: "FilterSignalsTable"):
         super().__init__(table)
         self._table = table
-        self.setWindowFlags(Qt.WindowType.Popup)
+        self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
 
         self._filter_input = QLineEdit(self)
         self._filter_input.setMinimumWidth(200)
@@ -36,11 +35,22 @@ class FilterOverlay(QWidget):
         self._filter_input.textEdited.connect(partial(self._on_filter, 0))
         self._filter_input.returnPressed.connect(partial(self._on_filter, 1))  # same as next
 
+        self._close_button = QPushButton("×")
+        self._close_button.setMaximumWidth(20)
+        self._close_button.clicked.connect(self._on_close)
+
+        self._close_action = QAction("Close", self)
+        self._close_action.setShortcut(Qt.Key.Key_Escape)
+        self._close_action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)  # require widget focus to fire
+        self._close_action.triggered.connect(self._on_close)
+        self._filter_input.addAction(self._close_action)
+
         self._results = QLabel("")
         self._results.setMinimumWidth(0)
 
         layout = QHBoxLayout(self)
         layout.addWidget(self._filter_input)
+        layout.addWidget(self._close_button)
         layout.addWidget(self._results)
         layout.setContentsMargins(0, 0, 0, 0)
 
@@ -48,23 +58,29 @@ class FilterOverlay(QWidget):
         """Re-initialize the filter overlay, eg when it is re-opened"""
         self._filter_input.setText("")
         self._results.setText("")
+        self.show()
+        self.activateWindow()
+        self.setFocus()
 
     def focusInEvent(self, event: QFocusEvent, /) -> None:
         self._filter_input.setFocus()
 
-    def _on_filter(self) -> None:
+    def _on_close(self) -> None:
+        self.close()
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self._table._apply_filter("")  # clear filters on close
+
+    def _on_filter(self, *args: Any) -> None:
         text = self._filter_input.text()
         count = self._table._apply_filter(text)
 
         if not text:
             self._results.setText("")
             self.adjustSize()
-            return
-
-        if count == 0:  # no results
+        elif count == 0:  # no results
             self._results.setText(f"no matches")
             self.adjustSize()
-            return  # specifically don't alter the user's selection
         else:
             self._results.setText(f"{count} matches")
             self.adjustSize()
@@ -91,27 +107,20 @@ class FilterSignalsTable(ContextMenuSignalsTable):
     def _on_filter(self) -> FilterOverlay:
         self._filter_overlay.move(self.mapToGlobal(QPoint(0, 0)))
         self._filter_overlay.start()
-        self._filter_overlay.show()
-        self._filter_overlay.setFocus()
         return self._filter_overlay
 
     def _apply_filter(self, text: str) -> int:
         """Applies a filter on the rows, returning the number of matching rows. Use empty-string to clear filters."""
-
-        # start scanning results at the last of the user's selection
-        selected_rows = [item.row() for item in self._table.selectedItems()]
-        if selected_rows:
-            start_row = max(selected_rows)
-        else:
-            start_row = 0
-
-        match_items: List[QTableWidgetItem] = []
-        row_range = list(range(0, self._table.rowCount()))
-        row_range = row_range[start_row:] + row_range[:start_row]
-        for row in row_range:
-            item = self._table.item(row, self._table.COL_NAME)
-            if item and text in item.text().lower():
-                match_items.append(item)
+        text_elts = text.lower().split()
+        matches = 0
+        for row in range(0, self.rowCount()):
+            item = self.item(row, self.COL_NAME)
+            if item and ((not text) or all([text_elt in item.text().lower() for text_elt in text_elts])):
+                self.showRow(row)
+                matches += 1
+            else:
+                self.hideRow(row)
+        return matches
 
     def _update(self) -> None:
         super()._update()

@@ -487,7 +487,9 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._do_load_config(filename, model)
 
     def _parse_config(self, f: Union[TextIO, str]) -> CsvLoaderStateModel:
-        return self._create_skeleton_model_type()(**yaml.load(f, Loader=TupleSafeLoader))
+        loaded = self._create_skeleton_model_type()(**yaml.load(f, Loader=TupleSafeLoader))
+        assert isinstance(loaded, CsvLoaderStateModel)
+        return loaded
 
     def _do_load_config(self, filename: str, model: CsvLoaderStateModel) -> None:
         if model.csv_files is not None:

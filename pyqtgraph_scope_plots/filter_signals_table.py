@@ -59,6 +59,7 @@ class FilterOverlay(QWidget):
 
     def _on_close(self) -> None:
         self.close()
+        self._table.setFocus()  # revert focus to parent
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self._table._apply_filter("")  # clear filters on close

@@ -53,10 +53,10 @@ def test_filter_nomatch(qtbot: QtBot, filter_table: FilterSignalsTable) -> None:
 
 
 def test_filter_single(qtbot: QtBot, filter_table: FilterSignalsTable) -> None:
-    filter = filter_table._on_filter()
-    filter._filter_input.setText("aaa")
-    filter._filter_input.textEdited.emit("aaa")
-    qtbot.waitUntil(lambda: filter._results.text().lower() == "1 matches")
+    filter_tool = filter_table._on_filter()
+    filter_tool._filter_input.setText("aaa")
+    filter_tool._filter_input.textEdited.emit("aaa")
+    qtbot.waitUntil(lambda: filter_tool._results.text().lower() == "1 matches")
     assert not filter_table.isRowHidden(0)
     assert filter_table.isRowHidden(1)
     assert filter_table.isRowHidden(2)

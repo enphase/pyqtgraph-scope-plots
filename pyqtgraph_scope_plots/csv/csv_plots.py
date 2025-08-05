@@ -267,6 +267,20 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         button_load.setArrowType(Qt.ArrowType.DownArrow)
         button_load.setMenu(menu_load)
 
+        button_load_config = QToolButton()
+        button_load_config.setText("Load Config")
+        button_load_config.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        button_load_config.setSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        button_load_config.clicked.connect(self._on_load_config)
+
+        self._menu_config = QMenu(self)
+        self._save_config_action = QAction("Save Config", self._menu_config)
+        self._save_config_action.triggered.connect(self._on_save_config)
+        button_load_config.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        button_load_config.setArrowType(Qt.ArrowType.DownArrow)
+        button_load_config.setMenu(self._menu_config)
+        self._menu_config.aboutToShow.connect(self._populate_config_menu())
+
         button_refresh = QToolButton()
         button_refresh.setText("Refresh CSV")
         button_refresh.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
@@ -308,20 +322,20 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         button_menu.addAction(animation_action)
         button_visuals.setMenu(button_menu)
 
-        save_config_action = QAction("Save Config", button_menu)
-        save_config_action.triggered.connect(self._on_save_config)
-        button_menu.addAction(save_config_action)
-        load_config_action = QAction("Load Config", button_menu)
-        load_config_action.triggered.connect(self._on_load_config)
-        button_menu.addAction(load_config_action)
-
         layout = QVBoxLayout()
         layout.addWidget(button_load)
+        layout.addWidget(button_load_config)
         layout.addWidget(button_refresh)
         layout.addWidget(button_visuals)
         widget = QWidget()
         widget.setLayout(layout)
         return widget
+
+    def _populate_config_menu(self) -> None:
+        self._menu_config.clear()
+        self._menu_config.addAction(self._save_config_action)
+
+        # TODO IMPLEMENT RECENTS
 
     def _on_load_csv(self) -> None:
         csv_filenames, _ = QFileDialog.getOpenFileNames(None, "Select CSV Files", filter="CSV files (*.csv)")

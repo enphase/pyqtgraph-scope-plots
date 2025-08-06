@@ -413,6 +413,10 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         if self._loaded_config_abspath in recents.recents:
             recents.recents.remove(self._loaded_config_abspath)
         recents.recents.insert(0, self._loaded_config_abspath)
+        excess_recents = len(recents.recents) + len(recents.hotkeys) - self._RECENTS_MAX
+        if excess_recents > 0:
+            recents.recents = recents.recents[:-excess_recents]
+
         self._config().setValue(self._RECENTS_CONFIG_KEY, yaml.dump(recents.model_dump(), sort_keys=False))
 
     def _on_load_csv(self) -> None:

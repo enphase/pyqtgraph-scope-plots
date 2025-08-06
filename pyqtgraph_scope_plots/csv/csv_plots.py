@@ -355,31 +355,26 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._menu_config.addAction(save_config_action)
 
         self._menu_config.addSeparator()
-
-        def load_config(filename: str) -> None:
-            with open(filename, "r") as f:
-                parsed = self._parse_config(f)
-            self._do_load_config(filename, parsed)
-
         recents = self._load_recents()
         for hotkey, recent in recents.hotkeys.items():
             assert hotkey < 10
             load_action = QAction(f"{os.path.split(recent)[1]}", self._menu_config)
-            load_action.triggered.connect(partial(load_config, recent))
-            load_action.setShortcut(
-                QKeyCombination(Qt.KeyboardModifier.ControlModifier, Qt.Key.Key_0 + hotkey)  # type: ignore
-            )
+            load_action.triggered.connect(partial(self.load_config_file, recent))
+            load_action.setShortcut(QKeyCombination(Qt.KeyboardModifier.ControlModifier, Qt.Key(Qt.Key.Key_0 + hotkey)))
             self._menu_config.addAction(load_action)
 
         for recent in recents.recents:
             load_action = QAction(f"{os.path.split(recent)[1]}", self._menu_config)
-            load_action.triggered.connect(partial(load_config, recent))
+            load_action.triggered.connect(partial(self.load_config_file, recent))
             self._menu_config.addAction(load_action)
 
         self._menu_config.addSeparator()
         set_hotkey_action = QAction("Set Hotkey", self._menu_config)
         set_hotkey_action.triggered.connect(self._on_set_hotkey)
-        set_hotkey_action.setDisabled(not self._loaded_config_abspath)
+        if self._loaded_config_abspath:
+            set_hotkey_action.setText(f"Set Hotkey for {os.path.split(self._loaded_config_abspath)[1]}")
+        else:
+            set_hotkey_action.setDisabled(True)
         self._menu_config.addAction(set_hotkey_action)
 
     def _on_set_hotkey(self) -> None:
@@ -565,15 +560,14 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         filename, _ = QFileDialog.getOpenFileName(None, "Load config", filter="YAML files (*.yml)")
         if not filename:  # nothing selected, user canceled
             return
-        with open(filename, "r") as f:
-            model = self._parse_config(f)
-        self._do_load_config(filename, model)
+        self.load_config_file(filename)
 
-    def _parse_config(self, f: Union[TextIO, str]) -> CsvLoaderStateModel:
+    def load_config_file(self, filename: str) -> None:
         skeleton_model_type = self._create_skeleton_model_type()
-        loaded = skeleton_model_type.model_validate(skeleton_model_type(**yaml.load(f, Loader=TupleSafeLoader)))
-        assert isinstance(loaded, CsvLoaderStateModel)
-        return loaded
+        with open(filename, "r") as f:
+            model = skeleton_model_type.model_validate(skeleton_model_type(**yaml.load(f, Loader=TupleSafeLoader)))
+        assert isinstance(model, CsvLoaderStateModel)
+        self._do_load_config(filename, model)
 
     def _do_load_config(self, filename: str, model: CsvLoaderStateModel) -> None:
         if model.csv_files is not None:

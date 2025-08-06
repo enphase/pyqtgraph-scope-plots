@@ -17,11 +17,12 @@ import time
 from unittest import mock
 
 import pytest
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QInputDialog
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.csv.csv_plots import CsvLoaderPlotsTableWidget, CsvLoaderRecents
-from tests.util import MockQSettings
+from tests.util import MockQSettings, menu_action_by_name
 
 
 @pytest.fixture()
@@ -172,6 +173,26 @@ def test_recents_save(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
         assert len(plot._load_recents().recents) == 0
 
 
-@mock.patch.object(CsvLoaderPlotsTableWidget, "_config", lambda *args: MockQSettings())
-def test_recents_load(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
-    pass
+@mock.patch.object(CsvLoaderPlotsTableWidget, "load_config_file")
+def test_recents_load(mock_load_config: mock.MagicMock, qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
+    settings = MockQSettings()
+    with mock.patch.object(CsvLoaderPlotsTableWidget, "_config", lambda *args: settings):
+        plot._populate_config_menu()
+        assert len(plot._menu_config.actions()) == 4  # 2 empty items + separators
+
+        qtbot.keyClick(plot, Qt.Key.Key_4, modifier=Qt.KeyboardModifier.ControlModifier)  # check nothing happens
+
+        plot._do_save_config("/config.yml")  # stores to recents
+        plot._populate_config_menu()
+        assert len(plot._menu_config.actions()) == 5
+        load_action = menu_action_by_name(plot._menu_config, "config.yml")
+        assert load_action is not None
+        load_action.trigger()
+        mock_load_config.assert_called_once_with(os.path.abspath("/config.yml"))
+        mock_load_config.reset_mock()
+
+        # set and test hotkey
+        with mock.patch.object(QInputDialog, "getInt", lambda *args, **kwargs: (4, True)):
+            plot._on_set_hotkey()
+        qtbot.keyClick(plot, Qt.Key.Key_4, modifier=Qt.KeyboardModifier.ControlModifier)
+        mock_load_config.assert_called_once_with(os.path.abspath("/config.yml"))

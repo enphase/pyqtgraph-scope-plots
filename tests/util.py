@@ -42,7 +42,7 @@ def context_menu(qtbot: QtBot, container: QWidget, target: QPoint = QPoint(0, 0)
     return assert_cast(QMenu, container.findChild(QMenu))
 
 
-def menu_action_by_name(menu: QMenu, *text: str) -> QAction:
+def menu_action_by_name(menu: QMenu, *text: str) -> Optional[QAction]:
     """Given a menu, returns the first action that contains the specified text, case-insensitive"""
     for i, current_text in enumerate(text):
         item_found = False
@@ -54,8 +54,8 @@ def menu_action_by_name(menu: QMenu, *text: str) -> QAction:
                 else:  # final step, return the action
                     return action
         if not item_found:
-            raise ValueError(f"No menu item with {current_text} in {[action.text() for action in menu.actions()]}")
-    raise ValueError()  # shouldn't happen, here to satisfy the type checker
+            return None
+    return None  # shouldn't happen, here to satisfy the type checker
 
 
 class MockQSettings(mock.MagicMock):

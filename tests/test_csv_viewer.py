@@ -124,19 +124,19 @@ def test_load_model_csvs_relpath(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) 
 def test_recents_save(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     settings = MockQSettings()
     with mock.patch.object(CsvLoaderPlotsTableWidget, "_config", lambda *args: settings):
-        assert plot._load_recents() == CsvLoaderRecents()
+        assert plot._get_recents() == CsvLoaderRecents()
         model = plot._do_save_config("/config.yml")  # stores to recents
-        assert plot._load_recents().recents == [os.path.abspath("/config.yml")]
+        assert plot._get_recents().recents == [os.path.abspath("/config.yml")]
 
         plot._do_load_config(os.path.join(os.path.dirname(__file__), "test.yml"), model)
-        assert plot._load_recents().recents == [
+        assert plot._get_recents().recents == [
             os.path.abspath(os.path.join(os.path.dirname(__file__), "test.yml")),
             os.path.abspath("/config.yml"),
         ]
 
         # check reordering latest-first + dedup
         plot._do_load_config("/config.yml", model)
-        assert plot._load_recents().recents == [
+        assert plot._get_recents().recents == [
             os.path.abspath("/config.yml"),
             os.path.abspath(os.path.join(os.path.dirname(__file__), "test.yml")),
         ]
@@ -144,33 +144,33 @@ def test_recents_save(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
         # check pruning
         for i in range(10):
             plot._do_load_config(f"/extra{i}.yml", model)
-        assert len(plot._load_recents().recents) == 9
+        assert len(plot._get_recents().recents) == 9
 
         # check hotkeys
         with mock.patch.object(QInputDialog, "getInt", lambda *args, **kwargs: (8, True)):
             plot._on_set_hotkey()
-        assert plot._load_recents().hotkeys[8] == os.path.abspath(f"/extra9.yml")
-        assert len(plot._load_recents().recents) == 8
-        assert os.path.abspath(f"/extra9.yml") not in plot._load_recents().recents
-        assert os.path.abspath(f"/extra8.yml") in plot._load_recents().recents
+        assert plot._get_recents().hotkeys[8] == os.path.abspath(f"/extra9.yml")
+        assert len(plot._get_recents().recents) == 8
+        assert os.path.abspath(f"/extra9.yml") not in plot._get_recents().recents
+        assert os.path.abspath(f"/extra8.yml") in plot._get_recents().recents
 
         # check most recent pruned
         plot._do_load_config(f"/extra11.yml", model)
-        assert plot._load_recents().hotkeys[8] == os.path.abspath(f"/extra9.yml")
-        assert len(plot._load_recents().recents) == 8
-        assert os.path.abspath(f"/extra0.yml") not in plot._load_recents().recents
-        assert os.path.abspath(f"/extra11.yml") in plot._load_recents().recents
+        assert plot._get_recents().hotkeys[8] == os.path.abspath(f"/extra9.yml")
+        assert len(plot._get_recents().recents) == 8
+        assert os.path.abspath(f"/extra0.yml") not in plot._get_recents().recents
+        assert os.path.abspath(f"/extra11.yml") in plot._get_recents().recents
 
         # check that it is possible to max out the hotkey range
         for i in range(10):
             plot._do_load_config(f"/extra{i}.yml", model)
             with mock.patch.object(QInputDialog, "getInt", lambda *args, **kwargs: (i, True)):
                 plot._on_set_hotkey()
-        assert len(plot._load_recents().recents) == 0
+        assert len(plot._get_recents().recents) == 0
 
         # recents no longer saves, hotkeys take priority
         plot._do_load_config(f"/extra11.yml", model)
-        assert len(plot._load_recents().recents) == 0
+        assert len(plot._get_recents().recents) == 0
 
 
 @mock.patch.object(CsvLoaderPlotsTableWidget, "load_config_file")

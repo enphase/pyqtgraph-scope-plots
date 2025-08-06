@@ -291,7 +291,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         button_load_config.setMenu(self._menu_config)
         self._menu_config.aboutToShow.connect(self._populate_config_menu)
 
-        self._load_slot_actions = []
+        self._load_hotkey_actions = []
         for i in range(10):
             load_hotkey_action = QAction(f"", self)
             load_hotkey_action.setShortcut(
@@ -300,7 +300,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             load_hotkey_action.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
             load_hotkey_action.triggered.connect(partial(self._load_hotkey_slot, i))
             self.addAction(load_hotkey_action)
-            self._load_slot_actions.append(load_hotkey_action)
+            self._load_hotkey_actions.append(load_hotkey_action)
 
         button_refresh = QToolButton()
         button_refresh.setText("Refresh CSV")
@@ -352,11 +352,11 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         widget.setLayout(layout)
         return widget
 
-    def _load_recents(self) -> CsvLoaderRecents:
+    def _get_recents(self) -> CsvLoaderRecents:
         recents_val = cast(str, self._config().value(self._RECENTS_CONFIG_KEY, ""))
         try:
             return CsvLoaderRecents.model_validate(CsvLoaderRecents(**yaml.load(recents_val, Loader=TupleSafeLoader)))
-        except Exception as e:
+        except (yaml.YAMLError, TypeError, ValidationError):
             return CsvLoaderRecents()
 
     def _populate_config_menu(self) -> None:
@@ -366,10 +366,9 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._menu_config.addAction(save_config_action)
 
         self._menu_config.addSeparator()
-        recents = self._load_recents()
+        recents = self._get_recents()
         for hotkey, recent in sorted(recents.hotkeys.items(), key=lambda x: x[0]):
-            assert hotkey < len(self._load_slot_actions)
-            load_hotkey_action = self._load_slot_actions[hotkey]
+            load_hotkey_action = self._load_hotkey_actions[hotkey]  # crash on invalid index
             load_hotkey_action.setText(f"{os.path.split(recent)[1]}")
             self._menu_config.addAction(load_hotkey_action)
 
@@ -388,8 +387,8 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._menu_config.addAction(set_hotkey_action)
 
     def _on_set_hotkey(self) -> None:
-        assert self._loaded_config_abspath
-        recents = self._load_recents()
+        assert self._loaded_config_abspath  # shouldn't be triggerable unless something loaded
+        recents = self._get_recents()
 
         hotkey, ok = QInputDialog.getInt(self, "Set Hotkey Slot", "", value=0, minValue=0, maxValue=9)
         if not ok:
@@ -401,13 +400,13 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._config().setValue(self._RECENTS_CONFIG_KEY, yaml.dump(recents.model_dump(), sort_keys=False))
 
     def _load_hotkey_slot(self, slot: int) -> None:
-        recents = self._load_recents()
+        recents = self._get_recents()
         target = recents.hotkeys.get(slot, None)
         if target is not None:
             self.load_config_file(target)
 
     def _append_recent(self) -> None:
-        recents = self._load_recents()
+        recents = self._get_recents()
         if self._loaded_config_abspath in recents.hotkeys.values():
             return  # don't overwrite hotkeys
         if self._loaded_config_abspath in recents.recents:

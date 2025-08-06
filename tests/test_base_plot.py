@@ -23,7 +23,7 @@ from pytestqt.qtbot import QtBot
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotStateModel, PlotWidgetModel
 from pyqtgraph_scope_plots import MultiPlotWidget, PlotsTableWidget
 from .common_testdata import DATA_ITEMS, DATA
-from .test_util import assert_cast
+from .util import assert_cast
 
 
 @pytest.fixture()

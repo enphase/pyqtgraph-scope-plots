@@ -391,7 +391,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         assert self._loaded_config_abspath
         recents = self._load_recents()
 
-        hotkey, ok = QInputDialog.getInt(self, "Set Hotkey (0-9)", "", value=0, minValue=0, maxValue=9)
+        hotkey, ok = QInputDialog.getInt(self, "Set Hotkey Slot", "", value=0, minValue=0, maxValue=9)
         if not ok:
             return
 

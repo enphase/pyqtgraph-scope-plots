@@ -19,7 +19,8 @@ from unittest import mock
 import pytest
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.csv.csv_plots import CsvLoaderPlotsTableWidget
+from pyqtgraph_scope_plots.csv.csv_plots import CsvLoaderPlotsTableWidget, CsvLoaderRecents
+from tests.util import MockQSettings
 
 
 @pytest.fixture()
@@ -75,6 +76,7 @@ def test_watch_stability(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
         qtbot.waitUntil(lambda: mock_load_csv.called)  # check the load happens
 
 
+@mock.patch.object(CsvLoaderPlotsTableWidget, "_config", lambda *args: MockQSettings())
 def test_save_model_csvs(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     # test empty save
     model = plot._do_save_config(os.path.join(os.path.dirname(__file__), "config.yml"))
@@ -93,6 +95,7 @@ def test_save_model_csvs(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     ]
 
 
+@mock.patch.object(CsvLoaderPlotsTableWidget, "_config", lambda *args: MockQSettings())
 def test_load_model_csvs_relpath(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     model = plot._do_save_config("/config.yml")
 
@@ -114,3 +117,16 @@ def test_load_model_csvs_relpath(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) 
         mock_load_csv.assert_called_with(
             [os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")], update=False
         )
+
+
+def test_recents_save(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
+    settings = MockQSettings()
+    with mock.patch.object(CsvLoaderPlotsTableWidget, "_config", lambda *args: settings):
+        assert plot._load_recents() == CsvLoaderRecents()
+        plot._do_save_config("/config.yml")  # stores to recents
+        assert plot._load_recents().recents == [os.path.abspath("/config.yml")]
+
+
+@mock.patch.object(CsvLoaderPlotsTableWidget, "_config", lambda *args: MockQSettings())
+def test_recents_load(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
+    pass

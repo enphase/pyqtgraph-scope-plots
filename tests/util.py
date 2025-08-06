@@ -12,7 +12,8 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import TypeVar, Type, Any
+from typing import TypeVar, Type, Any, Optional, Dict
+from unittest import mock
 
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QAction
@@ -55,3 +56,17 @@ def menu_action_by_name(menu: QMenu, *text: str) -> QAction:
         if not item_found:
             raise ValueError(f"No menu item with {current_text} in {[action.text() for action in menu.actions()]}")
     raise ValueError()  # shouldn't happen, here to satisfy the type checker
+
+
+class MockQSettings(mock.MagicMock):
+    def __init__(self, *args: Any, settings_values: Optional[Dict[str, Any]] = None, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._values: Dict[str, Any] = {}
+        if settings_values:
+            self._values.update(settings_values)
+
+    def value(self, key: str, default: Any = None) -> Optional[Any]:
+        return self._values.get(key, default)
+
+    def setValue(self, key: str, value: Any) -> None:
+        self._values[key] = value

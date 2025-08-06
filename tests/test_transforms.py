@@ -25,7 +25,7 @@ from pyqtgraph_scope_plots.code_input_dialog import CodeInputDialog
 from pyqtgraph_scope_plots.transforms_signal_table import TransformsDataStateModel
 from pyqtgraph_scope_plots.util.util import not_none
 from .common_testdata import DATA
-from .test_util import context_menu, menu_action_by_name
+from .util import context_menu, menu_action_by_name
 
 
 @pytest.fixture()

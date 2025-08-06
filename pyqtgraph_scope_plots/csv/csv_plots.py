@@ -355,7 +355,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
     def _load_recents(self) -> CsvLoaderRecents:
         recents_val = cast(str, self._config().value(self._RECENTS_CONFIG_KEY, ""))
         try:
-            return CsvLoaderRecents.validate(CsvLoaderRecents(**yaml.load(recents_val, Loader=TupleSafeLoader)))
+            return CsvLoaderRecents.model_validate(CsvLoaderRecents(**yaml.load(recents_val, Loader=TupleSafeLoader)))
         except Exception as e:
             return CsvLoaderRecents()
 
@@ -541,8 +541,6 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         model = self._do_save_config(filename)
         with open(filename, "w") as f:
             f.write(yaml.dump(model.model_dump(), sort_keys=False))
-        self._loaded_config_abspath = os.path.abspath(filename)
-        self._append_recent()
 
     def _do_save_config(self, filename: str) -> CsvLoaderStateModel:
         model = self._dump_data_model(self._plots._data_items.keys())
@@ -569,6 +567,9 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
                 ]
             else:  # save as abspath, would need .. access to get CSVs
                 model.csv_files = [os.path.abspath(csv_filename) for csv_filename in self._csv_data_items.keys()]
+
+        self._loaded_config_abspath = os.path.abspath(filename)
+        self._append_recent()
 
         return model
 

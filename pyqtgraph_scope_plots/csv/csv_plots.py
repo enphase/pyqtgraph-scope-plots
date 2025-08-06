@@ -291,6 +291,17 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         button_load_config.setMenu(self._menu_config)
         self._menu_config.aboutToShow.connect(self._populate_config_menu)
 
+        self._load_slot_actions = []
+        for i in range(10):
+            load_hotkey_action = QAction(f"", self)
+            load_hotkey_action.setShortcut(
+                QKeyCombination(Qt.KeyboardModifier.ControlModifier, Qt.Key(Qt.Key.Key_0 + i))
+            )
+            load_hotkey_action.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+            load_hotkey_action.triggered.connect(partial(self._load_hotkey_slot, i))
+            self.addAction(load_hotkey_action)
+            self._load_slot_actions.append(load_hotkey_action)
+
         button_refresh = QToolButton()
         button_refresh.setText("Refresh CSV")
         button_refresh.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
@@ -356,12 +367,11 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
         self._menu_config.addSeparator()
         recents = self._load_recents()
-        for hotkey, recent in recents.hotkeys.items():
-            assert hotkey < 10
-            load_action = QAction(f"{os.path.split(recent)[1]}", self._menu_config)
-            load_action.triggered.connect(partial(self.load_config_file, recent))
-            load_action.setShortcut(QKeyCombination(Qt.KeyboardModifier.ControlModifier, Qt.Key(Qt.Key.Key_0 + hotkey)))
-            self._menu_config.addAction(load_action)
+        for hotkey, recent in sorted(recents.hotkeys.items(), key=lambda x: x[0]):
+            assert hotkey < len(self._load_slot_actions)
+            load_hotkey_action = self._load_slot_actions[hotkey]
+            load_hotkey_action.setText(f"{os.path.split(recent)[1]}")
+            self._menu_config.addAction(load_hotkey_action)
 
         for recent in recents.recents:
             load_action = QAction(f"{os.path.split(recent)[1]}", self._menu_config)
@@ -389,6 +399,12 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             recents.recents.remove(self._loaded_config_abspath)
         recents.hotkeys[hotkey] = self._loaded_config_abspath
         self._config().setValue(self._RECENTS_CONFIG_KEY, yaml.dump(recents.model_dump(), sort_keys=False))
+
+    def _load_hotkey_slot(self, slot: int) -> None:
+        recents = self._load_recents()
+        target = recents.hotkeys.get(slot, None)
+        if target is not None:
+            self.load_config_file(target)
 
     def _append_recent(self) -> None:
         recents = self._load_recents()

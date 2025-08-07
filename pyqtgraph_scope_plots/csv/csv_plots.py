@@ -422,18 +422,18 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         csv_filenames, _ = QFileDialog.getOpenFileNames(None, "Select CSV Files", filter="CSV files (*.csv)")
         if not csv_filenames:  # nothing selected, user canceled
             return
-        self._load_csv(csv_filenames)
+        self._load_csvs(csv_filenames)
 
     def _on_append_csv(self) -> None:
         csv_filenames, _ = QFileDialog.getOpenFileNames(None, "Select CSV Files", filter="CSV files (*.csv)")
         if not csv_filenames:  # nothing selected, user canceled
             return
-        self._load_csv(csv_filenames, append=True)
+        self._load_csvs(csv_filenames, append=True)
 
     def _on_refresh_csv(self) -> None:
         """Reloads all CSVs. Discards data (but not data items) that are no longer present in the reloaded CSVs.
         Does not modify data items (new data items are discarded)."""
-        self._load_csv(
+        self._load_csvs(
             list(self._csv_data_items.keys()),
             colnames=itertools.chain(*self._csv_data_items.values()),
             append=True,
@@ -460,9 +460,13 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             data_items_to_load.extend(curr_data_items)
 
         if files_to_load:
-            self._load_csv(files_to_load, colnames=data_items_to_load, append=True)
+            self._load_csvs(files_to_load, colnames=data_items_to_load, append=True)
 
-    def _load_csv(
+    def load_csvs(self, csv_filepaths: List[str], *, append: bool = False) -> None:
+        """Public API for loading CSV files"""
+        self._load_csvs(csv_filepaths, append=append)
+
+    def _load_csvs(
         self,
         csv_filepaths: List[str],
         append: bool = False,
@@ -607,7 +611,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
                     f"Some CSV files not found: {', '.join(missing_csv_files)}",
                     QMessageBox.StandardButton.Ok,
                 )
-            self._load_csv(found_csv_files, update=False)
+            self._load_csvs(found_csv_files, update=False)
 
         data = self._data
         self._set_data({})  # blank the data while updates happen, for performance

@@ -65,7 +65,7 @@ def test_append_csv(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
 def test_watch_stability(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     plot._load_csvs([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")])
     qtbot.waitUntil(lambda: plot._plots.count() == 3)
-    with mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csv") as mock_load_csv, mock.patch.object(
+    with mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csvs") as mock_load_csv, mock.patch.object(
         os.path, "getmtime"
     ) as mock_getmtime:
         mock_getmtime.return_value = time.time() - 10  # unchanged file
@@ -101,19 +101,19 @@ def test_save_model_csvs(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
 def test_load_model_csvs_relpath(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     model = plot._do_save_config("/config.yml")
 
-    with mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csv") as mock_load_csv:
+    with mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csvs") as mock_load_csv:
         model.csv_files = None
         plot._do_load_config(os.path.join(os.path.dirname(__file__), "config.yml"), model)
         mock_load_csv.assert_not_called()
 
-    with mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csv") as mock_load_csv:
+    with mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csvs") as mock_load_csv:
         model.csv_files = [os.path.join("data", "test_csv_viewer_data.csv")]  # relpath
         plot._do_load_config(os.path.join(os.path.dirname(__file__), "config.yml"), model)
         mock_load_csv.assert_called_with(
             [os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")], update=False
         )
 
-    with mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csv") as mock_load_csv:
+    with mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csvs") as mock_load_csv:
         model.csv_files = [os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")]  # abspath
         plot._do_load_config(os.path.join(os.path.dirname(__file__), "config.yml"), model)
         mock_load_csv.assert_called_with(

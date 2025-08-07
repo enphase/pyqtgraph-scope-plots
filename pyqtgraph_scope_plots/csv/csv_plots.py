@@ -462,7 +462,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         if files_to_load:
             self._load_csvs(files_to_load, colnames=data_items_to_load, append=True)
 
-    def load_csvs(self, csv_filepaths: List[str], *, append: bool = False):
+    def load_csvs(self, csv_filepaths: List[str], *, append: bool = False) -> None:
         """Public API for loading CSV files"""
         self._load_csvs(csv_filepaths, append=append)
 

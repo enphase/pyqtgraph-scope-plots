@@ -36,17 +36,17 @@ def plot(qtbot: QtBot) -> CsvLoaderPlotsTableWidget:
 
 
 def test_load_mixed_csv(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
-    plot._load_csv([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")])
+    plot._load_csvs([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")])
     qtbot.waitUntil(lambda: plot._plots.count() == 3)  # just make sure it loads
 
 
 def test_load_sparse_csv(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
-    plot._load_csv([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data_sparse.csv")])
+    plot._load_csvs([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data_sparse.csv")])
     qtbot.waitUntil(lambda: plot._plots.count() == 3)  # just make sure it loads
 
 
 def test_load_multiple_csv(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
-    plot._load_csv(
+    plot._load_csvs(
         [
             os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv"),
             os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data_diffcols.csv"),
@@ -56,14 +56,14 @@ def test_load_multiple_csv(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> Non
 
 
 def test_append_csv(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
-    plot._load_csv([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")])
+    plot._load_csvs([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")])
     qtbot.waitUntil(lambda: plot._plots.count() == 3)
-    plot._load_csv([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data_diffcols.csv")], append=True)
+    plot._load_csvs([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data_diffcols.csv")], append=True)
     qtbot.waitUntil(lambda: plot._plots.count() == 4)  # test that the new data is appended
 
 
 def test_watch_stability(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
-    plot._load_csv([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")])
+    plot._load_csvs([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")])
     qtbot.waitUntil(lambda: plot._plots.count() == 3)
     with mock.patch.object(CsvLoaderPlotsTableWidget, "_load_csv") as mock_load_csv, mock.patch.object(
         os.path, "getmtime"
@@ -84,7 +84,7 @@ def test_save_model_csvs(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     model = plot._do_save_config(os.path.join(os.path.dirname(__file__), "config.yml"))
     assert model.csv_files == []  # relpath
 
-    plot._load_csv([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")])
+    plot._load_csvs([os.path.join(os.path.dirname(__file__), "data", "test_csv_viewer_data.csv")])
 
     # test saving in relpath mode
     model = plot._do_save_config(os.path.join(os.path.dirname(__file__), "config.yml"))

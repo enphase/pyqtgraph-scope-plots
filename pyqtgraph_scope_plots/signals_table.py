@@ -172,6 +172,8 @@ class DraggableSignalsTable(SignalsTable):
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
         if e.buttons() == Qt.MouseButton.LeftButton:
+            self._on_select_changed()  # update to catch cases not caught, eg deleted rows
+
             if not self._ordered_selects:
                 return
             data_names = list(self._data_items.keys())

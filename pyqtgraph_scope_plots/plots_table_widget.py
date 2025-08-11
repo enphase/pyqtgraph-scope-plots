@@ -20,7 +20,9 @@ import numpy as np
 import numpy.typing as npt
 from PySide6.QtGui import QColor, Qt
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QSplitter, QFileDialog
+from pydantic import BaseModel
 
+from .util import HasSaveLoadDataConfig
 from .multi_plot_widget import (
     MultiPlotWidget,
     DroppableMultiPlotWidget,
@@ -30,7 +32,7 @@ from .signals_table import DraggableSignalsTable
 from .signals_table import SignalsTable as OriginalSignalsTable
 
 
-class PlotsTableWidget(QSplitter):
+class PlotsTableWidget(QSplitter, HasSaveLoadDataConfig):
     class Plots(DroppableMultiPlotWidget, LinkedMultiPlotWidget):
         """MultiPlotWidget used in PlotsTableWidget with required mixins."""
 
@@ -71,6 +73,32 @@ class PlotsTableWidget(QSplitter):
             self.addWidget(bottom_widget)
         else:
             self.addWidget(self._table)
+
+    @classmethod
+    def _get_all_model_bases(cls) -> List[Type[BaseModel]]:
+        bases = super()._get_all_model_bases() + cls._PLOT_TYPE._get_all_model_bases()
+        if issubclass(cls._TABLE_TYPE, HasSaveLoadDataConfig):
+            bases += cls._TABLE_TYPE._get_all_model_bases()
+        return bases
+
+    @classmethod
+    def _get_data_model_bases(cls) -> List[Type[BaseModel]]:
+        bases = super()._get_data_model_bases() + cls._PLOT_TYPE._get_data_model_bases()
+        if issubclass(cls._TABLE_TYPE, HasSaveLoadDataConfig):
+            bases += cls._TABLE_TYPE._get_data_model_bases()
+        return bases
+
+    def _write_model(self, model: BaseModel) -> None:
+        super()._write_model(model)
+        self._plots._write_model(model)
+        if isinstance(self._table, HasSaveLoadDataConfig):
+            self._table._write_model(model)
+
+    def _load_model(self, model: BaseModel) -> None:
+        super()._load_model(model)
+        self._plots._load_model(model)
+        if isinstance(self._table, HasSaveLoadDataConfig):
+            self._table._load_model(model)
 
     def _set_data_items(
         self,

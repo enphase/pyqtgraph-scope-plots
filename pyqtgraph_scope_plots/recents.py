@@ -1,6 +1,19 @@
+# Copyright 2025 Enphase Energy, Inc.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.
 import os
 from functools import partial
-from typing import Any, Dict, List, cast, Callable, Optional
+from typing import Dict, List, cast, Callable, Optional
 
 import yaml
 from PySide6.QtCore import QSettings, QKeyCombination
@@ -23,10 +36,13 @@ class RecentsManager:
 
     def __init__(self, settings: QSettings, config_key: str, load_fn: Callable[[str], None]) -> None:
         self._load_hotkey_actions: List[QAction] = []
-        self._settings = settings
+        self._settings_obj = settings
         self._config_key = config_key
         self._load_fn = load_fn
         self._loaded_config_abspath = ""  # of last loaded config file, even if it has changed
+
+    def _settings(self) -> QSettings:  # hook for unit testing
+        return self._settings_obj
 
     def bind_hotkeys(self, widget: QWidget) -> None:
         """Binds recents-loading hotkeys to the specified widget."""
@@ -40,8 +56,8 @@ class RecentsManager:
             widget.addAction(load_hotkey_action)
             self._load_hotkey_actions.append(load_hotkey_action)
 
-    def _get_recents(self) -> RecentsModel:
-        recents_val = cast(str, self._settings.value(self._config_key, ""))
+    def _to_model(self) -> RecentsModel:
+        recents_val = cast(str, self._settings().value(self._config_key, ""))
         try:
             return RecentsModel.model_validate(RecentsModel(**yaml.safe_load(recents_val)))
         except (yaml.YAMLError, TypeError, ValidationError):
@@ -49,7 +65,7 @@ class RecentsManager:
 
     def populate_recents_menu(self, menu: QMenu) -> None:
         """Add recents (including the item to bind a hotkey) to a menu."""
-        recents = self._get_recents()
+        recents = self._to_model()
         for hotkey, recent in sorted(recents.hotkeys.items(), key=lambda x: x[0]):
             load_hotkey_action = self._load_hotkey_actions[hotkey]  # crash on invalid index
             load_hotkey_action.setText(f"{os.path.split(recent)[1]}")
@@ -71,7 +87,7 @@ class RecentsManager:
 
     def _on_set_hotkey(self, parent: QWidget) -> None:
         assert self._loaded_config_abspath  # shouldn't be triggerable unless something loaded
-        recents = self._get_recents()
+        recents = self._to_model()
 
         hotkey, ok = QInputDialog.getInt(parent, "Set Hotkey Slot", "", value=0, minValue=0, maxValue=9)
         if not ok:
@@ -80,10 +96,10 @@ class RecentsManager:
         if self._loaded_config_abspath in recents.recents:
             recents.recents.remove(self._loaded_config_abspath)
         recents.hotkeys[hotkey] = self._loaded_config_abspath
-        self._settings.setValue(self._config_key, yaml.dump(recents.model_dump(), sort_keys=False))
+        self._settings().setValue(self._config_key, yaml.dump(recents.model_dump(), sort_keys=False))
 
     def _load_hotkey_slot(self, slot: int) -> None:
-        recents = self._get_recents()
+        recents = self._to_model()
         target = recents.hotkeys.get(slot, None)
         if target is not None:
             self._load_fn(target)
@@ -95,10 +111,10 @@ class RecentsManager:
             self._loaded_config_abspath = ""
             return
 
+        filename = os.path.abspath(filename)  # standardize to abspath
         self._loaded_config_abspath = filename
 
-        filename = os.path.abspath(filename)
-        recents = self._get_recents()
+        recents = self._to_model()
         if filename in recents.hotkeys.values():
             return  # don't overwrite hotkeys
         if filename in recents.recents:
@@ -108,4 +124,4 @@ class RecentsManager:
         if excess_recents > 0:
             recents.recents = recents.recents[:-excess_recents]
 
-        self._settings.setValue(self._config_key, yaml.dump(recents.model_dump(), sort_keys=False))
+        self._settings().setValue(self._config_key, yaml.dump(recents.model_dump(), sort_keys=False))

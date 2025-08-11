@@ -16,7 +16,7 @@ import itertools
 import os.path
 import time
 from functools import partial
-from typing import Dict, Tuple, Any, List, Optional, Callable, Sequence, cast, Set, Iterable, Type, Union, TextIO
+from typing import Dict, Tuple, Any, List, Optional, Callable, Sequence, cast, Set, Iterable, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -204,7 +204,9 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._watch_timer.setInterval(self.WATCH_INTERVAL_MS)
         self._watch_timer.timeout.connect(self._check_watch)
 
-        self._recents = RecentsManager(QSettings("scope-plots", "csv"), "recents", self.load_config_file)
+        self._recents = RecentsManager(
+            QSettings("scope-plots", "csv"), "recents", lambda filename: self.load_config_file(filename)
+        )
         self._recents.bind_hotkeys(self)
 
     @classmethod

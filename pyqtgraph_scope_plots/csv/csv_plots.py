@@ -36,7 +36,6 @@ from PySide6.QtWidgets import (
     QToolButton,
     QMessageBox,
 )
-from pydantic import BaseModel, ValidationError
 
 from ..legend_plot_widget import LegendPlotWidget
 from ..recents import RecentsManager

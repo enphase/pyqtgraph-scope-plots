@@ -39,7 +39,7 @@ from PySide6.QtWidgets import (
 from pydantic import BaseModel, ValidationError
 
 from ..legend_plot_widget import LegendPlotWidget
-from ..recents import BaseRecents
+from ..recents import RecentsManager
 from ..xy_plot_legends import XyTableLegends
 from ..xy_plot_visibility import VisibilityXyPlotWidget, VisibilityXyPlotTable
 from ..visibility_toggle_table import VisibilityToggleSignalsTable, VisibilityPlotWidget
@@ -178,7 +178,7 @@ class FullSignalsTable(
             xy_plot.set_thickness(thickness)
 
 
-class CsvLoaderPlotsTableWidget(BaseRecents, AnimationPlotsTableWidget, PlotsTableWidget, HasSaveLoadDataConfig):
+class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, HasSaveLoadDataConfig):
     """Example app-level widget that loads CSV files into the plotter"""
 
     _MODEL_BASES = [CsvLoaderStateModel]
@@ -204,6 +204,9 @@ class CsvLoaderPlotsTableWidget(BaseRecents, AnimationPlotsTableWidget, PlotsTab
         self._watch_timer = QTimer()
         self._watch_timer.setInterval(self.WATCH_INTERVAL_MS)
         self._watch_timer.timeout.connect(self._check_watch)
+
+        self._recents = RecentsManager(QSettings("scope-plots", "csv"), "recents", self.load_config_file)
+        self._recents.bind_hotkeys(self)
 
     @classmethod
     def _get_all_model_bases(cls) -> List[Type[BaseModel]]:
@@ -498,7 +501,7 @@ class CsvLoaderPlotsTableWidget(BaseRecents, AnimationPlotsTableWidget, PlotsTab
                 model.csv_files = [os.path.abspath(csv_filename) for csv_filename in self._csv_data_items.keys()]
 
         self._loaded_config_abspath = os.path.abspath(filename)
-        self._append_recent(self._loaded_config_abspath)
+        self._recents.append_recent(self._loaded_config_abspath)
 
         return model
 
@@ -546,4 +549,4 @@ class CsvLoaderPlotsTableWidget(BaseRecents, AnimationPlotsTableWidget, PlotsTab
         self._set_data_items(data_items)
         self._set_data(data)  # bulk update everything for performance
         self._loaded_config_abspath = os.path.abspath(filename)
-        self._append_recent(self._loaded_config_abspath)
+        self._recents.append_recent(self._loaded_config_abspath)

@@ -1,6 +1,6 @@
 import os
 from functools import partial
-from typing import Any, Dict, List, cast, Callable
+from typing import Any, Dict, List, cast, Callable, Optional
 
 import yaml
 from PySide6.QtCore import QSettings, QKeyCombination
@@ -22,10 +22,11 @@ class RecentsManager:
     _RECENTS_MAX = 9  # hotkeys + recents is pruned to this count
 
     def __init__(self, settings: QSettings, config_key: str, load_fn: Callable[[str], None]) -> None:
-        self._load_hotkey_actions = []
+        self._load_hotkey_actions: List[QAction] = []
         self._settings = settings
         self._config_key = config_key
         self._load_fn = load_fn
+        self._loaded_config_abspath = ""  # of last loaded config file, even if it has changed
 
     def bind_hotkeys(self, widget: QWidget) -> None:
         """Binds recents-loading hotkeys to the specified widget."""
@@ -87,13 +88,22 @@ class RecentsManager:
         if target is not None:
             self._load_fn(target)
 
-    def append_recent(self, filename: str) -> None:
+    def file_changed(self, filename: Optional[str]) -> None:
+        """Call this when a file is opened or saved, to tell the recents manager the currently open file.
+        Use None to clear the opened file, eg on a new file."""
+        if filename is None:  # only clear the currently open file
+            self._loaded_config_abspath = ""
+            return
+
+        self._loaded_config_abspath = filename
+
+        filename = os.path.abspath(filename)
         recents = self._get_recents()
-        if self._loaded_config_abspath in recents.hotkeys.values():
+        if filename in recents.hotkeys.values():
             return  # don't overwrite hotkeys
-        if self._loaded_config_abspath in recents.recents:
-            recents.recents.remove(self._loaded_config_abspath)
-        recents.recents.insert(0, self._loaded_config_abspath)
+        if filename in recents.recents:
+            recents.recents.remove(filename)
+        recents.recents.insert(0, filename)
         excess_recents = len(recents.recents) + len(recents.hotkeys) - self._RECENTS_MAX
         if excess_recents > 0:
             recents.recents = recents.recents[:-excess_recents]

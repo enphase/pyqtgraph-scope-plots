@@ -190,7 +190,6 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
 
     def __init__(self, x_axis: Optional[Callable[[], pg.AxisItem]] = None) -> None:
         self._x_axis = x_axis
-        self._loaded_config_abspath = ""  # of last loaded config file, even if it has changed
 
         super().__init__()
 
@@ -500,8 +499,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             else:  # save as abspath, would need .. access to get CSVs
                 model.csv_files = [os.path.abspath(csv_filename) for csv_filename in self._csv_data_items.keys()]
 
-        self._loaded_config_abspath = os.path.abspath(filename)
-        self._recents.append_recent(self._loaded_config_abspath)
+        self._recents.file_changed(filename)
 
         return model
 
@@ -548,5 +546,4 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(self._data_items.items())]
         self._set_data_items(data_items)
         self._set_data(data)  # bulk update everything for performance
-        self._loaded_config_abspath = os.path.abspath(filename)
-        self._recents.append_recent(self._loaded_config_abspath)
+        self._recents.file_changed(filename)

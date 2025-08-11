@@ -341,7 +341,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._menu_config.addAction(save_config_action)
 
         self._menu_config.addSeparator()
-        self._populate_recents_menu(self._menu_config)
+        self._recents.populate_recents_menu(self._menu_config)
 
     def _on_load_csv(self) -> None:
         csv_filenames, _ = QFileDialog.getOpenFileNames(None, "Select CSV Files", filter="CSV files (*.csv)")

@@ -16,7 +16,7 @@ import itertools
 import os.path
 import time
 from functools import partial
-from typing import Dict, Tuple, Any, List, Optional, Callable, Sequence, cast, Set, Iterable, Type, Union, TextIO
+from typing import Dict, Tuple, Any, List, Optional, Callable, Sequence, cast, Set, Iterable, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -36,9 +36,9 @@ from PySide6.QtWidgets import (
     QToolButton,
     QMessageBox,
 )
-from pydantic import BaseModel, ValidationError
 
 from ..legend_plot_widget import LegendPlotWidget
+from ..recents import RecentsManager
 from ..xy_plot_legends import XyTableLegends
 from ..xy_plot_visibility import VisibilityXyPlotWidget, VisibilityXyPlotTable
 from ..visibility_toggle_table import VisibilityToggleSignalsTable, VisibilityPlotWidget
@@ -177,30 +177,18 @@ class FullSignalsTable(
             xy_plot.set_thickness(thickness)
 
 
-class CsvLoaderRecents(BaseModel):
-    hotkeys: Dict[int, str] = {}  # hotkey number -> file
-    recents: List[str] = []  # most recent first
-
-
 class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, HasSaveLoadDataConfig):
     """Example app-level widget that loads CSV files into the plotter"""
 
     _MODEL_BASES = [CsvLoaderStateModel]
 
     WATCH_INTERVAL_MS = 333  # polls the filesystem metadata for changes this frequently
-    _RECENTS_MAX = 9  # hotkeys + recents is pruned to this count
-    _RECENTS_CONFIG_KEY = "recents"  # for QSettings
 
     _PLOT_TYPE = FullPlots
     _TABLE_TYPE = FullSignalsTable
 
-    @classmethod
-    def _config(cls) -> QSettings:  # for unit testability
-        return QSettings("scope-plots", "csv")
-
     def __init__(self, x_axis: Optional[Callable[[], pg.AxisItem]] = None) -> None:
         self._x_axis = x_axis
-        self._loaded_config_abspath = ""  # of last loaded config file, even if it has changed
 
         super().__init__()
 
@@ -215,31 +203,10 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._watch_timer.setInterval(self.WATCH_INTERVAL_MS)
         self._watch_timer.timeout.connect(self._check_watch)
 
-    @classmethod
-    def _get_all_model_bases(cls) -> List[Type[BaseModel]]:
-        bases = super()._get_all_model_bases()
-        plot_bases = cls._PLOT_TYPE._get_all_model_bases()
-        table_bases = cls._TABLE_TYPE._get_all_model_bases()
-        return bases + plot_bases + table_bases
-
-    @classmethod
-    def _get_data_model_bases(cls) -> List[Type[BaseModel]]:
-        bases = super()._get_data_model_bases()
-        plot_bases = cls._PLOT_TYPE._get_data_model_bases()
-        table_bases = cls._TABLE_TYPE._get_data_model_bases()
-        return bases + plot_bases + table_bases
-
-    def _write_model(self, model: BaseModel) -> None:
-        super()._write_model(model)
-        assert isinstance(self._table, HasSaveLoadDataConfig)
-        self._table._write_model(model)
-        self._plots._write_model(model)
-
-    def _load_model(self, model: BaseModel) -> None:
-        super()._load_model(model)
-        assert isinstance(self._table, HasSaveLoadDataConfig)
-        self._table._load_model(model)
-        self._plots._load_model(model)
+        self._recents = RecentsManager(
+            QSettings("scope-plots", "csv"), "recents", lambda filename: self.load_config_file(filename)
+        )
+        self._recents.bind_hotkeys(self)
 
     def _on_legend_checked(self) -> None:
         assert isinstance(self._plots, FullPlots)
@@ -291,17 +258,6 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         button_load_config.setMenu(self._menu_config)
         self._menu_config.aboutToShow.connect(self._populate_config_menu)
 
-        self._load_hotkey_actions = []
-        for i in range(10):
-            load_hotkey_action = QAction(f"", self)
-            load_hotkey_action.setShortcut(
-                QKeyCombination(Qt.KeyboardModifier.ControlModifier, Qt.Key(Qt.Key.Key_0 + i))
-            )
-            load_hotkey_action.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-            load_hotkey_action.triggered.connect(partial(self._load_hotkey_slot, i))
-            self.addAction(load_hotkey_action)
-            self._load_hotkey_actions.append(load_hotkey_action)
-
         button_refresh = QToolButton()
         button_refresh.setText("Refresh CSV")
         button_refresh.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
@@ -352,13 +308,6 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         widget.setLayout(layout)
         return widget
 
-    def _get_recents(self) -> CsvLoaderRecents:
-        recents_val = cast(str, self._config().value(self._RECENTS_CONFIG_KEY, ""))
-        try:
-            return CsvLoaderRecents.model_validate(CsvLoaderRecents(**yaml.load(recents_val, Loader=TupleSafeLoader)))
-        except (yaml.YAMLError, TypeError, ValidationError):
-            return CsvLoaderRecents()
-
     def _populate_config_menu(self) -> None:
         self._menu_config.clear()
         save_config_action = QAction("Save Config", self._menu_config)
@@ -366,57 +315,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self._menu_config.addAction(save_config_action)
 
         self._menu_config.addSeparator()
-        recents = self._get_recents()
-        for hotkey, recent in sorted(recents.hotkeys.items(), key=lambda x: x[0]):
-            load_hotkey_action = self._load_hotkey_actions[hotkey]  # crash on invalid index
-            load_hotkey_action.setText(f"{os.path.split(recent)[1]}")
-            self._menu_config.addAction(load_hotkey_action)
-
-        for recent in recents.recents:
-            load_action = QAction(f"{os.path.split(recent)[1]}", self._menu_config)
-            load_action.triggered.connect(partial(self.load_config_file, recent))
-            self._menu_config.addAction(load_action)
-
-        self._menu_config.addSeparator()
-        set_hotkey_action = QAction("Set Hotkey", self._menu_config)
-        set_hotkey_action.triggered.connect(self._on_set_hotkey)
-        if self._loaded_config_abspath:
-            set_hotkey_action.setText(f"Set Hotkey for {os.path.split(self._loaded_config_abspath)[1]}")
-        else:
-            set_hotkey_action.setDisabled(True)
-        self._menu_config.addAction(set_hotkey_action)
-
-    def _on_set_hotkey(self) -> None:
-        assert self._loaded_config_abspath  # shouldn't be triggerable unless something loaded
-        recents = self._get_recents()
-
-        hotkey, ok = QInputDialog.getInt(self, "Set Hotkey Slot", "", value=0, minValue=0, maxValue=9)
-        if not ok:
-            return
-
-        if self._loaded_config_abspath in recents.recents:
-            recents.recents.remove(self._loaded_config_abspath)
-        recents.hotkeys[hotkey] = self._loaded_config_abspath
-        self._config().setValue(self._RECENTS_CONFIG_KEY, yaml.dump(recents.model_dump(), sort_keys=False))
-
-    def _load_hotkey_slot(self, slot: int) -> None:
-        recents = self._get_recents()
-        target = recents.hotkeys.get(slot, None)
-        if target is not None:
-            self.load_config_file(target)
-
-    def _append_recent(self) -> None:
-        recents = self._get_recents()
-        if self._loaded_config_abspath in recents.hotkeys.values():
-            return  # don't overwrite hotkeys
-        if self._loaded_config_abspath in recents.recents:
-            recents.recents.remove(self._loaded_config_abspath)
-        recents.recents.insert(0, self._loaded_config_abspath)
-        excess_recents = len(recents.recents) + len(recents.hotkeys) - self._RECENTS_MAX
-        if excess_recents > 0:
-            recents.recents = recents.recents[:-excess_recents]
-
-        self._config().setValue(self._RECENTS_CONFIG_KEY, yaml.dump(recents.model_dump(), sort_keys=False))
+        self._recents.populate_recents_menu(self._menu_config)
 
     def _on_load_csv(self) -> None:
         csv_filenames, _ = QFileDialog.getOpenFileNames(None, "Select CSV Files", filter="CSV files (*.csv)")
@@ -575,8 +474,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             else:  # save as abspath, would need .. access to get CSVs
                 model.csv_files = [os.path.abspath(csv_filename) for csv_filename in self._csv_data_items.keys()]
 
-        self._loaded_config_abspath = os.path.abspath(filename)
-        self._append_recent()
+        self._recents.file_changed(filename)
 
         return model
 
@@ -623,5 +521,4 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         data_items = [(name, int_color(i), data_type) for i, (name, data_type) in enumerate(self._data_items.items())]
         self._set_data_items(data_items)
         self._set_data(data)  # bulk update everything for performance
-        self._loaded_config_abspath = os.path.abspath(filename)
-        self._append_recent()
+        self._recents.file_changed(filename)

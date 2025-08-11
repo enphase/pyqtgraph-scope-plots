@@ -21,7 +21,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QInputDialog
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.csv.csv_plots import CsvLoaderPlotsTableWidget, CsvLoaderRecents
+from pyqtgraph_scope_plots.csv.csv_plots import CsvLoaderPlotsTableWidget
+from pyqtgraph_scope_plots.recents import RecentsModel, RecentsManager
 from tests.util import MockQSettings, menu_action_by_name
 
 
@@ -78,7 +79,7 @@ def test_watch_stability(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
         qtbot.waitUntil(lambda: mock_load_csv.called)  # check the load happens
 
 
-@mock.patch.object(CsvLoaderPlotsTableWidget, "_config", lambda *args: MockQSettings())
+@mock.patch.object(RecentsManager, "_settings", lambda *args: MockQSettings())
 def test_save_model_csvs(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     # test empty save
     model = plot._do_save_config(os.path.join(os.path.dirname(__file__), "config.yml"))
@@ -97,7 +98,7 @@ def test_save_model_csvs(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     ]
 
 
-@mock.patch.object(CsvLoaderPlotsTableWidget, "_config", lambda *args: MockQSettings())
+@mock.patch.object(RecentsManager, "_settings", lambda *args: MockQSettings())
 def test_load_model_csvs_relpath(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     model = plot._do_save_config("/config.yml")
 
@@ -123,20 +124,20 @@ def test_load_model_csvs_relpath(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) 
 
 def test_recents_save(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     settings = MockQSettings()
-    with mock.patch.object(CsvLoaderPlotsTableWidget, "_config", lambda *args: settings):
-        assert plot._get_recents() == CsvLoaderRecents()
+    with mock.patch.object(RecentsManager, "_settings", lambda *args: settings):
+        assert plot._recents._to_model() == RecentsModel()
         model = plot._do_save_config("/config.yml")  # stores to recents
-        assert plot._get_recents().recents == [os.path.abspath("/config.yml")]
+        assert plot._recents._to_model().recents == [os.path.abspath("/config.yml")]
 
         plot._do_load_config(os.path.join(os.path.dirname(__file__), "test.yml"), model)
-        assert plot._get_recents().recents == [
+        assert plot._recents._to_model().recents == [
             os.path.abspath(os.path.join(os.path.dirname(__file__), "test.yml")),
             os.path.abspath("/config.yml"),
         ]
 
         # check reordering latest-first + dedup
         plot._do_load_config("/config.yml", model)
-        assert plot._get_recents().recents == [
+        assert plot._recents._to_model().recents == [
             os.path.abspath("/config.yml"),
             os.path.abspath(os.path.join(os.path.dirname(__file__), "test.yml")),
         ]
@@ -144,39 +145,39 @@ def test_recents_save(qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
         # check pruning
         for i in range(10):
             plot._do_load_config(f"/extra{i}.yml", model)
-        assert len(plot._get_recents().recents) == 9
+        assert len(plot._recents._to_model().recents) == 9
 
         # check hotkeys
         with mock.patch.object(QInputDialog, "getInt", lambda *args, **kwargs: (8, True)):
-            plot._on_set_hotkey()
-        assert plot._get_recents().hotkeys[8] == os.path.abspath(f"/extra9.yml")
-        assert len(plot._get_recents().recents) == 8
-        assert os.path.abspath(f"/extra9.yml") not in plot._get_recents().recents
-        assert os.path.abspath(f"/extra8.yml") in plot._get_recents().recents
+            plot._recents._on_set_hotkey(plot)
+        assert plot._recents._to_model().hotkeys[8] == os.path.abspath(f"/extra9.yml")
+        assert len(plot._recents._to_model().recents) == 8
+        assert os.path.abspath(f"/extra9.yml") not in plot._recents._to_model().recents
+        assert os.path.abspath(f"/extra8.yml") in plot._recents._to_model().recents
 
         # check most recent pruned
         plot._do_load_config(f"/extra11.yml", model)
-        assert plot._get_recents().hotkeys[8] == os.path.abspath(f"/extra9.yml")
-        assert len(plot._get_recents().recents) == 8
-        assert os.path.abspath(f"/extra0.yml") not in plot._get_recents().recents
-        assert os.path.abspath(f"/extra11.yml") in plot._get_recents().recents
+        assert plot._recents._to_model().hotkeys[8] == os.path.abspath(f"/extra9.yml")
+        assert len(plot._recents._to_model().recents) == 8
+        assert os.path.abspath(f"/extra0.yml") not in plot._recents._to_model().recents
+        assert os.path.abspath(f"/extra11.yml") in plot._recents._to_model().recents
 
         # check that it is possible to max out the hotkey range
         for i in range(10):
             plot._do_load_config(f"/extra{i}.yml", model)
             with mock.patch.object(QInputDialog, "getInt", lambda *args, **kwargs: (i, True)):
-                plot._on_set_hotkey()
-        assert len(plot._get_recents().recents) == 0
+                plot._recents._on_set_hotkey(plot)
+        assert len(plot._recents._to_model().recents) == 0
 
         # recents no longer saves, hotkeys take priority
         plot._do_load_config(f"/extra11.yml", model)
-        assert len(plot._get_recents().recents) == 0
+        assert len(plot._recents._to_model().recents) == 0
 
 
 @mock.patch.object(CsvLoaderPlotsTableWidget, "load_config_file")
 def test_recents_load(mock_load_config: mock.MagicMock, qtbot: QtBot, plot: CsvLoaderPlotsTableWidget) -> None:
     settings = MockQSettings()
-    with mock.patch.object(CsvLoaderPlotsTableWidget, "_config", lambda *args: settings):
+    with mock.patch.object(RecentsManager, "_settings", lambda *args: settings):
         plot._populate_config_menu()
         assert len(plot._menu_config.actions()) == 4  # 2 empty items + separators
 
@@ -193,6 +194,6 @@ def test_recents_load(mock_load_config: mock.MagicMock, qtbot: QtBot, plot: CsvL
 
         # set and test hotkey
         with mock.patch.object(QInputDialog, "getInt", lambda *args, **kwargs: (4, True)):
-            plot._on_set_hotkey()
+            plot._recents._on_set_hotkey(plot)
         qtbot.keyClick(plot, Qt.Key.Key_4, modifier=Qt.KeyboardModifier.ControlModifier)
         mock_load_config.assert_called_once_with(os.path.abspath("/config.yml"))

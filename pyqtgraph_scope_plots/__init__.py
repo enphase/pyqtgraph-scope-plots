@@ -49,6 +49,9 @@ from .xy_plot_splitter import XyPlotSplitter
 from .xy_plot_table import XyTable
 from .xy_plot_legends import XyTableLegends
 
+# misc utils
+from .recents import RecentsManager
+
 
 __all__ = [
     "HasSaveLoadConfig",
@@ -91,4 +94,5 @@ __all__ = [
     "XyPlotSplitter",
     "XyTable",
     "XyTableLegends",
+    "RecentsManager",
 ]

@@ -62,9 +62,13 @@ def test_transform_x(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> No
     qtbot.waitUntil(lambda: transforms_plots._apply_transform("1", DATA).tolist() == [1, 0.5, 1])
     assert transforms_plots._apply_transform("0", DATA).tolist() == [1.01, 2, 2, 1]  # should not affect 0
 
+    transforms_plots.set_transform(["1"], "ceil((x ** 2) * 10)")
+    qtbot.waitUntil(lambda: transforms_plots._apply_transform("1", DATA).tolist() == [3, 1, 3])
+    assert transforms_plots._apply_transform("0", DATA).tolist() == [1.01, 2, 2, 1]  # should not affect 0
+
     transforms_plots.set_transform(["0"], "")
     qtbot.waitUntil(lambda: transforms_plots._apply_transform("0", DATA).tolist() == [0.01, 1, 1, 0])
-    assert transforms_plots._apply_transform("1", DATA).tolist() == [1, 0.5, 1]
+    assert transforms_plots._apply_transform("1", DATA).tolist() == [3, 1, 3]
 
 
 def test_transform_multiple(qtbot: QtBot, transforms_plots: TransformsPlotWidget) -> None:

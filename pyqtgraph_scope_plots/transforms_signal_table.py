@@ -11,7 +11,7 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-
+import math
 import numbers
 from typing import Dict, Tuple, List, Any, Mapping, Union, Optional
 
@@ -77,8 +77,16 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
 
     _DATA_MODEL_BASES = [TransformsDataStateModel]
 
+    _SIMPLEEVAL_FUNCTIONS = {
+        **simpleeval.DEFAULT_FUNCTIONS,
+        "abs": abs,
+        "sqrt": math.sqrt,
+        "floor": math.floor,
+        "ceil": math.ceil,
+    }
+
     def __init__(self, *args: Any, **kwargs: Any):
-        self._simpleeval = simpleeval.SimpleEval()
+        self._simpleeval = simpleeval.SimpleEval(functions=self._SIMPLEEVAL_FUNCTIONS)
 
         self._transforms: Dict[str, Tuple[str, Any]] = {}  # (expr str, parsed)
         self._transforms_errs: Dict[str, Optional[Exception]] = {}

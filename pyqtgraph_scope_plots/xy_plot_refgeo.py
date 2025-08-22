@@ -24,6 +24,7 @@ from PySide6.QtGui import QAction, QColor, Qt
 from PySide6.QtWidgets import QMenu, QColorDialog, QTableWidgetItem
 from pydantic import BaseModel, model_validator
 
+from .transforms_signal_table import TransformsPlotWidget
 from .code_input_dialog import CodeInputDialog
 from .signals_table import SignalsTable, HasRegionSignalsTable
 from .util import HasSaveLoadConfig
@@ -237,6 +238,8 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
 
     _MODEL_BASES = [XyRefGeoModel]
 
+    _SIMPLEEVAL_FUNCTIONS = TransformsPlotWidget._SIMPLEEVAL_FUNCTIONS
+
     _REFGEO_CLASSES: List[Type[XyRefGeoDrawer]] = [
         XyRefGeoVLine,
         XyRefGeoHLine,
@@ -252,9 +255,9 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
         self._refgeo_fns: List[Tuple[str, Any, QColor, bool]] = []  # (expr str, parsed, color, hidden)
         self._refgeo_objs: List[Union[List[pg.GraphicsObject], Exception]] = []  # index-aligned with refgeo_fns
 
-        # copy, since simpleeval internally mutates the functions dict
-        simpleeval_fns = {refgeo_class._fn_name(): refgeo_class for refgeo_class in self._REFGEO_CLASSES}
-        self._simpleeval = simpleeval.EvalWithCompoundTypes(functions=simpleeval_fns)
+        # combine the refgeo functions with the basic functions
+        refgeo_fns = {refgeo_class._fn_name(): refgeo_class for refgeo_class in self._REFGEO_CLASSES}
+        self._simpleeval = simpleeval.EvalWithCompoundTypes(functions={**self._SIMPLEEVAL_FUNCTIONS, **refgeo_fns})
 
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)

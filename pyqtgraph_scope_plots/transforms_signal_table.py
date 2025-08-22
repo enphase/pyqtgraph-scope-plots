@@ -72,16 +72,18 @@ class AllDataDict:
                 self._data_indices[key] = prev_index + 1
 
 
-_SIMPLEEVAL_FUNCTIONS = simpleeval.DEFAULT_FUNCTIONS.copy()
-_SIMPLEEVAL_FUNCTIONS.update({"abs": abs, "sqrt": math.sqrt, "floor": math.floor, "ceil": math.ceil})
-
-
 class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
     """MultiPlotWidget that adds a user-defined data transform."""
 
     _DATA_MODEL_BASES = [TransformsDataStateModel]
 
-    _SIMPLEEVAL_FUNCTIONS = _SIMPLEEVAL_FUNCTIONS
+    _SIMPLEEVAL_FUNCTIONS = {
+        **simpleeval.DEFAULT_FUNCTIONS,
+        "abs": abs,
+        "sqrt": math.sqrt,
+        "floor": math.floor,
+        "ceil": math.ceil,
+    }
 
     def __init__(self, *args: Any, **kwargs: Any):
         self._simpleeval = simpleeval.SimpleEval(functions=self._SIMPLEEVAL_FUNCTIONS)

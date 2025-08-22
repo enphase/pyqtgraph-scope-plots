@@ -81,6 +81,7 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
 
     _DATA_MODEL_BASES = [TransformsDataStateModel]
 
+    _SIMPLEEVAL_FUNCTIONS = _SIMPLEEVAL_FUNCTIONS
 
     def __init__(self, *args: Any, **kwargs: Any):
         self._simpleeval = simpleeval.SimpleEval(functions=self._SIMPLEEVAL_FUNCTIONS)

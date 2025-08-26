@@ -168,9 +168,16 @@ class XyRefGeoScatter(XyRefGeoBasePoints):
         "h": "h",  # bestagons
     }
 
-    def __init__(self, *, marker: Union[str, Sequence[str]] = "o", **kwargs: Any):
+    def __init__(
+        self,
+        *,
+        marker: Union[str, Sequence[str]] = "o",
+        s: Optional[Union[float, Sequence[float]]] = None,
+        **kwargs: Any,
+    ):
         super().__init__(**kwargs)
         self._marker = marker
+        self._s = s
 
     @classmethod
     def _fn_name(cls) -> str:
@@ -178,7 +185,7 @@ class XyRefGeoScatter(XyRefGeoBasePoints):
 
     @classmethod
     def _fn_doc(cls) -> str:
-        return f"""`{cls._fn_name()}(x=[...], y=[...] | pts=[(x, y), ...], [marker='{''.join(cls._MARKER_MAP.keys())}'|[...]])`: draws the specified points"""
+        return f"""`{cls._fn_name()}(x=[...], y=[...] | pts=[(x, y), ...], [marker='{''.join(cls._MARKER_MAP.keys())}'|[...]], [s=...|[...]])`: draws the specified points"""
 
     def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
         xs, ys = self._get_xy()
@@ -193,7 +200,10 @@ class XyRefGeoScatter(XyRefGeoBasePoints):
                 pg_symbol.append(pg_elt)
         else:
             raise TypeError("unknown marker type")
-        return [pg.ScatterPlotItem(x=xs, y=ys, pen=color, brush=color, symbol=pg_symbol)]
+        scatter = pg.ScatterPlotItem(x=xs, y=ys, pen=color, brush=color, symbol=pg_symbol)
+        if self._s is not None:
+            scatter.setSize(self._s)  # pyqtgraph exceptions if s is array but of wrong length
+        return [scatter]
 
 
 class XyRefGeoText(XyRefGeoDrawer):

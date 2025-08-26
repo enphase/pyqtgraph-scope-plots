@@ -168,7 +168,13 @@ class XyRefGeoScatter(XyRefGeoBasePoints):
         "h": "h",  # bestagons
     }
 
-    def __init__(self, *, marker: Union[str, Sequence[str]] = "o", s: Optional[float] = None, **kwargs: Any):
+    def __init__(
+        self,
+        *,
+        marker: Union[str, Sequence[str]] = "o",
+        s: Optional[Union[float, Sequence[float]]] = None,
+        **kwargs: Any,
+    ):
         super().__init__(**kwargs)
         self._marker = marker
         self._s = s

@@ -202,7 +202,7 @@ class XyRefGeoScatter(XyRefGeoBasePoints):
             raise TypeError("unknown marker type")
         scatter = pg.ScatterPlotItem(x=xs, y=ys, pen=color, brush=color, symbol=pg_symbol)
         if self._s is not None:
-            scatter.setSize(self._s)
+            scatter.setSize(self._s)  # pyqtgraph exceptions if s is array but of wrong length
         return [scatter]
 
 

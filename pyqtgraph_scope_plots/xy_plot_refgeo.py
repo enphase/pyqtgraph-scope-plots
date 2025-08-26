@@ -179,7 +179,7 @@ class XyRefGeoScatter(XyRefGeoBasePoints):
 
     @classmethod
     def _fn_doc(cls) -> str:
-        return f"""`{cls._fn_name()}(x=[...], y=[...] | pts=[(x, y), ...], [marker='{''.join(cls._MARKER_MAP.keys())}'|[...]], [s=...])`: draws the specified points"""
+        return f"""`{cls._fn_name()}(x=[...], y=[...] | pts=[(x, y), ...], [marker='{''.join(cls._MARKER_MAP.keys())}'|[...]], [s=...|[...]])`: draws the specified points"""
 
     def _draw(self, color: QColor) -> Sequence[pg.GraphicsObject]:
         xs, ys = self._get_xy()

@@ -20,6 +20,8 @@ import math
 import numpy as np
 from PySide6 import QtGui
 from PySide6.QtWidgets import QApplication
+from pyqtgraph.debug import Profiler
+import pyqtgraph as pg
 
 from .csv_plots import CsvLoaderPlotsTableWidget
 from ..multi_plot_widget import MultiPlotWidget
@@ -36,6 +38,8 @@ if __name__ == "__main__":
     app = QApplication([])
     plots = CsvLoaderPlotsTableWindow()
     plots.resize(1200, 800)
+
+    Profiler._profilers = ["PlotCurveItem.paint", "LinearRegionItem.paint"]
 
     PTS_PER_CYCLE = 128
     X_PER_CYCLE = 1.0

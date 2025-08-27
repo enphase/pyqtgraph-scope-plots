@@ -29,8 +29,65 @@ from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPl
 from .util import BaseTopModel, HasSaveLoadDataConfig
 
 
-class InteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot):
+class InteractivePlot(pg.GraphicsLayoutWidget):
     """PlotItem with interactivity mixins"""
+
+    sigHoverSnapChanged = Signal(object)  # emitted during mouseover when the mouse pos changes
+
+    # TODO these belongs in RegionPlot / LiveCursorPlot, but it breaks with a signal / slots not ordered error
+    sigHoverCursorChanged = Signal(object)  # Optional[float] = x-position
+    sigCursorRangeChanged = Signal(object)  # Optional[Union[float, Tuple[float, float]]] as cursor / region
+    sigPoiChanged = Signal(object)  # List[float] as current POIs
+    sigDragCursorChanged = Signal(float)  # x-position
+    sigDragCursorCleared = Signal()
+
+    def resizeEvent(self, event):
+        if hasattr(self, "_overlay"):
+            self._overlay.resize(self.size())
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+        self._plot = pg.PlotItem()
+        self.addItem(self._plot, 0, 0)
+
+        # self._overlay_pi = pg.PlotItem(background=None)
+        # self._overlay = pg.PlotWidget(self, plotItem=self._overlay_pi, background=None)
+
+        # self._overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        # self._overlay.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        # self._overlay.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        # self._overlay.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
+
+        # self._overlay_pi.setXLink(self._plot)
+        # self._overlay_pi.setYLink(self._plot)
+        # self._overlay.setZValue(100)
+        # self._overlay.setMouseEnabled(False, False)
+
+        # self._cursor_range = pg.LinearRegionItem(movable=True)
+        # self._cursor_range.setZValue(100)
+        # self._overlay_pi.addItem(self._cursor_range, ignoreBounds=True)
+
+        # self._overlay2 = pg.ViewBox()
+        # self._cursor_range2 = pg.InfiniteLine(movable=True)
+        # self._cursor_range2.setZValue(100)
+        # self._overlay2.addItem(self._cursor_range2)
+        # self.addItem(self._overlay2, ignoreBounds=True)
+        # self._overlay2.setXLink(self)
+        # self._overlay2.setYLink(self)
+
+        # self.sigRangeChanged.connect(lambda _, __: self.sync_overlay_viewbox())
+        # self.sync_overlay_viewbox()
+
+    # def sync_overlay_viewbox(self):
+    #     print(self.getViewBox().viewRange())
+
+    # self._overlay.setRange(rect=self.getViewBox().viewRect(), padding=0)
+    # self._overlay2.setRange(rect=self.getViewBox().viewRect(), padding=0)
+
+
+# class InteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot):
+#     """PlotItem with interactivity mixins"""
 
 
 class EnumWaveformInteractivePlot(
@@ -95,8 +152,8 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
 
         self.setOrientation(Qt.Orientation.Vertical)
         default_plot_item = self._init_plot_item(self._create_plot_item(self.PlotType.DEFAULT))
-        default_plot_widget = pg.PlotWidget(plotItem=default_plot_item)
-        self.addWidget(default_plot_widget)
+        # default_plot_widget = pg.PlotWidget(plotItem=default_plot_item)
+        self.addWidget(default_plot_item)
         # contained data items per plot
         self._plot_item_data: Dict[pg.PlotItem, List[Optional[str]]] = {default_plot_item: []}
         # re-derived when _plot_item_data updated
@@ -149,11 +206,12 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
             if plot_type is None:
                 continue
             add_plot_item = self._init_plot_item(self._create_plot_item(plot_type))
-            plot_widget = pg.PlotWidget(plotItem=add_plot_item)
+            # plot_widget = pg.PlotWidget(plotItem=add_plot_item)
+            plot_widget = add_plot_item
             self.addWidget(plot_widget)
             self._plot_item_data[add_plot_item] = plot_widget_model.data_items  # type: ignore
 
-            widget_viewbox = cast(pg.PlotItem, plot_widget.getPlotItem()).getViewBox()
+            widget_viewbox = cast(pg.PlotItem, plot_widget._plot).getViewBox()
             if model.x_range is not None and model.x_range != "auto":
                 widget_viewbox.setXRange(model.x_range[0], model.x_range[1], 0)
             if plot_widget_model.y_range is not None and plot_widget_model.y_range != "auto":
@@ -310,11 +368,11 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
 
                 if add_plot_item is None:  # create a new plot if needed
                     add_plot_item = self._init_plot_item(self._create_plot_item(plot_type))
-                    if self._anchor_x_plot_item is not None:
-                        add_plot_item.setXLink(self._anchor_x_plot_item)
-                    else:
-                        self._anchor_x_plot_item = add_plot_item
-                    plot_widget = pg.PlotWidget(plotItem=add_plot_item)
+                    # if self._anchor_x_plot_item is not None:
+                    #     add_plot_item._plot.setXLink(self._anchor_x_plot_item)
+                    # else:
+                    #     self._anchor_x_plot_item = add_plot_item._plot
+                    plot_widget = add_plot_item  # pg.PlotWidget(plotItem=add_plot_item)
                     self.addWidget(plot_widget)
 
                 self._plot_item_data.setdefault(add_plot_item, []).append(data_name)
@@ -360,15 +418,15 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
                 )  # None is valid for dict.get, cast to satisfy typer
                 plot_item.update_plot(data_name or "", color, xs, ys)
             else:
-                for data_item in plot_item.listDataItems():  # clear existing
-                    plot_item.removeItem(data_item)
+                # for data_item in plot_item.listDataItems():  # clear existing
+                #     plot_item.removeItem(data_item)
                 for data_name in data_names:
                     assert isinstance(data_name, str)
                     color = self._data_items.get(data_name, (QColor("black"), None))[0]
                     xs, ys = self._data.get(data_name, ([], []))
                     curve = pg.PlotCurveItem(x=xs, y=ys, name=data_name)
                     curve.setPen(color=color, width=1)
-                    plot_item.addItem(curve)
+                    plot_item._plot.addItem(curve)
                     self._data_curves.setdefault(data_name, []).append(curve)
 
     def autorange(self, enable: bool) -> None:

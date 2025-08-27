@@ -45,7 +45,7 @@ if __name__ == "__main__":
         [
             ("sine", int_color(0), MultiPlotWidget.PlotType.DEFAULT),
             ("square", int_color(1), MultiPlotWidget.PlotType.DEFAULT),
-            ("cycle", int_color(2), MultiPlotWidget.PlotType.ENUM_WAVEFORM),
+            # ("cycle", int_color(2), MultiPlotWidget.PlotType.ENUM_WAVEFORM),
             ("step", int_color(3), MultiPlotWidget.PlotType.DEFAULT),
         ]
     )
@@ -55,10 +55,10 @@ if __name__ == "__main__":
         {
             "sine": (xs, np.sin(xs / X_PER_CYCLE * 2 * math.pi)),
             "square": (xs, np.signbit(np.sin(xs / X_PER_CYCLE * 2 * math.pi)).astype(float)),
-            "cycle": (
-                xs,
-                [f"Cycle {int(x)}" for x in np.floor(xs / X_PER_CYCLE)],
-            ),
+            # "cycle": (
+            #     xs,
+            #     [f"Cycle {int(x)}" for x in np.floor(xs / X_PER_CYCLE)],
+            # ),
             "step": (xs, np.floor(xs / X_PER_CYCLE)),
         }
     )

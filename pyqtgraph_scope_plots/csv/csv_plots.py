@@ -131,10 +131,10 @@ class FullPlots(
 
     def _update_plots(self) -> None:
         super()._update_plots()
-        for plot_item, _ in self._plot_item_data.items():
-            for item in plot_item.items:
-                if isinstance(item, pg.PlotCurveItem):
-                    item.setPen(color=item.opts["pen"].color(), width=self._thickness)
+        # for plot_item, _ in self._plot_item_data.items():
+        #     for item in plot_item.items:
+        #         if isinstance(item, pg.PlotCurveItem):
+        #             item.setPen(color=item.opts["pen"].color(), width=self._thickness)
 
     def set_thickness(self, thickness: float) -> None:
         self._thickness = thickness

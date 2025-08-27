@@ -54,12 +54,12 @@ class LegendPlotWidget(BaseLegendSaveLoad, MultiPlotWidget):
 
     def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
         plot_item = super()._init_plot_item(plot_item)
-        if self._show_legend:
-            plot_item.addLegend()
+        # if self._show_legend:
+        #     plot_item.addLegend()
         return plot_item
 
     def show_legends(self) -> None:
         self._show_legend = True
-        for plot_item, _ in self._plot_item_data.items():
-            plot_item.addLegend()
+        # for plot_item, _ in self._plot_item_data.items():
+        #     plot_item.addLegend()
         self._update_plots()

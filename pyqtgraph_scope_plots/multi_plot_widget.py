@@ -41,27 +41,55 @@ class InteractivePlot(pg.GraphicsLayoutWidget):
     sigDragCursorChanged = Signal(float)  # x-position
     sigDragCursorCleared = Signal()
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "_overlay"):
+            self._overlay.resize(QSize(self.size().width() / 2, self.size().height()))
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
         self._plot = pg.PlotItem()
         self.addItem(self._plot, 0, 0)
-        self._overlay = pg.PlotItem(background=None)
-        self.addItem(self._overlay, 0, 0)
+
+        self._overlay_pi = pg.PlotItem(background=None)
+        self._overlay = pg.PlotWidget(
+            self,
+            plotItem=self._overlay_pi,
+            background=QColor(0, 255, 0, 16),
+        )
+
+        self._overlay.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        # self._overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._overlay.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        # self._overlay.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        # self._overlay.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
+
+        self._overlay_pi.setXLink(self._plot)
+        self._overlay_pi.setYLink(self._plot)
+        self._overlay.setZValue(100)
+        # self._overlay.setMouseEnabled(False, False)
+
+        self._cursor_range = pg.LinearRegionItem(movable=True)
+        self._cursor_range.setZValue(100)
+        self._overlay_pi.addItem(self._cursor_range, ignoreBounds=True)
+
+        # self._overlay = pg.PlotItem(background=None)
+        # self.addItem(self._overlay, 0, 0)
 
         # self._overlay = pg.ViewBox()
         # self.addItem(self._overlay, ignoreBounds=True)
         # self._overlay.setXRange(-100, 100)
         # self._overlay.setYRange(-100, 100)
         # self._overlay.enableAutoRange(False)
-        self._overlay.setXLink(self._plot)
-        self._overlay.setYLink(self._plot)
-        self._overlay.setZValue(100)
+        # self._overlay.setXLink(self._plot)
+        # self._overlay.setYLink(self._plot)
+        # self._overlay.setZValue(100)
         # self._overlay.setMouseEnabled(False, False)
 
-        self._cursor_range = pg.LinearRegionItem(movable=True)
-        self._cursor_range.setZValue(100)
-        self._plot.addItem(self._cursor_range, ignoreBounds=True)
+        # self._cursor_range = pg.LinearRegionItem(movable=True)
+        # self._cursor_range.setZValue(100)
+        # self._plot.addItem(self._cursor_range, ignoreBounds=True)
         # self._cursor_range.setClipItem(None)
         # self._spi = pg.ScatterPlotItem(x=[-1, 1], y=[-1, 1])
         # self._overlay.addItem(self._spi, ignoreBounds=True)

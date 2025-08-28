@@ -119,7 +119,7 @@ class EnumWaveformPlot(SnappableHoverPlot, DataPlotItem):
         super().set_data(data)
         self._update_plot_labels()
 
-    def _update_plot_labels(self):
+    def _update_plot_labels(self) -> None:
         for label in self._curves_labels:  # always delete prior
             self.removeItem(label)
         self._curves_labels = []

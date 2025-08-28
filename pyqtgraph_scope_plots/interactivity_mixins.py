@@ -39,7 +39,7 @@ class PlotDataDesc(NamedTuple):
     name: str = ""
 
 
-class DataPlotItem(pg.PlotItem):
+class DataPlotItem(pg.PlotItem):  # type: ignore
     """Abstract base class for a PlotItem that takes some data."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -54,7 +54,7 @@ class DataPlotItem(pg.PlotItem):
             for data_graphic in data_graphics:  # TODO better naming
                 self.removeItem(data_graphic)
 
-        self._data = data
+        self._data = list(data)
         self._data_graphics = []
         for item in data:
             data_graphics = self._generate_plot_items(item)

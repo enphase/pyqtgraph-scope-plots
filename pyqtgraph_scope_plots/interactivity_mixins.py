@@ -145,9 +145,7 @@ class SnappableHoverPlot(DataPlotCurveItem):
         self._hover_target: Optional[pg.TargetItem] = None
 
     def _snap_pos(self, target_pos: QPointF, x_lo: float, x_hi: float) -> Optional[QPointF]:
-        """Returns the closest point in the snappable data set to the target_pos, with x-value between x_lo and x_hi.
-        Pulls from self.listDataItems() by default, override this to provide different snapping points.
-        """
+        """Returns the closest point in the snappable data set to the target_pos, with x-value between x_lo and x_hi."""
         # closest point for each curve: (data, index, distance)
         data_index_dists: List[Tuple[PlotDataDesc, int, float]] = []
         for data, graphics in zip(self._data, self._data_graphicss):

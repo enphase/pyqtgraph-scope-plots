@@ -14,12 +14,14 @@
 
 from typing import cast
 
+import numpy as np
 import pytest
 from PySide6.QtCore import QPointF
 from PySide6.QtGui import QColor
 from pyqtgraph import PlotWidget
 from pytestqt.qtbot import QtBot
 
+from pyqtgraph_scope_plots.interactivity_mixins import PlotDataDesc
 from pyqtgraph_scope_plots.multi_plot_widget import EnumWaveformInteractivePlot
 from pyqtgraph_scope_plots.util.util import not_none
 
@@ -28,7 +30,16 @@ from pyqtgraph_scope_plots.util.util import not_none
 def plot(qtbot: QtBot) -> PlotWidget:
     """Creates a signals plot with multiple data items"""
     plot = EnumWaveformInteractivePlot()
-    plot.update_plot("0", QColor("yellow"), [0, 1, 1.5, 2, 6, 7, 7.4], ["A", "B", "B", "B", "C", "A", "A"])
+    plot.set_data(
+        [
+            PlotDataDesc(
+                np.array([0, 1, 1.5, 2, 6, 7, 7.4]),
+                np.array(["A", "B", "B", "B", "C", "A", "A"]),
+                QColor("yellow"),
+                "0",
+            )
+        ]
+    )
     widget = PlotWidget(plotItem=plot)
     qtbot.addWidget(widget)
     widget.show()
@@ -38,10 +49,28 @@ def plot(qtbot: QtBot) -> PlotWidget:
 
 def test_empty_one(qtbot: QtBot, plot: PlotWidget) -> None:
     plot_item = cast(EnumWaveformInteractivePlot, plot.plotItem)
-    plot_item.update_plot("0", QColor("grey"), [], [])
+    plot_item.set_data([PlotDataDesc(np.array([]), np.array([]), QColor("grey"), "0")])
 
-    plot_item.update_plot("0", QColor("grey"), [0], ["test"])
-    plot_item.update_plot("0", QColor("grey"), [1], ["test"])
+    plot_item.set_data(
+        [
+            PlotDataDesc(
+                np.array([0]),
+                np.array(["test"]),
+                QColor("grey"),
+                "0",
+            )
+        ]
+    )
+    plot_item.set_data(
+        [
+            PlotDataDesc(
+                np.array([1]),
+                np.array(["test"]),
+                QColor("grey"),
+                "0",
+            )
+        ]
+    )
 
 
 def test_labels(qtbot: QtBot, plot: PlotWidget) -> None:
@@ -50,7 +79,9 @@ def test_labels(qtbot: QtBot, plot: PlotWidget) -> None:
     assert plot_item._curves_labels[0].toPlainText() == "B"  # longest segment
     assert plot_item._curves_labels[1].toPlainText() == "A"  # short segment but past end
 
-    plot_item.update_plot("0", QColor("grey"), [0, 1], ["test", "test"])  # test unchanging waveform
+    plot_item.set_data(
+        [PlotDataDesc(np.array([0, 1]), np.array(["test", "test"]), QColor("grey"), "0")]
+    )  # test unchanging waveform
     assert len(plot_item._curves_labels) == 1
     assert plot_item._curves_labels[0].toPlainText() == "test"
 

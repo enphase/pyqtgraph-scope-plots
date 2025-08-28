@@ -39,7 +39,7 @@ class PlotDataDesc(NamedTuple):
     name: str = ""
 
 
-class DataPlotItem(pg.PlotItem):  # type: ignore
+class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
     """Abstract base class for a PlotItem that takes some data."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

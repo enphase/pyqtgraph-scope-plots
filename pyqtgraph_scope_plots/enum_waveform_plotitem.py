@@ -21,10 +21,10 @@ import pyqtgraph as pg
 from PySide6.QtCore import QPointF, QRect
 from PySide6.QtGui import QColor
 
-from .interactivity_mixins import SnappableHoverPlot, DataPlotItem, PlotDataDesc
+from .interactivity_mixins import SnappableHoverPlot, DataPlotItem, PlotDataDesc, HasDataValueAt
 
 
-class EnumWaveformPlot(SnappableHoverPlot, DataPlotItem):
+class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
     """Plot that takes data as string vs. time and renders as a digital waveform, with transitions when string
     equality changes."""
 

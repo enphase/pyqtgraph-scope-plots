@@ -14,14 +14,20 @@
 
 from typing import cast
 
+import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QPointF, QPoint, QEvent
 from PySide6.QtGui import QColor, Qt, QMouseEvent
-from pyqtgraph import PlotCurveItem
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.util.util import not_none
-from pyqtgraph_scope_plots.interactivity_mixins import PointsOfInterestPlot, LiveCursorPlot, RegionPlot
+from pyqtgraph_scope_plots.interactivity_mixins import (
+    PointsOfInterestPlot,
+    LiveCursorPlot,
+    RegionPlot,
+    DataPlotItem,
+    PlotDataDesc,
+)
 
 
 def data_to_screen(plot_item: pg.PlotItem, x: float, y: float) -> QPoint:
@@ -29,9 +35,15 @@ def data_to_screen(plot_item: pg.PlotItem, x: float, y: float) -> QPoint:
 
 
 def init_plot(qtbot: QtBot, plot: pg.PlotWidget) -> None:
-    plot.addItem(PlotCurveItem(x=[0, 0.1, 1, 2], y=[0.01, 1, 1, 0], pen={"color": QColor("yellow")}))
-    plot.addItem(PlotCurveItem(x=[0, 1, 2], y=[0.5, 0.25, 0.5], pen={"color": QColor("orange")}))
-    plot.addItem(PlotCurveItem(x=[0, 1, 2], y=[0.7, 0.6, 0.5], pen={"color": QColor("blue")}))
+    plot_item = plot.plotItem
+    assert isinstance(plot_item, DataPlotItem)
+    plot.set_data(
+        [
+            PlotDataDesc(np.array([0, 0.1, 1, 2]), np.array([0.01, 1, 1, 0]), QColor("yellow"), "A"),
+            PlotDataDesc(np.array([0, 1, 2]), np.array([0.5, 0.25, 0.5]), QColor("orange")),
+            PlotDataDesc(np.array([0, 1, 2]), np.array([0.7, 0.6, 0.5]), QColor("blue")),
+        ]
+    )
     qtbot.wait(100)  # wait for plot to initialize and range to stabilize
     qtbot.mouseMove(plot.viewport(), QPoint(0, 0))  # provide initial position for hover
     qtbot.wait(100)

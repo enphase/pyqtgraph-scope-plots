@@ -107,7 +107,9 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         self._plot_item_data: Dict[DataPlotItem, List[Optional[str]]] = {default_plot_item: []}
         # re-derived when _plot_item_data updated
         self._data_name_to_plot_item: Dict[Optional[str], DataPlotItem] = {None: default_plot_item}
-        self._anchor_x_plot_item: DataPlotItem = default_plot_item  # PlotItem that everyone's x-axis is linked to
+        self._anchor_x_plot_item: Optional[DataPlotItem] = (
+            default_plot_item  # PlotItem that everyone's x-axis is linked to
+        )
 
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
@@ -222,28 +224,23 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
 
     def _clean_plot_widgets(self) -> None:
         """Called when plot items potentially have been emptied / deleted, to clean things up"""
-        new_anchor_x_plot_item: Optional[DataPlotItem] = self._anchor_x_plot_item
-
         for i in range(self.count()):
             widget = self.widget(i)
             if not isinstance(widget, pg.PlotWidget):
                 continue
             if widget.getPlotItem() not in self._plot_item_data or not len(self._plot_item_data[widget.getPlotItem()]):
                 if widget.getPlotItem() is self._anchor_x_plot_item:  # about to delete the x-axis anchor
-                    new_anchor_x_plot_item = None
+                    self._anchor_x_plot_item = None
                 if widget.getPlotItem() in self._plot_item_data:
                     del self._plot_item_data[widget.getPlotItem()]
                 widget.deleteLater()
 
-        if new_anchor_x_plot_item is None:  # select a new x-axis anchor and re-link
+        if self._anchor_x_plot_item is None:  # select a new x-axis anchor and re-link
             for plot_item, _ in self._plot_item_data.items():
-                if new_anchor_x_plot_item is None:
-                    new_anchor_x_plot_item = plot_item
+                if self._anchor_x_plot_item is None:
+                    self._anchor_x_plot_item = plot_item
                 else:
-                    plot_item.setXLink(new_anchor_x_plot_item)
-
-        assert new_anchor_x_plot_item is not None
-        self._anchor_x_plot_item = new_anchor_x_plot_item
+                    plot_item.setXLink(self._anchor_x_plot_item)
 
     def _update_plots_x_axis(self) -> None:
         """Updates plots so only last plot's x axis labels and ticks are visible"""

@@ -54,11 +54,9 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
                 self.removeItem(data_graphic)
 
         self._data = list(data)
-        self._data_graphics = []
-        for item in data:
-            data_graphics = self._generate_plot_items(item)
-            self._data_graphics.append(data_graphics)
-            for data_graphic in data_graphics:
+        self._data_graphicss = [self._generate_plot_items(item) for item in self._data]
+        for data_graphics in self._data_graphicss:
+            for data_graphic in data_graphics:  # TODO better naming
                 self.addItem(data_graphic)
 
     @abstractmethod
@@ -123,7 +121,7 @@ class HasDataValueAt(DataPlotItem):
         return outs
 
 
-class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
+class SnappableHoverPlot(DataPlotCurveItem):
     """Mixin for PlotItem that provides an optional snapped nearest data point on user hover.
     Shows a visual target on the snapped point."""
 
@@ -151,34 +149,32 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
         Pulls from self.listDataItems() by default, override this to provide different snapping points.
         """
         # closest point for each curve: (curve, index, distance)
-        curve_index_dist: List[Tuple[pg.PlotDataItem, int, float]] = []
-        visible_data_items = [data_item for data_item in self.listDataItems() if data_item.isVisible()]
-        for data_item in visible_data_items:  # type: pg.PlotDataItem
-            xpts, ypts = data_item.getData()
-            if xpts is None or not len(xpts):
+        all_point_dists: List[Tuple[QPointF, float]] = []
+        for data, graphics in zip(self._data, self._data_graphicss):
+            if not graphics[0].isVisible():
                 continue
-            index_lo = bisect.bisect_left(xpts, x_lo)
-            index_hi = bisect.bisect_right(xpts, x_hi)
+            if not len(data.xs):
+                continue
+            index_lo = bisect.bisect_left(data.xs, x_lo)
+            index_hi = bisect.bisect_right(data.xs, x_hi)
             if index_hi - index_lo > self.MAX_PTS:
                 continue
 
             # compare in screen coordination since X/Y scaling may not be uniform
-            index_dist = self._closest_index(
+            point_dist = self._closest_point(
                 [
                     self.mapFromView(QPointF(xpt, ypt))
-                    for xpt, ypt in zip(xpts[index_lo:index_hi], ypts[index_lo:index_hi])
+                    for xpt, ypt in zip(data.xs[index_lo:index_hi], data.ys[index_lo:index_hi])
                 ],
                 self.mapFromView(target_pos),
             )
-            if index_dist is None:
+            if point_dist is None:
                 continue
-            curve_index_dist.append((data_item, index_dist[0] + index_lo, index_dist[1]))
+            all_point_dists.append(point_dist)
 
-        if curve_index_dist:
-            closest_item = min(curve_index_dist, key=lambda tup: tup[2])
-            closest_curve, closest_index, _ = closest_item
-            closest_xs, closest_ys = closest_curve.getData()
-            return QPointF(closest_xs[closest_index], closest_ys[closest_index])
+        if all_point_dists:
+            closest_item = min(all_point_dists, key=lambda tup: tup[1])
+            return closest_item[0]
         else:
             return None
 
@@ -225,16 +221,15 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
         self.sigHoverSnapChanged.emit(snap_data)
 
     @staticmethod
-    def _closest_index(pts: List[QPointF], pos: QPointF) -> Optional[Tuple[int, float]]:
-        """Returns the (index, dist) of the closest point (by xy distance) to (xpos, ypos) in the series xpts, ypts.
+    def _closest_point(pts: List[QPointF], pos: QPointF) -> Optional[Tuple[QPointF, float]]:
+        """Returns the (point, dist) of the closest point (by xy distance) to (xpos, ypos) in the series xpts, ypts.
         Returns None if no point is found."""
         # TODO use collective operations for performance
         dists = [math.sqrt((pos.x() - pt.x()) ** 2 + (pos.y() - pt.y()) ** 2) for pt in pts]
         if not dists:
             return None
         min_dist_index = np.argmin(dists)
-        min_dist = dists[min_dist_index]
-        return int(min_dist_index), min_dist
+        return pts[min_dist_index], dists[min_dist_index]
 
 
 class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):

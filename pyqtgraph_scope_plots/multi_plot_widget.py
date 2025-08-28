@@ -25,11 +25,19 @@ from PySide6.QtWidgets import QWidget, QSplitter
 from pydantic import BaseModel
 
 from .enum_waveform_plotitem import EnumWaveformPlot
-from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot, PlotDataDesc
+from .interactivity_mixins import (
+    PointsOfInterestPlot,
+    RegionPlot,
+    LiveCursorPlot,
+    DraggableCursorPlot,
+    PlotDataDesc,
+    DataPlotCurveItem,
+    DataPlotItem,
+)
 from .util import BaseTopModel, HasSaveLoadDataConfig
 
 
-class InteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot):
+class InteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DataPlotCurveItem):
     """PlotItem with interactivity mixins"""
 
 
@@ -91,17 +99,15 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         self._raw_data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]] = {}  # pre-transforms, immutable
         self._data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]] = {}  # post-transforms
 
-        self._data_curves: Dict[str, List[pg.PlotCurveItem]] = {}
-
         self.setOrientation(Qt.Orientation.Vertical)
         default_plot_item = self._init_plot_item(self._create_plot_item(self.PlotType.DEFAULT))
         default_plot_widget = pg.PlotWidget(plotItem=default_plot_item)
         self.addWidget(default_plot_widget)
         # contained data items per plot
-        self._plot_item_data: Dict[pg.PlotItem, List[Optional[str]]] = {default_plot_item: []}
+        self._plot_item_data: Dict[DataPlotItem, List[Optional[str]]] = {default_plot_item: []}
         # re-derived when _plot_item_data updated
-        self._data_name_to_plot_item: Dict[Optional[str], pg.PlotItem] = {None: default_plot_item}
-        self._anchor_x_plot_item: pg.PlotItem = default_plot_item  # PlotItem that everyone's x-axis is linked to
+        self._data_name_to_plot_item: Dict[Optional[str], DataPlotItem] = {None: default_plot_item}
+        self._anchor_x_plot_item: DataPlotItem = default_plot_item  # PlotItem that everyone's x-axis is linked to
 
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
@@ -197,7 +203,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
             for name in data_names:
                 self._data_name_to_plot_item[name] = plot_item
 
-    def _create_plot_item(self, plot_type: "MultiPlotWidget.PlotType") -> pg.PlotItem:
+    def _create_plot_item(self, plot_type: "MultiPlotWidget.PlotType") -> DataPlotItem:
         """Given a PlotType, creates the PlotItem and returns it. Override to change the instantiated PlotItem type."""
         plot_args = {}
         if self._x_axis_fn is not None:
@@ -209,7 +215,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         else:
             raise ValueError(f"unknown plot_type {plot_type}")
 
-    def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
+    def _init_plot_item(self, plot_item: DataPlotItem) -> DataPlotItem:
         """Called after _create_plot_item, does any post-creation init. Returns the same plot_item.
         Optionally override this with a super() call."""
         return plot_item
@@ -349,27 +355,16 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         self.sigDataUpdated.emit()
 
     def _update_plots(self) -> None:
-        self._data_curves = {}
         self._data = self._transform_data(self._raw_data)
         for plot_item, data_names in self._plot_item_data.items():
-            if isinstance(plot_item, EnumWaveformPlot):  # TODO: enum plots have a different API, this should be unified
-                data_name = data_names[0]
+            data_descs: List[PlotDataDesc] = []
+            for data_name in data_names:
                 color = self._data_items.get(cast(str, data_name), (QColor("black"), None))[0]
                 xs, ys = self._data.get(
                     cast(str, data_name), ([], [])
                 )  # None is valid for dict.get, cast to satisfy typer
-                plot_item.set_data([PlotDataDesc(xs, ys, color, data_name or "")])
-            else:
-                for data_item in plot_item.listDataItems():  # clear existing
-                    plot_item.removeItem(data_item)
-                for data_name in data_names:
-                    assert isinstance(data_name, str)
-                    color = self._data_items.get(data_name, (QColor("black"), None))[0]
-                    xs, ys = self._data.get(data_name, ([], []))
-                    curve = pg.PlotCurveItem(x=xs, y=ys, name=data_name)
-                    curve.setPen(color=color, width=1)
-                    plot_item.addItem(curve)
-                    self._data_curves.setdefault(data_name, []).append(curve)
+                data_descs.append(PlotDataDesc(xs, ys, color, data_name or ""))
+            plot_item.set_data(data_descs)
 
     def autorange(self, enable: bool) -> None:
         is_first = True

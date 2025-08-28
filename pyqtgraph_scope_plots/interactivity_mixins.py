@@ -70,6 +70,15 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
         raise NotImplementedError
 
 
+class DataPlotCurveItem(DataPlotItem):
+    """DataPlotItem that generates a PlotCurveItem"""
+
+    def _generate_plot_items(self, data: PlotDataDesc) -> List[pg.GraphicsObject]:
+        curve = pg.PlotCurveItem(x=data.xs, y=data.ys, name=data.name)
+        curve.setPen(color=data.color, width=1)
+        return [curve]
+
+
 class DeltaAxisItem(pg.AxisItem):  # type: ignore[misc]
     """An AxisItem that allows a different function for rendering delta time.
     Useful, eg, for timestamps where the axis is in wall clock format but deltas are in seconds.

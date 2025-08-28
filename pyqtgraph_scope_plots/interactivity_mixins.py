@@ -47,7 +47,6 @@ class DataPlotItem(pg.PlotItem):  # type: ignore
         self._data: List[PlotDataDesc] = []
         self._data_graphicss: List[List[pg.GraphicsObject]] = []  # index-aligned w/ self._data
 
-    @abstractmethod
     def set_data(self, data: Sequence[PlotDataDesc]) -> None:
         """Sets and generates plots for the input data items. A default is provided."""
         for data_graphics in self._data_graphicss:

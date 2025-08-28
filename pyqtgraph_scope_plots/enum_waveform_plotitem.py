@@ -36,8 +36,8 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
 
         self.sigXRangeChanged.connect(self._update_plot_labels)
 
-        self.getViewBox().setLimits(yMin=-1.2, yMax=1.2)
         self.sigYRangeChanged.connect(self._forced_y_range)
+        self._forced_y_range()
 
     def _forced_y_range(self) -> None:
         """Forces the Y range to a constant, since Y scaling doesn't really make sense for a waveform."""

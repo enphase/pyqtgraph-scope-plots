@@ -148,8 +148,8 @@ class SnappableHoverPlot(DataPlotCurveItem):
         """Returns the closest point in the snappable data set to the target_pos, with x-value between x_lo and x_hi.
         Pulls from self.listDataItems() by default, override this to provide different snapping points.
         """
-        # closest point for each curve: (curve, index, distance)
-        all_point_dists: List[Tuple[QPointF, float]] = []
+        # closest point for each curve: (data, index, distance)
+        data_index_dists: List[Tuple[PlotDataDesc, int, float]] = []
         for data, graphics in zip(self._data, self._data_graphicss):
             if not graphics[0].isVisible():
                 continue
@@ -161,20 +161,20 @@ class SnappableHoverPlot(DataPlotCurveItem):
                 continue
 
             # compare in screen coordination since X/Y scaling may not be uniform
-            point_dist = self._closest_point(
+            index_dist = self._closest_index(
                 [
                     self.mapFromView(QPointF(xpt, ypt))
                     for xpt, ypt in zip(data.xs[index_lo:index_hi], data.ys[index_lo:index_hi])
                 ],
                 self.mapFromView(target_pos),
             )
-            if point_dist is None:
+            if index_dist is None:
                 continue
-            all_point_dists.append(point_dist)
+            data_index_dists.append((data, index_dist[0] + index_lo, index_dist[1]))
 
-        if all_point_dists:
-            closest_item = min(all_point_dists, key=lambda tup: tup[1])
-            return closest_item[0]
+        if data_index_dists:
+            closest_data, closest_index, _ = min(data_index_dists, key=lambda tup: tup[2])
+            return QPointF(closest_data.xs[closest_index], closest_data.ys[closest_index])
         else:
             return None
 
@@ -221,15 +221,15 @@ class SnappableHoverPlot(DataPlotCurveItem):
         self.sigHoverSnapChanged.emit(snap_data)
 
     @staticmethod
-    def _closest_point(pts: List[QPointF], pos: QPointF) -> Optional[Tuple[QPointF, float]]:
-        """Returns the (point, dist) of the closest point (by xy distance) to (xpos, ypos) in the series xpts, ypts.
+    def _closest_index(pts: List[QPointF], pos: QPointF) -> Optional[Tuple[int, float]]:
+        """Returns the (index, dist) of the closest point (by xy distance) to (xpos, ypos) in the series xpts, ypts.
         Returns None if no point is found."""
         # TODO use collective operations for performance
         dists = [math.sqrt((pos.x() - pt.x()) ** 2 + (pos.y() - pt.y()) ** 2) for pt in pts]
         if not dists:
             return None
         min_dist_index = np.argmin(dists)
-        return pts[min_dist_index], dists[min_dist_index]
+        return int(min_dist_index), dists[min_dist_index]
 
 
 class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):

@@ -20,15 +20,55 @@ live x-axis cursor, region selection, and points-of-interest.
 import bisect
 import math
 from abc import abstractmethod
-from typing import List, Tuple, Dict, Optional, Any, cast, NamedTuple, Union
+from typing import List, Tuple, Dict, Optional, Any, cast, NamedTuple, Union, Sequence
 
 import numpy as np
+from numpy import typing as npt
 import pyqtgraph as pg
 from PySide6.QtCore import QPointF, QSignalBlocker, Signal, Slot
 from PySide6.QtGui import Qt, QColor, QKeyEvent
 from PySide6.QtWidgets import QGraphicsSceneMouseEvent
 from pyqtgraph import mkPen
 from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent
+
+
+class PlotDataDesc(NamedTuple):
+    xs: npt.NDArray
+    ys: npt.NDArray
+    color: QColor
+    name: str = ""
+
+
+class DataPlotItem(pg.PlotItem):
+    """Abstract base class for a PlotItem that takes some data."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._data: List[PlotDataDesc] = []
+        self._data_graphicss: List[List[pg.GraphicsObject]] = []  # index-aligned w/ self._data
+
+    @abstractmethod
+    def set_data(self, data: Sequence[PlotDataDesc]) -> None:
+        """Sets and generates plots for the input data items. A default is provided."""
+        for data_graphics in self._data_graphicss:
+            for data_graphic in data_graphics:  # TODO better naming
+                self.removeItem(data_graphic)
+
+        self._data = data
+        self._data_graphics = []
+        for item in data:
+            data_graphics = self._generate_plot_items(item)
+            self._data_graphics.append(data_graphics)
+            for data_graphic in data_graphics:
+                self.addItem(data_graphic)
+
+    @abstractmethod
+    def _generate_plot_items(self, data: PlotDataDesc) -> List[pg.GraphicsObject]:
+        """Defines how to generate a pyqtgraph graphics item (eg, PlotCurveItem) from some data.
+        May apply transforms to optimize rendering.
+        May return multiple items, but the first one should be the main one. Must be nonempty.
+        INTERNAL API - STABILITY NOT GUARANTEED"""
+        raise NotImplementedError
 
 
 class DeltaAxisItem(pg.AxisItem):  # type: ignore[misc]
@@ -46,32 +86,30 @@ class HoverSnapData(NamedTuple):
     snap_pos: Optional[QPointF]  # None if no nearby point
 
 
-class HasDataValueAt(pg.PlotItem):  # type: ignore[misc]
+class HasDataValueAt(DataPlotItem):
     """Base class that provides a shared (and overrideable) function that returns multiple y-position and labels
     given some x position"""
 
     def _data_value_label_at(self, pos: float, precision_factor: float = 1.0) -> List[Tuple[float, str, QColor]]:
         outs = []
-        for data_item in self.listDataItems():  # type: pg.PlotDataItem
-            if not isinstance(data_item, pg.PlotCurveItem):  # ignore scatter points
+        for data, graphics in zip(self._data, self._data_graphics):
+            if not graphics[0].isVisible():
                 continue
-            if not data_item.isVisible():
+            if not len(data.xs):
                 continue
-            xpts, ypts = data_item.getData()
-            if xpts is None or not len(xpts):
-                continue
-            index = bisect.bisect_left(xpts, pos)
-            if index < len(xpts) and xpts[index] == pos:  # found exact match
+
+            index = bisect.bisect_left(data.xs, pos)
+            if index < len(data.xs) and data.xs[index] == pos:  # found exact match
                 outs.append(
                     (
-                        ypts[index],
+                        data.ys[index],
                         LiveCursorPlot._value_axis_label(
-                            ypts[index],
+                            data.ys[index],
                             self,
                             "left",
                             precision_factor=precision_factor,
                         ),
-                        mkPen(data_item.opts["pen"]).color(),  # opts['pen'] has multiple formats
+                        data.color,
                     )
                 )
         return outs

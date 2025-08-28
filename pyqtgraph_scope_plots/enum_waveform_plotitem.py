@@ -21,10 +21,10 @@ import pyqtgraph as pg
 from PySide6.QtCore import QPointF, QRect
 from PySide6.QtGui import QColor
 
-from .interactivity_mixins import SnappableHoverPlot, HasDataValueAt
+from .interactivity_mixins import SnappableHoverPlot, HasDataValueAt, DataPlotItem, PlotDataDesc
 
 
-class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt):
+class EnumWaveformPlot(DataPlotItem, SnappableHoverPlot):
     """Plot that takes data as string vs. time and renders as a digital waveform, with transitions when string
     equality changes."""
 
@@ -32,8 +32,6 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt):
         super().__init__(*args, **kwargs)
         self._curves: List[pg.PlotCurveItem] = []
         self._curves_labels: List[pg.TextItem] = []
-        self._color = QColor("grey")  # default placeholder value that shouldn't get used
-        self._data: Optional[Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = None  # array[float], array[Any]
         self._edges = np.array([])  # list of x positions of edges, sorted but not necessarily unique
 
         self.sigXRangeChanged.connect(self._update_plot_labels)
@@ -74,14 +72,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt):
         else:
             return []
 
-    def update_plot(
-        self,
-        name: str,
-        color: QColor,
-        xs: np.typing.ArrayLike,
-        ys: np.typing.ArrayLike,
-    ) -> None:
-        """Updates the plot data, as name -> (color, Xs, state values)"""
+    def _generate_plot_items(self, data: PlotDataDesc) -> None:
         for curve in self._curves:
             self.removeItem(curve)
         self._color = color

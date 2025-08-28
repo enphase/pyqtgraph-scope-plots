@@ -45,16 +45,15 @@ class EnumWaveformPlot(SnappableHoverPlot, DataPlotItem):
 
     def _snap_pos(self, target_pos: QPointF, x_lo: float, x_hi: float) -> Optional[QPointF]:
         # prefer to snap to the nearest edge (either side) if in the window, otherwise the nearest point
-        if self._data is None:
+        if not len(self._data):
             return None
         edges_lo = bisect.bisect_left(self._edges, x_lo)
         edges_hi = bisect.bisect_right(self._edges, x_hi)
         candidate_poss = self._edges[edges_lo:edges_hi]
         if not len(candidate_poss):  # no edges in window, search all points
-            xs, ys = self._data
-            index_lo = bisect.bisect_left(xs, x_lo)
-            index_hi = bisect.bisect_right(xs, x_hi)
-            candidate_poss = xs[index_lo:index_hi]
+            index_lo = bisect.bisect_left(self._data[0].xs, x_lo)
+            index_hi = bisect.bisect_right(self._data[0].xs, x_hi)
+            candidate_poss = self._data[0].xs[index_lo:index_hi]
         if len(candidate_poss):
             candidate_dists = [abs(x - target_pos.x()) for x in candidate_poss]
             min_dist_index = np.argmin(candidate_dists)

@@ -31,14 +31,11 @@ def plot(qtbot: QtBot) -> PlotWidget:
     """Creates a signals plot with multiple data items"""
     plot = EnumWaveformInteractivePlot()
     plot.set_data(
-        [
-            PlotDataDesc(
-                np.array([0, 1, 1.5, 2, 6, 7, 7.4]),
-                np.array(["A", "B", "B", "B", "C", "A", "A"]),
-                QColor("yellow"),
-                "0",
+        {
+            "0": PlotDataDesc(
+                np.array([0, 1, 1.5, 2, 6, 7, 7.4]), np.array(["A", "B", "B", "B", "C", "A", "A"]), QColor("yellow")
             )
-        ]
+        }
     )
     widget = PlotWidget(plotItem=plot)
     qtbot.addWidget(widget)
@@ -49,27 +46,25 @@ def plot(qtbot: QtBot) -> PlotWidget:
 
 def test_empty_one(qtbot: QtBot, plot: PlotWidget) -> None:
     plot_item = cast(EnumWaveformInteractivePlot, plot.plotItem)
-    plot_item.set_data([PlotDataDesc(np.array([]), np.array([]), QColor("grey"), "0")])
+    plot_item.set_data({"0": PlotDataDesc(np.array([]), np.array([]), QColor("grey"))})
 
     plot_item.set_data(
-        [
-            PlotDataDesc(
+        {
+            "0": PlotDataDesc(
                 np.array([0]),
                 np.array(["test"]),
                 QColor("grey"),
-                "0",
             )
-        ]
+        }
     )
     plot_item.set_data(
-        [
-            PlotDataDesc(
+        {
+            "0": PlotDataDesc(
                 np.array([1]),
                 np.array(["test"]),
                 QColor("grey"),
-                "0",
             )
-        ]
+        }
     )
 
 
@@ -80,7 +75,7 @@ def test_labels(qtbot: QtBot, plot: PlotWidget) -> None:
     assert plot_item._curves_labels[1].toPlainText() == "A"  # short segment but past end
 
     plot_item.set_data(
-        [PlotDataDesc(np.array([0, 1]), np.array(["test", "test"]), QColor("grey"), "0")]
+        {"0": PlotDataDesc(np.array([0, 1]), np.array(["test", "test"]), QColor("grey"))}
     )  # test unchanging waveform
     assert len(plot_item._curves_labels) == 1
     assert plot_item._curves_labels[0].toPlainText() == "test"

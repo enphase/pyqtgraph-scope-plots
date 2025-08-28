@@ -38,11 +38,11 @@ def init_plot(qtbot: QtBot, plot: pg.PlotWidget) -> None:
     plot_item = plot.plotItem
     assert isinstance(plot_item, DataPlotItem)
     plot.set_data(
-        [
-            PlotDataDesc(np.array([0, 0.1, 1, 2]), np.array([0.01, 1, 1, 0]), QColor("yellow"), "A"),
-            PlotDataDesc(np.array([0, 1, 2]), np.array([0.5, 0.25, 0.5]), QColor("orange")),
-            PlotDataDesc(np.array([0, 1, 2]), np.array([0.7, 0.6, 0.5]), QColor("blue")),
-        ]
+        {
+            "A": PlotDataDesc(np.array([0, 0.1, 1, 2]), np.array([0.01, 1, 1, 0]), QColor("yellow")),
+            "B": PlotDataDesc(np.array([0, 1, 2]), np.array([0.5, 0.25, 0.5]), QColor("orange")),
+            "C": PlotDataDesc(np.array([0, 1, 2]), np.array([0.7, 0.6, 0.5]), QColor("blue")),
+        }
     )
     qtbot.wait(100)  # wait for plot to initialize and range to stabilize
     qtbot.mouseMove(plot.viewport(), QPoint(0, 0))  # provide initial position for hover

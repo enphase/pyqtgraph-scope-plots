@@ -13,7 +13,7 @@
 #    limitations under the License.
 
 import bisect
-from typing import List, Tuple, Optional, Any, cast, Sequence
+from typing import List, Tuple, Optional, Any, cast, Sequence, Mapping
 
 import numpy as np
 import numpy.typing as npt
@@ -47,13 +47,15 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         # prefer to snap to the nearest edge (either side) if in the window, otherwise the nearest point
         if not len(self._data):
             return None
+        data_name, data = next(iter(self._data.items()))
+
         edges_lo = bisect.bisect_left(self._edges, x_lo)
         edges_hi = bisect.bisect_right(self._edges, x_hi)
         candidate_poss = self._edges[edges_lo:edges_hi]
         if not len(candidate_poss):  # no edges in window, search all points
-            index_lo = bisect.bisect_left(self._data[0].xs, x_lo)
-            index_hi = bisect.bisect_right(self._data[0].xs, x_hi)
-            candidate_poss = self._data[0].xs[index_lo:index_hi]
+            index_lo = bisect.bisect_left(data.xs, x_lo)
+            index_hi = bisect.bisect_right(data.xs, x_hi)
+            candidate_poss = data.xs[index_lo:index_hi]
         if len(candidate_poss):
             candidate_dists = [abs(x - target_pos.x()) for x in candidate_poss]
             min_dist_index = np.argmin(candidate_dists)
@@ -64,13 +66,15 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
     def _data_value_label_at(self, pos: float, precision_factor: float = 1.0) -> List[Tuple[float, str, QColor]]:
         if not len(self._data):
             return []
-        index = bisect.bisect_left(self._data[0].xs, pos)
-        if index < len(self._data[0].xs) and self._data[0].xs[index] == pos:  # found exact match
-            return [(0, str(self._data[0].ys[index]), self._data[0].color)]
+        data_name, data = next(iter(self._data.items()))
+
+        index = bisect.bisect_left(data.xs, pos)
+        if index < len(data.xs) and data.xs[index] == pos:  # found exact match
+            return [(0, str(data.ys[index]), data.color)]
         else:
             return []
 
-    def _generate_plot_items(self, data: PlotDataDesc) -> List[pg.GraphicsObject]:
+    def _generate_plot_items(self, name: str, data: PlotDataDesc) -> List[pg.GraphicsObject]:
         # generate the control points for half of the waveform using numpy operations for efficiency
         ys_values, ys_int = np.unique(data.ys, return_inverse=True)  # map to integer for efficiency
         # do change detection to find edges, element is true if it is different from the next element
@@ -105,7 +109,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
 
         self._edges = np.take(data.xs, changes_prechanges_indices)
 
-        curve_true = pg.PlotCurveItem(x=self._edges, y=heights, name=data.name)
+        curve_true = pg.PlotCurveItem(x=self._edges, y=heights, name=name)
         curve_true.setPen(color=data.color, width=1)
         curve_comp = pg.PlotCurveItem(x=self._edges, y=np.zeros(len(heights)) - heights)
         curve_comp.setPen(color=data.color, width=1)
@@ -115,7 +119,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         super().resizeEvent(ev)
         self._update_plot_labels()
 
-    def set_data(self, data: Sequence[PlotDataDesc]) -> None:
+    def set_data(self, data: Mapping[str, PlotDataDesc]) -> None:
         super().set_data(data)
         self._update_plot_labels()
 
@@ -126,8 +130,9 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
 
         if not len(self._data):
             return
+        data_name, data = next(iter(self._data.items()))
 
-        self._curves_labels = self._generate_plot_labels(self._data[0], self._edges)
+        self._curves_labels = self._generate_plot_labels(data, self._edges)
         for label in self._curves_labels:
             self.addItem(label)
 

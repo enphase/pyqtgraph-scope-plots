@@ -20,7 +20,7 @@ live x-axis cursor, region selection, and points-of-interest.
 import bisect
 import math
 from abc import abstractmethod
-from typing import List, Tuple, Dict, Optional, Any, cast, NamedTuple, Union, Sequence
+from typing import List, Tuple, Dict, Optional, Any, cast, NamedTuple, Union, Sequence, Mapping
 
 import numpy as np
 from numpy import typing as npt
@@ -36,7 +36,6 @@ class PlotDataDesc(NamedTuple):
     xs: npt.NDArray[np.float64]
     ys: npt.NDArray
     color: QColor
-    name: str = ""
 
 
 class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
@@ -44,23 +43,23 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._data: List[PlotDataDesc] = []
-        self._data_graphicss: List[List[pg.GraphicsObject]] = []  # index-aligned w/ self._data
+        self._data: Dict[str, PlotDataDesc] = {}
+        self._data_graphicss: Dict[str, List[pg.GraphicsObject]] = {}  # index-aligned w/ self._data
 
-    def set_data(self, data: Sequence[PlotDataDesc]) -> None:
+    def set_data(self, data: Mapping[str, PlotDataDesc]) -> None:
         """Sets and generates plots for the input data items. A default is provided."""
-        for data_graphics in self._data_graphicss:
+        for data_graphics in self._data_graphicss.values():
             for data_graphic in data_graphics:  # TODO better naming
                 self.removeItem(data_graphic)
 
-        self._data = list(data)
-        self._data_graphicss = [self._generate_plot_items(item) for item in self._data]
-        for data_graphics in self._data_graphicss:
+        self._data = dict(data)
+        self._data_graphicss = {name: self._generate_plot_items(name, data) for name, data in self._data.items()}
+        for data_graphics in self._data_graphicss.values():
             for data_graphic in data_graphics:  # TODO better naming
                 self.addItem(data_graphic)
 
     @abstractmethod
-    def _generate_plot_items(self, data: PlotDataDesc) -> List[pg.GraphicsObject]:
+    def _generate_plot_items(self, name: str, data: PlotDataDesc) -> List[pg.GraphicsObject]:
         """Defines how to generate a pyqtgraph graphics item (eg, PlotCurveItem) from some data.
         May apply transforms to optimize rendering.
         May return multiple items, but the first one should be the main one. Must be nonempty.
@@ -71,8 +70,8 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
 class DataPlotCurveItem(DataPlotItem):
     """DataPlotItem that generates a PlotCurveItem"""
 
-    def _generate_plot_items(self, data: PlotDataDesc) -> List[pg.GraphicsObject]:
-        curve = pg.PlotCurveItem(x=data.xs, y=data.ys, name=data.name)
+    def _generate_plot_items(self, name: str, data: PlotDataDesc) -> List[pg.GraphicsObject]:
+        curve = pg.PlotCurveItem(x=data.xs, y=data.ys, name=name)
         curve.setPen(color=data.color, width=1)
         return [curve]
 
@@ -98,8 +97,8 @@ class HasDataValueAt(DataPlotItem):
 
     def _data_value_label_at(self, pos: float, precision_factor: float = 1.0) -> List[Tuple[float, str, QColor]]:
         outs = []
-        for data, graphics in zip(self._data, self._data_graphicss):
-            if not graphics[0].isVisible():
+        for name, data in self._data.items():
+            if not self._data_graphicss[name][0].isVisible():
                 continue
             if not len(data.xs):
                 continue
@@ -148,8 +147,8 @@ class SnappableHoverPlot(DataPlotCurveItem):
         """Returns the closest point in the snappable data set to the target_pos, with x-value between x_lo and x_hi."""
         # closest point for each curve: (data, index, distance)
         data_index_dists: List[Tuple[PlotDataDesc, int, float]] = []
-        for data, graphics in zip(self._data, self._data_graphicss):
-            if not graphics[0].isVisible():
+        for name, data in self._data.items():
+            if not self._data_graphicss[name][0].isVisible():
                 continue
             if not len(data.xs):
                 continue

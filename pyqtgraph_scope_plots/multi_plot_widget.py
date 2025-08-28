@@ -359,13 +359,13 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
     def _update_plots(self) -> None:
         self._data = self._transform_data(self._raw_data)
         for plot_item, data_names in self._plot_item_data.items():
-            data_descs: List[PlotDataDesc] = []
+            data_descs: Dict[str, PlotDataDesc] = {}
             for data_name in data_names:
                 color = self._data_items.get(cast(str, data_name), (QColor("black"), None))[0]
                 xs, ys = self._data.get(
                     cast(str, data_name), ([], [])
                 )  # None is valid for dict.get, cast to satisfy typer
-                data_descs.append(PlotDataDesc(xs, ys, color, data_name or ""))
+                data_descs[data_name or ""] = PlotDataDesc(xs, ys, color)
             plot_item.set_data(data_descs)
 
     def autorange(self, enable: bool) -> None:

@@ -25,7 +25,7 @@ from PySide6.QtWidgets import QWidget, QSplitter
 from pydantic import BaseModel
 
 from .enum_waveform_plotitem import EnumWaveformPlot
-from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot
+from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot, PlotDataDesc
 from .util import BaseTopModel, HasSaveLoadDataConfig
 
 
@@ -358,7 +358,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
                 xs, ys = self._data.get(
                     cast(str, data_name), ([], [])
                 )  # None is valid for dict.get, cast to satisfy typer
-                plot_item.update_plot(data_name or "", color, xs, ys)
+                plot_item.set_data([PlotDataDesc(xs, ys, color, data_name or "")])
             else:
                 for data_item in plot_item.listDataItems():  # clear existing
                     plot_item.removeItem(data_item)

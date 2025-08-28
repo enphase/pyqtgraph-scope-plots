@@ -33,7 +33,7 @@ from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent
 
 
 class PlotDataDesc(NamedTuple):
-    xs: npt.NDArray
+    xs: npt.NDArray[np.float64]
     ys: npt.NDArray
     color: QColor
     name: str = ""
@@ -92,7 +92,7 @@ class HasDataValueAt(DataPlotItem):
 
     def _data_value_label_at(self, pos: float, precision_factor: float = 1.0) -> List[Tuple[float, str, QColor]]:
         outs = []
-        for data, graphics in zip(self._data, self._data_graphics):
+        for data, graphics in zip(self._data, self._data_graphicss):
             if not graphics[0].isVisible():
                 continue
             if not len(data.xs):

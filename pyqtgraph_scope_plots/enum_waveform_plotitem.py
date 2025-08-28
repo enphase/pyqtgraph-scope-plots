@@ -13,7 +13,7 @@
 #    limitations under the License.
 
 import bisect
-from typing import List, Tuple, Optional, Any, cast
+from typing import List, Tuple, Optional, Any, cast, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -21,18 +21,18 @@ import pyqtgraph as pg
 from PySide6.QtCore import QPointF, QRect
 from PySide6.QtGui import QColor
 
-from .interactivity_mixins import SnappableHoverPlot, HasDataValueAt, DataPlotItem, PlotDataDesc
+from .interactivity_mixins import SnappableHoverPlot, DataPlotItem, PlotDataDesc
 
 
-class EnumWaveformPlot(DataPlotItem, SnappableHoverPlot):
+class EnumWaveformPlot(SnappableHoverPlot, DataPlotItem):
     """Plot that takes data as string vs. time and renders as a digital waveform, with transitions when string
     equality changes."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._curves: List[pg.PlotCurveItem] = []
-        self._curves_labels: List[pg.TextItem] = []
+        # since labels may need to be regenerated on resize, save the information separately from the data
         self._edges = np.array([])  # list of x positions of edges, sorted but not necessarily unique
+        self._curves_labels: List[pg.TextItem] = []
 
         self.sigXRangeChanged.connect(self._update_plot_labels)
 
@@ -63,35 +63,25 @@ class EnumWaveformPlot(DataPlotItem, SnappableHoverPlot):
             return None
 
     def _data_value_label_at(self, pos: float, precision_factor: float = 1.0) -> List[Tuple[float, str, QColor]]:
-        if self._data is None:
+        if not len(self._data):
             return []
-        xs, ys = self._data
-        index = bisect.bisect_left(xs, pos)
-        if index < len(xs) and xs[index] == pos:  # found exact match
-            return [(0, str(ys[index]), self._color)]
+        index = bisect.bisect_left(self._data[0].xs, pos)
+        if index < len(self._data[0].xs) and self._data[0].xs[index] == pos:  # found exact match
+            return [(0, str(self._data[0].ys[index]), self._data[0].color)]
         else:
             return []
 
-    def _generate_plot_items(self, data: PlotDataDesc) -> None:
-        for curve in self._curves:
-            self.removeItem(curve)
-        self._color = color
-        self._curves = []
-        xs = np.array(xs)
-        ys_np = np.array(ys)
-        self._data = (xs, ys_np)
-
+    def _generate_plot_items(self, data: PlotDataDesc) -> List[pg.GraphicsObject]:
         # generate the control points for half of the waveform using numpy operations for efficiency
-        ys_np = np.array(ys)
-        ys_values, ys_int = np.unique(ys_np, return_inverse=True)  # map to integer for efficiency
+        ys_values, ys_int = np.unique(data.ys, return_inverse=True)  # map to integer for efficiency
         # do change detection to find edges, element is true if it is different from the next element
-        if len(ys_np):
+        if len(data.ys):
             changes = np.not_equal(ys_int, np.append(ys_int[1:], ys_int[-1]))
         else:  # handle empty array case
             changes = np.array([])
 
         changes_indices = np.where(changes)[0]
-        # interleave the indices and itself plus one to get all the points where the curve changes
+        # interleave the indices and itself plus one to get all the points where the data changes
         # note, this may result in duplicate points, which is fine for plotting
         changes_prechanges_indices = (
             np.column_stack(
@@ -107,39 +97,47 @@ class EnumWaveformPlot(DataPlotItem, SnappableHoverPlot):
         # append first and last elements to pad out the trace
         if len(changes_prechanges_indices):
             changes_prechanges_indices = np.insert(changes_prechanges_indices, 0, 0)
-            changes_prechanges_indices = np.append(changes_prechanges_indices, len(xs) - 1)
+            changes_prechanges_indices = np.append(changes_prechanges_indices, len(data.xs) - 1)
             heights = np.insert(heights, 0, heights[0])
             heights = np.append(heights, heights[-1])
-        elif not len(changes_prechanges_indices) and len(ys_np):  # special case for waveform that doesn't change
-            changes_prechanges_indices = np.array([0, len(xs) - 1])
+        elif not len(changes_prechanges_indices) and len(data.ys):  # special case for waveform that doesn't change
+            changes_prechanges_indices = np.array([0, len(data.xs) - 1])
             heights = np.array([1, 1])
 
-        self._edges = np.take(xs, changes_prechanges_indices)
+        self._edges = np.take(data.xs, changes_prechanges_indices)
 
-        curve_true = pg.PlotCurveItem(x=self._edges, y=heights, name=name)
-        curve_true.setPen(color=color, width=1)
-        self.addItem(curve_true)
+        curve_true = pg.PlotCurveItem(x=self._edges, y=heights, name=data.name)
+        curve_true.setPen(color=data.color, width=1)
         curve_comp = pg.PlotCurveItem(x=self._edges, y=np.zeros(len(heights)) - heights)
-        curve_comp.setPen(color=color, width=1)
-        self.addItem(curve_comp)
-        self._curves = [curve_true, curve_comp]
-
-        self._update_plot_labels()
+        curve_comp.setPen(color=data.color, width=1)
+        return [curve_true, curve_comp]
 
     def resizeEvent(self, ev: Any) -> None:
         super().resizeEvent(ev)
         self._update_plot_labels()
 
-    def _update_plot_labels(self) -> None:
-        # generate plot labels by testing character-width points in view space and using bisect to turn those
-        # into data indices, which makes this mostly (outside the log-factor of bisect) runtime independent
-        # of the data set - it should handle very large datasets just as performantly
-        for label in self._curves_labels:
+    def set_data(self, data: Sequence[PlotDataDesc]) -> None:
+        super().set_data(data)
+        self._update_plot_labels()
+
+    def _update_plot_labels(self):
+        for label in self._curves_labels:  # always delete prior
             self.removeItem(label)
         self._curves_labels = []
 
-        if len(self._edges) == 0 or self._data is None:  # nothing to be done
+        if not len(self._data):
             return
+
+        self._curves_labels = self._generate_plot_labels(self._data[0], self._edges)
+        for label in self._curves_labels:
+            self.addItem(label)
+
+    def _generate_plot_labels(self, data: PlotDataDesc, edges: npt.NDArray[np.float64]) -> List[pg.TextItem]:
+        # generate plot labels by testing character-width points in view space and using bisect to turn those
+        # into data indices, which makes this mostly (outside the log-factor of bisect) runtime independent
+        # of the data set - it should handle very large datasets just as performantly
+        if len(edges) == 0:  # nothing to be done
+            return []
 
         sample_label = pg.TextItem("00")  # get character width, assumed boundingRect in screen coordinates
         label_bounds_data = cast(QRect, self.mapRectToView(sample_label.boundingRect()))  # convert to data coordinates
@@ -149,13 +147,14 @@ class EnumWaveformPlot(DataPlotItem, SnappableHoverPlot):
         # limit max points, otherwise breaks on excess zoom, also floor at 2 to avoid div0
         test_point_count = max(2, min(1024, test_point_count))
         test_point_span = (self.viewRect().right() - self.viewRect().left()) / (test_point_count - 1)  # fenceposting
-        edge_index_min = bisect.bisect_left(self._edges, self.viewRect().left())
-        edge_index_max = bisect.bisect_right(self._edges, self.viewRect().right())
+        edge_index_min = bisect.bisect_left(edges, self.viewRect().left())
+        edge_index_max = bisect.bisect_right(edges, self.viewRect().right())
         prev_edge_index: Optional[int] = None
+        labels: List[pg.TextItem] = []
         for test_point_i in range(test_point_count):
             test_data_pos = self.viewRect().left() + test_point_span * test_point_i
             # note, bisect left returns the first point at or AFTER the test point (insertion point)
-            test_edge_index = bisect.bisect_left(self._edges, test_data_pos, lo=edge_index_min, hi=edge_index_max)
+            test_edge_index = bisect.bisect_left(edges, test_data_pos, lo=edge_index_min, hi=edge_index_max)
             if test_edge_index == prev_edge_index:
                 continue
             prev_edge_index = test_edge_index
@@ -163,22 +162,23 @@ class EnumWaveformPlot(DataPlotItem, SnappableHoverPlot):
                 continue
             assert test_edge_index > 0
 
-            left_edge = self._edges[test_edge_index - 1]
-            right_edge = self._edges[test_edge_index]
+            left_edge = edges[test_edge_index - 1]
+            right_edge = edges[test_edge_index]
             if left_edge < self.viewRect().left() <= right_edge:  # clip left side to viewport
                 left_edge = self.viewRect().left()
-            if right_edge == self._edges[-1]:  # right side is unbounded
+            if right_edge == edges[-1]:  # right side is unbounded
                 right_edge = float("inf")
             held_data_width = right_edge - left_edge
             if held_data_width < min_data_width:  # quick test against minimum width
                 continue
 
-            data_index = bisect.bisect_left(self._data[0], left_edge)
-            data_value = self._data[1][data_index]
+            data_index = bisect.bisect_left(data.xs, left_edge)
+            data_value = data.ys[data_index]
             label = pg.TextItem(data_value, anchor=(0, 0.5))
-            label.setColor(self._color.darker())
+            label.setColor(data.color.darker())
             label_width = cast(QRect, self.mapRectToView(label.boundingRect())).width()
             if held_data_width >= label_width:
                 label.setPos(QPointF(left_edge, 0))
-                self.addItem(label)
-                self._curves_labels.append(label)
+                labels.append(label)
+
+        return labels

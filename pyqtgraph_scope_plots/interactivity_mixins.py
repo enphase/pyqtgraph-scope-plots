@@ -63,6 +63,7 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
         """Defines how to generate a pyqtgraph graphics item (eg, PlotCurveItem) from some data.
         May apply transforms to optimize rendering.
         May return multiple items, but the first one should be the main one. Must be nonempty.
+        Only one should have a name, which is used for the legend.
         INTERNAL API - STABILITY NOT GUARANTEED"""
         raise NotImplementedError
 

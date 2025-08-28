@@ -41,7 +41,7 @@ def test_visibility(qtbot: QtBot, visibility_plots: VisibilityPlotWidget) -> Non
     assert visibility_plots._data_name_to_plot_item["2"]._data_graphicss["2"][0].isVisible()
 
     visibility_plots.hide_data_items(["1"])
-    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss["1"][0].isVisible()
+    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss["0"][0].isVisible()
     assert not visibility_plots._data_name_to_plot_item["1"]._data_graphicss["1"][0].isVisible()
     assert visibility_plots._data_name_to_plot_item["2"]._data_graphicss["2"][0].isVisible()
 

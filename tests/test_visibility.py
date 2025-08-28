@@ -36,43 +36,43 @@ def visibility_plots(qtbot: QtBot) -> VisibilityPlotWidget:
 
 
 def test_visibility(qtbot: QtBot, visibility_plots: VisibilityPlotWidget) -> None:
-    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss[0][0].isVisible()
-    assert visibility_plots._data_name_to_plot_item["1"]._data_graphicss[0][0].isVisible()
-    assert visibility_plots._data_name_to_plot_item["2"]._data_graphicss[0][0].isVisible()
+    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss["0"][0].isVisible()
+    assert visibility_plots._data_name_to_plot_item["1"]._data_graphicss["1"][0].isVisible()
+    assert visibility_plots._data_name_to_plot_item["2"]._data_graphicss["2"][0].isVisible()
 
     visibility_plots.hide_data_items(["1"])
-    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss[0][0].isVisible()
-    assert not visibility_plots._data_name_to_plot_item["1"]._data_graphicss[0][0].isVisible()
-    assert visibility_plots._data_name_to_plot_item["2"]._data_graphicss[0][0].isVisible()
+    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss["1"][0].isVisible()
+    assert not visibility_plots._data_name_to_plot_item["1"]._data_graphicss["1"][0].isVisible()
+    assert visibility_plots._data_name_to_plot_item["2"]._data_graphicss["2"][0].isVisible()
 
     visibility_plots.hide_data_items(["2", "0"])
-    assert not visibility_plots._data_name_to_plot_item["0"]._data_graphicss[0][0].isVisible()
-    assert not visibility_plots._data_name_to_plot_item["1"]._data_graphicss[0][0].isVisible()
-    assert not visibility_plots._data_name_to_plot_item["2"]._data_graphicss[0][0].isVisible()
+    assert not visibility_plots._data_name_to_plot_item["0"]._data_graphicss["0"][0].isVisible()
+    assert not visibility_plots._data_name_to_plot_item["1"]._data_graphicss["1"][0].isVisible()
+    assert not visibility_plots._data_name_to_plot_item["2"]._data_graphicss["2"][0].isVisible()
 
     visibility_plots.hide_data_items(["0"], hidden=False)
-    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss[0][0].isVisible()
-    assert not visibility_plots._data_name_to_plot_item["1"]._data_graphicss[0][0].isVisible()
-    assert not visibility_plots._data_name_to_plot_item["2"]._data_graphicss[0][0].isVisible()
+    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss["0"][0].isVisible()
+    assert not visibility_plots._data_name_to_plot_item["1"]._data_graphicss["1"][0].isVisible()
+    assert not visibility_plots._data_name_to_plot_item["2"]._data_graphicss["2"][0].isVisible()
 
     visibility_plots.set_data(DATA)  # visibility status should be retained across data set
-    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss[0][0].isVisible()
-    assert not visibility_plots._data_name_to_plot_item["1"]._data_graphicss[0][0].isVisible()
-    assert not visibility_plots._data_name_to_plot_item["2"]._data_graphicss[0][0].isVisible()
+    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss["0"][0].isVisible()
+    assert not visibility_plots._data_name_to_plot_item["1"]._data_graphicss["1"][0].isVisible()
+    assert not visibility_plots._data_name_to_plot_item["2"]._data_graphicss["2"][0].isVisible()
 
 
 def test_visibility_table(qtbot: QtBot, visibility_plots: VisibilityPlotWidget) -> None:
     visibility_table = VisibilityToggleSignalsTable(visibility_plots)
     visibility_table._update()
     visibility_table.item(1, visibility_table.COL_VISIBILITY).setCheckState(Qt.CheckState.Unchecked)
-    qtbot.waitUntil(lambda: not visibility_plots._data_name_to_plot_item["1"]._data_graphicss[0][0].isVisible())
-    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss[0][0].isVisible()  # check unchanged
-    assert visibility_plots._data_name_to_plot_item["2"]._data_graphicss[0][0].isVisible()
+    qtbot.waitUntil(lambda: not visibility_plots._data_name_to_plot_item["1"]._data_graphicss["1"][0].isVisible())
+    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss["0"][0].isVisible()  # check unchanged
+    assert visibility_plots._data_name_to_plot_item["2"]._data_graphicss["2"][0].isVisible()
 
     visibility_table.item(1, visibility_table.COL_VISIBILITY).setCheckState(Qt.CheckState.Checked)
-    qtbot.waitUntil(lambda: visibility_plots._data_name_to_plot_item["1"]._data_graphicss[0][0].isVisible())
-    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss[0][0].isVisible()
-    assert visibility_plots._data_name_to_plot_item["2"]._data_graphicss[0][0].isVisible()
+    qtbot.waitUntil(lambda: visibility_plots._data_name_to_plot_item["1"]._data_graphicss["1"][0].isVisible())
+    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss["0"][0].isVisible()
+    assert visibility_plots._data_name_to_plot_item["2"]._data_graphicss["2"][0].isVisible()
 
 
 def test_visibility_save(qtbot: QtBot, visibility_plots: VisibilityPlotWidget) -> None:
@@ -91,9 +91,9 @@ def test_visibility_load(qtbot: QtBot, visibility_plots: VisibilityPlotWidget) -
     visibility_plots._load_model(model)
     visibility_plots.set_data(DATA)  # trigger a curve-visibility update
     visibility_table._update()  # trigger update
-    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss[0][0].isVisible()
-    assert not visibility_plots._data_name_to_plot_item["1"]._data_graphicss[0][0].isVisible()
-    assert visibility_plots._data_name_to_plot_item["2"]._data_graphicss[0][0].isVisible()
+    assert visibility_plots._data_name_to_plot_item["0"]._data_graphicss["0"][0].isVisible()
+    assert not visibility_plots._data_name_to_plot_item["1"]._data_graphicss["1"][0].isVisible()
+    assert visibility_plots._data_name_to_plot_item["2"]._data_graphicss["2"][0].isVisible()
 
     assert visibility_table.item(0, visibility_table.COL_VISIBILITY).checkState() == Qt.CheckState.Checked
     assert visibility_table.item(1, visibility_table.COL_VISIBILITY).checkState() == Qt.CheckState.Unchecked

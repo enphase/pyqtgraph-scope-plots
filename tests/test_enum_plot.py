@@ -57,27 +57,11 @@ def test_empty_one(qtbot: QtBot, plot: pg.PlotWidget) -> None:
     data_x, data_y = cast(pg.PlotDataItem, plot_item._data_graphicss["0"][0]).getData()
     assert np.array_equal(data_x, np.array([])) and np.array_equal(data_y, np.array([]))
 
-    plot_item.set_data(
-        {
-            "0": PlotDataDesc(
-                np.array([0]),
-                np.array(["test"]),
-                QColor("grey"),
-            )
-        }
-    )
+    plot_item.set_data({"0": PlotDataDesc(np.array([0]), np.array(["test"]), QColor("grey"))})
     data_x, data_y = cast(pg.PlotDataItem, plot_item._data_graphicss["0"][0]).getData()
     assert np.array_equal(data_x, np.array([0, 0])) and np.array_equal(data_y, np.array([1, 1]))
 
-    plot_item.set_data(
-        {
-            "0": PlotDataDesc(
-                np.array([1]),
-                np.array(["test"]),
-                QColor("grey"),
-            )
-        }
-    )
+    plot_item.set_data({"0": PlotDataDesc(np.array([1]), np.array(["test"]), QColor("grey"))})
     data_x, data_y = cast(pg.PlotDataItem, plot_item._data_graphicss["0"][0]).getData()
     assert np.array_equal(data_x, np.array([1, 1])) and np.array_equal(data_y, np.array([1, 1]))
 

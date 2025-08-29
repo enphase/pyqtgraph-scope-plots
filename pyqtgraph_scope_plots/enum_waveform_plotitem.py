@@ -99,8 +99,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         # append first and last elements to pad out the trace
         if len(changes_prechanges_indices):
             changes_prechanges_indices = np.concatenate(([0], changes_prechanges_indices, [len(data.xs) - 1]))
-            heights = np.insert(heights, 0, heights[0])
-            heights = np.append(heights, heights[-1])
+            heights = np.concatenate(([heights[0]], heights, [heights[1]]))
         elif not len(changes_prechanges_indices) and len(data.ys):  # special case for waveform that doesn't change
             changes_prechanges_indices = np.array([0, len(data.xs) - 1])
             heights = np.array([1, 1])

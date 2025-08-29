@@ -188,7 +188,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
     _TABLE_TYPE = FullSignalsTable
 
     def __init__(
-        self, x_axis: Optional[Callable[[], pg.AxisItem]] = None, pandas_read_csv_kwargs: Dict[str, Any] = {}
+        self, x_axis: Optional[Callable[[], pg.AxisItem]] = None, *, pandas_read_csv_kwargs: Dict[str, Any] = {}
     ) -> None:
         self._x_axis = x_axis
         self._pandas_read_csv_kwargs = pandas_read_csv_kwargs.copy()
@@ -406,23 +406,22 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
             time_values = df[df.columns[0]]
             assert pd.api.types.is_numeric_dtype(time_values)
 
-            for col_name, dtype in zip(df.columns[1:], df.dtypes[1:]):
+            for col_name, series in list(df.items())[1:]:
                 csv_data_items_dict.setdefault(csv_filepath, set()).add(col_name)
 
-                values = df[col_name]
-                if pd.api.types.is_numeric_dtype(values):  # is numeric
+                if pd.api.types.is_numeric_dtype(series.dtype):  # is numeric
                     data_type = MultiPlotWidget.PlotType.DEFAULT
                 else:  # assume string
                     data_type = MultiPlotWidget.PlotType.ENUM_WAVEFORM
                 data_type_dict[col_name] = data_type
 
-                not_nans = pd.notna(values)
+                not_nans = pd.notna(series)
                 if not_nans.all():
                     xs = time_values
-                    ys = values
+                    ys = series.values
                 else:  # get rid of nans
                     xs = time_values[not_nans]
-                    ys = values[not_nans]
+                    ys = series.values[not_nans]
                 data_dict[col_name] = (xs, ys)
 
                 # if not in append mode, check if a time axis is needed - inferring by if min is Jan 1 2000 in timestamp

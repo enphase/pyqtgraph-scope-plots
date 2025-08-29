@@ -191,13 +191,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         self, x_axis: Optional[Callable[[], pg.AxisItem]] = None, pandas_read_csv_kwargs: Dict[str, Any] = {}
     ) -> None:
         self._x_axis = x_axis
-
-        # preprocess arguments
         self._pandas_read_csv_kwargs = pandas_read_csv_kwargs.copy()
-        if "engine" not in self._pandas_read_csv_kwargs:
-            self._pandas_read_csv_kwargs["engine"] = "pyarrow"  # faster
-        if "on_bad_lines" not in self._pandas_read_csv_kwargs:
-            self._pandas_read_csv_kwargs["on_bad_lines"] = "warn"
 
         super().__init__()
 

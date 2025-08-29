@@ -80,7 +80,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         # do change detection to find edges, element is true if it is different from the next element
         if len(data.ys):
             # prechanges is true on the index before the change
-            prechanges = np.not_equal(data.ys, np.append(data.ys[1:], data.ys[-1]))
+            prechanges = np.not_equal(ys_int[:-1], ys_int[1:])
         else:  # handle empty array case
             prechanges = np.array([])
 

@@ -18,7 +18,7 @@ import numpy as np
 import pytest
 from PySide6.QtCore import QPointF
 from PySide6.QtGui import QColor
-from pyqtgraph import PlotWidget
+import pyqtgraph as pg
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.interactivity_mixins import PlotDataDesc
@@ -27,7 +27,7 @@ from pyqtgraph_scope_plots.util.util import not_none
 
 
 @pytest.fixture()
-def plot(qtbot: QtBot) -> PlotWidget:
+def plot(qtbot: QtBot) -> pg.PlotWidget:
     """Creates a signals plot with multiple data items"""
     plot = EnumWaveformInteractivePlot()
     plot.set_data(
@@ -37,16 +37,25 @@ def plot(qtbot: QtBot) -> PlotWidget:
             )
         }
     )
-    widget = PlotWidget(plotItem=plot)
+    widget = pg.PlotWidget(plotItem=plot)
     qtbot.addWidget(widget)
     widget.show()
     qtbot.waitExposed(widget)
     return widget
 
 
-def test_empty_one(qtbot: QtBot, plot: PlotWidget) -> None:
+def test_plot_true(qtbot: QtBot, plot: pg.PlotWidget) -> None:
+    plot_item = cast(EnumWaveformInteractivePlot, plot.plotItem)
+    data_x, data_y = cast(pg.PlotDataItem, plot_item._data_graphicss["0"][0]).getData()
+    assert np.array_equal(data_x, np.array([0, 0, 1, 2, 6, 6, 7, 7.4]))
+    assert np.array_equal(data_y, np.array([1, 1, -1, -1, 1, 1, -1, -1]))
+
+
+def test_empty_one(qtbot: QtBot, plot: pg.PlotWidget) -> None:
     plot_item = cast(EnumWaveformInteractivePlot, plot.plotItem)
     plot_item.set_data({"0": PlotDataDesc(np.array([]), np.array([]), QColor("grey"))})
+    data_x, data_y = cast(pg.PlotDataItem, plot_item._data_graphicss["0"][0]).getData()
+    assert np.array_equal(data_x, np.array([])) and np.array_equal(data_y, np.array([]))
 
     plot_item.set_data(
         {
@@ -57,6 +66,9 @@ def test_empty_one(qtbot: QtBot, plot: PlotWidget) -> None:
             )
         }
     )
+    data_x, data_y = cast(pg.PlotDataItem, plot_item._data_graphicss["0"][0]).getData()
+    assert np.array_equal(data_x, np.array([0, 0])) and np.array_equal(data_y, np.array([1, 1]))
+
     plot_item.set_data(
         {
             "0": PlotDataDesc(
@@ -66,9 +78,11 @@ def test_empty_one(qtbot: QtBot, plot: PlotWidget) -> None:
             )
         }
     )
+    data_x, data_y = cast(pg.PlotDataItem, plot_item._data_graphicss["0"][0]).getData()
+    assert np.array_equal(data_x, np.array([1, 1])) and np.array_equal(data_y, np.array([1, 1]))
 
 
-def test_labels(qtbot: QtBot, plot: PlotWidget) -> None:
+def test_labels(qtbot: QtBot, plot: pg.PlotWidget) -> None:
     plot_item = cast(EnumWaveformInteractivePlot, plot.plotItem)
     qtbot.waitUntil(lambda: len(plot_item._curves_labels) == 2)
     assert plot_item._curves_labels[0].toPlainText() == "B"  # longest segment
@@ -81,7 +95,7 @@ def test_labels(qtbot: QtBot, plot: PlotWidget) -> None:
     assert plot_item._curves_labels[0].toPlainText() == "test"
 
 
-def test_snap(qtbot: QtBot, plot: PlotWidget) -> None:
+def test_snap(qtbot: QtBot, plot: pg.PlotWidget) -> None:
     plot_item = cast(EnumWaveformInteractivePlot, plot.plotItem)
     assert not_none(plot_item._snap_pos(QPointF(0, 0), 0, 10)) == QPointF(0, 0)  # exact snap
     assert not_none(plot_item._snap_pos(QPointF(7.4, 0), 0, 10)) == QPointF(7.4, 0)  # exact at noninteger
@@ -94,7 +108,7 @@ def test_snap(qtbot: QtBot, plot: PlotWidget) -> None:
     assert plot_item._snap_pos(QPointF(1.5, 100), 0.1, 0.9) is None
 
 
-def test_data_values(qtbot: QtBot, plot: PlotWidget) -> None:
+def test_data_values(qtbot: QtBot, plot: pg.PlotWidget) -> None:
     plot_item = cast(EnumWaveformInteractivePlot, plot.plotItem)
     assert plot_item._data_value_label_at(0) == [(0, "A", QColor("yellow"))]
     assert plot_item._data_value_label_at(1.5) == [(0, "B", QColor("yellow"))]

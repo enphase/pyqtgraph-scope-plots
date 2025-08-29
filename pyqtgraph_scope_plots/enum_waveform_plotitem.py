@@ -79,28 +79,26 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         ys_values, ys_int = np.unique(data.ys, return_inverse=True)  # map to integer for efficiency
         # do change detection to find edges, element is true if it is different from the next element
         if len(data.ys):
-            changes = np.not_equal(ys_int, np.append(ys_int[1:], ys_int[-1]))
+            # prechanges is true on the index before the change
+            prechanges = np.not_equal(data.ys, np.append(data.ys[1:], data.ys[-1])).astype(int)
         else:  # handle empty array case
-            changes = np.array([])
+            prechanges = np.array([])
 
-        changes_indices = np.where(changes)[0]
+        prechanges_indices = np.where(prechanges)[0]
         # interleave the indices and itself plus one to get all the points where the data changes
         # note, this may result in duplicate points, which is fine for plotting
-        changes_prechanges_indices = (
-            np.column_stack(
-                (
-                    changes_indices,
-                    changes_indices + np.ones(len(changes_indices), dtype=int),
-                )
-            ).reshape(-1)
-        ).astype(int)
+        changes_prechanges_indices = np.column_stack(
+            (
+                prechanges_indices,
+                prechanges_indices + np.ones(len(prechanges_indices), dtype=int),
+            )
+        ).reshape(-1)
         heights = np.array(
             ([1, -1, -1, 1] * ((len(changes_prechanges_indices) + 3) // 4))[: len(changes_prechanges_indices)]
         )
         # append first and last elements to pad out the trace
         if len(changes_prechanges_indices):
-            changes_prechanges_indices = np.insert(changes_prechanges_indices, 0, 0)
-            changes_prechanges_indices = np.append(changes_prechanges_indices, len(data.xs) - 1)
+            changes_prechanges_indices = np.concatenate(([0], changes_prechanges_indices, [len(data.xs) - 1]))
             heights = np.insert(heights, 0, heights[0])
             heights = np.append(heights, heights[-1])
         elif not len(changes_prechanges_indices) and len(data.ys):  # special case for waveform that doesn't change

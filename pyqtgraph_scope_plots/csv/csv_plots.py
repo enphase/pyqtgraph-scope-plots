@@ -187,8 +187,11 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
     _PLOT_TYPE = FullPlots
     _TABLE_TYPE = FullSignalsTable
 
-    def __init__(self, x_axis: Optional[Callable[[], pg.AxisItem]] = None) -> None:
+    def __init__(
+        self, x_axis: Optional[Callable[[], pg.AxisItem]] = None, pandas_read_csv_kwargs: Dict[str, Any] = {}
+    ) -> None:
         self._x_axis = x_axis
+        self._pandas_read_csv_kwargs = pandas_read_csv_kwargs.copy()
 
         super().__init__()
 
@@ -322,6 +325,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         if not csv_filenames:  # nothing selected, user canceled
             return
         self._load_csvs(csv_filenames)
+        self._plots.autorange(True)
 
     def _on_append_csv(self) -> None:
         csv_filenames, _ = QFileDialog.getOpenFileNames(None, "Select CSV Files", filter="CSV files (*.csv)")
@@ -396,7 +400,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         # read through CSVs
         any_is_timevalue = False
         for csv_filepath in csv_filepaths:
-            df = pd.read_csv(csv_filepath)
+            df = pd.read_csv(csv_filepath, **self._pandas_read_csv_kwargs)
             self._csv_time[csv_filepath] = time.time()
 
             time_values = df[df.columns[0]]

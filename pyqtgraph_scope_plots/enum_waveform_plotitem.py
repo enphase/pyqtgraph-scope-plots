@@ -80,7 +80,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         # do change detection to find edges, element is true if it is different from the next element
         if len(data.ys):
             # prechanges is true on the index before the change
-            prechanges = np.not_equal(data.ys, np.append(data.ys[1:], data.ys[-1])).astype(int)
+            prechanges = np.not_equal(data.ys, np.append(data.ys[1:], data.ys[-1]))
         else:  # handle empty array case
             prechanges = np.array([])
 
@@ -96,13 +96,14 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         heights = np.array(
             ([1, -1, -1, 1] * ((len(changes_prechanges_indices) + 3) // 4))[: len(changes_prechanges_indices)]
         )
-        # append first and last elements to pad out the trace
-        if len(changes_prechanges_indices):
+        if len(heights) > 0:  # append first and last elements to pad out the trace
             changes_prechanges_indices = np.concatenate(([0], changes_prechanges_indices, [len(data.xs) - 1]))
-            heights = np.concatenate(([heights[0]], heights, [heights[1]]))
-        elif not len(changes_prechanges_indices) and len(data.ys):  # special case for waveform that doesn't change
+            heights = np.concatenate(([heights[0]], heights, [heights[-1]]))
+        elif len(data.ys):  # special case for waveform that doesn't change but is nonempty
             changes_prechanges_indices = np.array([0, len(data.xs) - 1])
             heights = np.array([1, 1])
+        else:  # empty case, need changes_prechanges_indices to be empty to not slice an empty array
+            pass
 
         self._edges = np.take(data.xs, changes_prechanges_indices)
 

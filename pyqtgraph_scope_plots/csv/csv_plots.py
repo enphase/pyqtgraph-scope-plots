@@ -371,7 +371,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         append: bool = False,
         colnames: Optional[Iterable[str]] = None,
         update: bool = True,
-        pandas_read_csv_kwargs: Dict[str, str] = {},
+        pandas_read_csv_kwargs: Dict[str, Any] = {},
     ) -> "CsvLoaderPlotsTableWidget":
         """Loads CSV files into the current window.
         If append is true, preserves the existing data / metadata.

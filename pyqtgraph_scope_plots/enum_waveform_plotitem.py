@@ -13,7 +13,7 @@
 #    limitations under the License.
 
 import bisect
-from typing import List, Tuple, Optional, Any, cast, Sequence, Mapping
+from typing import List, Tuple, Optional, Any, cast, Mapping
 
 import numpy as np
 import numpy.typing as npt

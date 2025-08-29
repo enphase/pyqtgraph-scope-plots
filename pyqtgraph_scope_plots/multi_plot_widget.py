@@ -104,12 +104,10 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         default_plot_widget = pg.PlotWidget(plotItem=default_plot_item)
         self.addWidget(default_plot_widget)
         # contained data items per plot
-        self._plot_item_data: Dict[DataPlotItem, List[Optional[str]]] = {default_plot_item: []}
-        # re-derived when _plot_item_data updated
-        self._data_name_to_plot_item: Dict[Optional[str], DataPlotItem] = {None: default_plot_item}
-        self._anchor_x_plot_item: Optional[DataPlotItem] = (
-            default_plot_item  # PlotItem that everyone's x-axis is linked to
-        )
+        self._plot_item_data: Dict[DataPlotItem, List[str]] = {default_plot_item: []}
+        # re-derived when _plot_item_data updated, does NOT include the placeholder plot
+        self._data_name_to_plot_item: Dict[str, DataPlotItem] = {}
+        self._anchor_x_plot_item: DataPlotItem = default_plot_item  # PlotItem that everyone's x-axis is linked to
 
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
@@ -361,10 +359,8 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         for plot_item, data_names in self._plot_item_data.items():
             data_descs: Dict[str, PlotDataDesc] = {}
             for data_name in data_names:
-                color = self._data_items.get(cast(str, data_name), (QColor("black"), None))[0]
-                xs, ys = self._data.get(
-                    cast(str, data_name), ([], [])
-                )  # None is valid for dict.get, cast to satisfy typer
+                color = self._data_items.get(data_name, (QColor("black"), None))[0]
+                xs, ys = self._data.get(data_name, ([], []))  # None is valid for dict.get, cast to satisfy typer
                 data_descs[data_name or ""] = PlotDataDesc(xs, ys, color)
             plot_item.set_data(data_descs)
 

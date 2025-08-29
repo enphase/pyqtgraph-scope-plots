@@ -157,7 +157,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
             add_plot_item = self._init_plot_item(self._create_plot_item(plot_type))
             plot_widget = pg.PlotWidget(plotItem=add_plot_item)
             self.addWidget(plot_widget)
-            self._plot_item_data[add_plot_item] = plot_widget_model.data_items  # type: ignore
+            self._plot_item_data[add_plot_item] = plot_widget_model.data_items
 
             widget_viewbox = cast(pg.PlotItem, plot_widget.getPlotItem()).getViewBox()
             if model.x_range is not None and model.x_range != "auto":

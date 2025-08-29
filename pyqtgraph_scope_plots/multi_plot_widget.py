@@ -170,7 +170,6 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
                 )
 
         self._clean_plot_widgets()
-        self._check_create_default_plot()
         self._update_plots_x_axis()
         self._update_data_name_to_plot_item()
 
@@ -222,23 +221,33 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
 
     def _clean_plot_widgets(self) -> None:
         """Called when plot items potentially have been emptied / deleted, to clean things up"""
+        new_anchor_plot_item: Optional[pg.PlotItem] = self._anchor_x_plot_item  # temporarily Optional
         for i in range(self.count()):
             widget = self.widget(i)
             if not isinstance(widget, pg.PlotWidget):
                 continue
             if widget.getPlotItem() not in self._plot_item_data or not len(self._plot_item_data[widget.getPlotItem()]):
                 if widget.getPlotItem() is self._anchor_x_plot_item:  # about to delete the x-axis anchor
-                    self._anchor_x_plot_item = None
+                    new_anchor_plot_item = None
                 if widget.getPlotItem() in self._plot_item_data:
                     del self._plot_item_data[widget.getPlotItem()]
                 widget.deleteLater()
 
-        if self._anchor_x_plot_item is None:  # select a new x-axis anchor and re-link
+        if new_anchor_plot_item is None:  # select a new x-axis anchor and re-link
+            if not self._plot_item_data:  # create a default placeholder, if needed
+                plot_item = self._init_plot_item(self._create_plot_item(self.PlotType.DEFAULT))
+                plot_widget = pg.PlotWidget(plotItem=plot_item)
+                self.addWidget(plot_widget)
+                self._plot_item_data[plot_item] = []
+
             for plot_item, _ in self._plot_item_data.items():
-                if self._anchor_x_plot_item is None:
-                    self._anchor_x_plot_item = plot_item
+                if new_anchor_plot_item is None:
+                    new_anchor_plot_item = plot_item
                 else:
-                    plot_item.setXLink(self._anchor_x_plot_item)
+                    plot_item.setXLink(new_anchor_plot_item)
+
+        assert new_anchor_plot_item is not None
+        self._anchor_x_plot_item = new_anchor_plot_item
 
     def _update_plots_x_axis(self) -> None:
         """Updates plots so only last plot's x axis labels and ticks are visible"""
@@ -260,21 +269,11 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
 
             is_first = False
 
-    def _check_create_default_plot(self) -> None:
-        """Ensure there is always a plot on th screen. If there are no plots visible, create a default empty one."""
-        if not self._plot_item_data:
-            plot_item = self._init_plot_item(self._create_plot_item(self.PlotType.DEFAULT))
-            plot_widget = pg.PlotWidget(plotItem=plot_item)
-            self.addWidget(plot_widget)
-            self._plot_item_data[plot_item] = []
-            self._anchor_x_plot_item = plot_item
-
     def remove_plot_items(self, remove_data_names: List[str]) -> None:
         for plot_item, data_names in self._plot_item_data.items():
             self._plot_item_data[plot_item] = list(filter(lambda x: x not in remove_data_names, data_names))
 
         self._clean_plot_widgets()
-        self._check_create_default_plot()
         self._update_plots_x_axis()
         self._update_data_name_to_plot_item()
         self._update_plots()
@@ -291,7 +290,6 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         # remove plots not in new_data_items
         for plot_item, data_names in self._plot_item_data.items():
             self._plot_item_data[plot_item] = list(filter(lambda x: x in new_data_names, data_names))
-        self._clean_plot_widgets()
 
         # add new plots based on the requested action
         if not no_create:
@@ -327,7 +325,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
 
         self._data_items = {name: (color, plot_type) for name, color, plot_type in new_data_items}
 
-        self._check_create_default_plot()
+        self._clean_plot_widgets()
         self._update_data_name_to_plot_item()
         self._update_plots_x_axis()
         self.sigDataItemsUpdated.emit()

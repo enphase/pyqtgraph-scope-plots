@@ -44,7 +44,7 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._data: Dict[str, PlotDataDesc] = {}
-        self._data_graphicss: Dict[str, List[pg.GraphicsObject]] = {}  # index-aligned w/ self._data
+        self._data_graphicss: Dict[str, List[pg.GraphicsObject]] = {}
 
     def set_data(self, data: Mapping[str, PlotDataDesc]) -> None:
         """Sets and generates plots for the input data items. A default is provided."""

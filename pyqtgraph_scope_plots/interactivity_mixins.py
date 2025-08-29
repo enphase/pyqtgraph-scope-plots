@@ -44,19 +44,19 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._data: Dict[str, PlotDataDesc] = {}
-        self._data_graphicss: Dict[str, List[pg.GraphicsObject]] = {}
+        self._data_graphics: Dict[str, List[pg.GraphicsObject]] = {}
 
     def set_data(self, data: Mapping[str, PlotDataDesc]) -> None:
         """Sets and generates plots for the input data items. A default is provided."""
-        for data_graphics in self._data_graphicss.values():
-            for data_graphic in data_graphics:  # TODO better naming
-                self.removeItem(data_graphic)
+        for graphics in self._data_graphics.values():
+            for item in graphics:
+                self.removeItem(item)
 
         self._data = dict(data)
-        self._data_graphicss = {name: self._generate_plot_items(name, data) for name, data in self._data.items()}
-        for data_graphics in self._data_graphicss.values():
-            for data_graphic in data_graphics:  # TODO better naming
-                self.addItem(data_graphic)
+        self._data_graphics = {name: self._generate_plot_items(name, data) for name, data in self._data.items()}
+        for graphics in self._data_graphics.values():
+            for item in graphics:
+                self.addItem(item)
 
     @abstractmethod
     def _generate_plot_items(self, name: str, data: PlotDataDesc) -> List[pg.GraphicsObject]:
@@ -99,7 +99,7 @@ class HasDataValueAt(DataPlotItem):
     def _data_value_label_at(self, pos: float, precision_factor: float = 1.0) -> List[Tuple[float, str, QColor]]:
         outs = []
         for name, data in self._data.items():
-            if not self._data_graphicss[name][0].isVisible():
+            if not self._data_graphics[name][0].isVisible():
                 continue
             if not len(data.xs):
                 continue
@@ -149,7 +149,7 @@ class SnappableHoverPlot(DataPlotCurveItem):
         # closest point for each curve: (data, index, distance)
         data_index_dists: List[Tuple[PlotDataDesc, int, float]] = []
         for name, data in self._data.items():
-            if not self._data_graphicss[name][0].isVisible():
+            if not self._data_graphics[name][0].isVisible():
                 continue
             if not len(data.xs):
                 continue

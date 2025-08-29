@@ -371,6 +371,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         append: bool = False,
         colnames: Optional[Iterable[str]] = None,
         update: bool = True,
+        pandas_read_csv_kwargs: Dict[str, str] = {},
     ) -> "CsvLoaderPlotsTableWidget":
         """Loads CSV files into the current window.
         If append is true, preserves the existing data / metadata.
@@ -393,10 +394,16 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
                 data_dict[data_name] = (np.array([]), np.array([]))
                 assert data_name in data_type_dict  # keeps prior value
 
+        # preprocess arguments
+        if "engine" not in pandas_read_csv_kwargs:
+            pandas_read_csv_kwargs["engine"] = "pyarrow"  # faster
+        if "on_bad_lines" not in pandas_read_csv_kwargs:
+            pandas_read_csv_kwargs["on_bad_lines"] = "warn"
+
         # read through CSVs
         any_is_timevalue = False
         for csv_filepath in csv_filepaths:
-            df = pd.read_csv(csv_filepath)
+            df = pd.read_csv(csv_filepath, **pandas_read_csv_kwargs)
             self._csv_time[csv_filepath] = time.time()
 
             time_values = df[df.columns[0]]

@@ -25,11 +25,19 @@ from PySide6.QtWidgets import QWidget, QSplitter
 from pydantic import BaseModel
 
 from .enum_waveform_plotitem import EnumWaveformPlot
-from .interactivity_mixins import PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DraggableCursorPlot
+from .interactivity_mixins import (
+    PointsOfInterestPlot,
+    RegionPlot,
+    LiveCursorPlot,
+    DraggableCursorPlot,
+    PlotDataDesc,
+    DataPlotCurveItem,
+    DataPlotItem,
+)
 from .util import BaseTopModel, HasSaveLoadDataConfig
 
 
-class InteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot):
+class InteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DataPlotCurveItem):
     """PlotItem with interactivity mixins"""
 
 
@@ -91,17 +99,15 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         self._raw_data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]] = {}  # pre-transforms, immutable
         self._data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]] = {}  # post-transforms
 
-        self._data_curves: Dict[str, List[pg.PlotCurveItem]] = {}
-
         self.setOrientation(Qt.Orientation.Vertical)
         default_plot_item = self._init_plot_item(self._create_plot_item(self.PlotType.DEFAULT))
         default_plot_widget = pg.PlotWidget(plotItem=default_plot_item)
         self.addWidget(default_plot_widget)
         # contained data items per plot
-        self._plot_item_data: Dict[pg.PlotItem, List[Optional[str]]] = {default_plot_item: []}
-        # re-derived when _plot_item_data updated
-        self._data_name_to_plot_item: Dict[Optional[str], pg.PlotItem] = {None: default_plot_item}
-        self._anchor_x_plot_item: pg.PlotItem = default_plot_item  # PlotItem that everyone's x-axis is linked to
+        self._plot_item_data: Dict[DataPlotItem, List[str]] = {default_plot_item: []}
+        # re-derived when _plot_item_data updated, does NOT include the placeholder plot
+        self._data_name_to_plot_item: Dict[str, DataPlotItem] = {}
+        self._anchor_x_plot_item: DataPlotItem = default_plot_item  # PlotItem that everyone's x-axis is linked to
 
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
@@ -151,7 +157,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
             add_plot_item = self._init_plot_item(self._create_plot_item(plot_type))
             plot_widget = pg.PlotWidget(plotItem=add_plot_item)
             self.addWidget(plot_widget)
-            self._plot_item_data[add_plot_item] = plot_widget_model.data_items  # type: ignore
+            self._plot_item_data[add_plot_item] = plot_widget_model.data_items
 
             widget_viewbox = cast(pg.PlotItem, plot_widget.getPlotItem()).getViewBox()
             if model.x_range is not None and model.x_range != "auto":
@@ -164,7 +170,6 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
                 )
 
         self._clean_plot_widgets()
-        self._check_create_default_plot()
         self._update_plots_x_axis()
         self._update_data_name_to_plot_item()
 
@@ -197,7 +202,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
             for name in data_names:
                 self._data_name_to_plot_item[name] = plot_item
 
-    def _create_plot_item(self, plot_type: "MultiPlotWidget.PlotType") -> pg.PlotItem:
+    def _create_plot_item(self, plot_type: "MultiPlotWidget.PlotType") -> DataPlotItem:
         """Given a PlotType, creates the PlotItem and returns it. Override to change the instantiated PlotItem type."""
         plot_args = {}
         if self._x_axis_fn is not None:
@@ -209,30 +214,40 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         else:
             raise ValueError(f"unknown plot_type {plot_type}")
 
-    def _init_plot_item(self, plot_item: pg.PlotItem) -> pg.PlotItem:
+    def _init_plot_item(self, plot_item: DataPlotItem) -> DataPlotItem:
         """Called after _create_plot_item, does any post-creation init. Returns the same plot_item.
         Optionally override this with a super() call."""
         return plot_item
 
     def _clean_plot_widgets(self) -> None:
         """Called when plot items potentially have been emptied / deleted, to clean things up"""
+        new_anchor_plot_item: Optional[pg.PlotItem] = self._anchor_x_plot_item  # temporarily Optional
         for i in range(self.count()):
             widget = self.widget(i)
             if not isinstance(widget, pg.PlotWidget):
                 continue
             if widget.getPlotItem() not in self._plot_item_data or not len(self._plot_item_data[widget.getPlotItem()]):
                 if widget.getPlotItem() is self._anchor_x_plot_item:  # about to delete the x-axis anchor
-                    self._anchor_x_plot_item = None
+                    new_anchor_plot_item = None
                 if widget.getPlotItem() in self._plot_item_data:
                     del self._plot_item_data[widget.getPlotItem()]
                 widget.deleteLater()
 
-        if self._anchor_x_plot_item is None:  # select a new x-axis anchor and re-link
+        if new_anchor_plot_item is None:  # select a new x-axis anchor and re-link
+            if not self._plot_item_data:  # create a default placeholder, if needed
+                plot_item = self._init_plot_item(self._create_plot_item(self.PlotType.DEFAULT))
+                plot_widget = pg.PlotWidget(plotItem=plot_item)
+                self.addWidget(plot_widget)
+                self._plot_item_data[plot_item] = []
+
             for plot_item, _ in self._plot_item_data.items():
-                if self._anchor_x_plot_item is None:
-                    self._anchor_x_plot_item = plot_item
+                if new_anchor_plot_item is None:
+                    new_anchor_plot_item = plot_item
                 else:
-                    plot_item.setXLink(self._anchor_x_plot_item)
+                    plot_item.setXLink(new_anchor_plot_item)
+
+        assert new_anchor_plot_item is not None
+        self._anchor_x_plot_item = new_anchor_plot_item
 
     def _update_plots_x_axis(self) -> None:
         """Updates plots so only last plot's x axis labels and ticks are visible"""
@@ -254,21 +269,11 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
 
             is_first = False
 
-    def _check_create_default_plot(self) -> None:
-        """Ensure there is always a plot on th screen. If there are no plots visible, create a default empty one."""
-        if not self._plot_item_data:
-            plot_item = self._init_plot_item(self._create_plot_item(self.PlotType.DEFAULT))
-            plot_widget = pg.PlotWidget(plotItem=plot_item)
-            self.addWidget(plot_widget)
-            self._plot_item_data[plot_item] = []
-            self._anchor_x_plot_item = plot_item
-
     def remove_plot_items(self, remove_data_names: List[str]) -> None:
         for plot_item, data_names in self._plot_item_data.items():
             self._plot_item_data[plot_item] = list(filter(lambda x: x not in remove_data_names, data_names))
 
         self._clean_plot_widgets()
-        self._check_create_default_plot()
         self._update_plots_x_axis()
         self._update_data_name_to_plot_item()
         self._update_plots()
@@ -285,7 +290,6 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         # remove plots not in new_data_items
         for plot_item, data_names in self._plot_item_data.items():
             self._plot_item_data[plot_item] = list(filter(lambda x: x in new_data_names, data_names))
-        self._clean_plot_widgets()
 
         # add new plots based on the requested action
         if not no_create:
@@ -321,7 +325,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
 
         self._data_items = {name: (color, plot_type) for name, color, plot_type in new_data_items}
 
-        self._check_create_default_plot()
+        self._clean_plot_widgets()
         self._update_data_name_to_plot_item()
         self._update_plots_x_axis()
         self.sigDataItemsUpdated.emit()
@@ -349,27 +353,14 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         self.sigDataUpdated.emit()
 
     def _update_plots(self) -> None:
-        self._data_curves = {}
         self._data = self._transform_data(self._raw_data)
         for plot_item, data_names in self._plot_item_data.items():
-            if isinstance(plot_item, EnumWaveformPlot):  # TODO: enum plots have a different API, this should be unified
-                data_name = data_names[0]
-                color = self._data_items.get(cast(str, data_name), (QColor("black"), None))[0]
-                xs, ys = self._data.get(
-                    cast(str, data_name), ([], [])
-                )  # None is valid for dict.get, cast to satisfy typer
-                plot_item.update_plot(data_name or "", color, xs, ys)
-            else:
-                for data_item in plot_item.listDataItems():  # clear existing
-                    plot_item.removeItem(data_item)
-                for data_name in data_names:
-                    assert isinstance(data_name, str)
-                    color = self._data_items.get(data_name, (QColor("black"), None))[0]
-                    xs, ys = self._data.get(data_name, ([], []))
-                    curve = pg.PlotCurveItem(x=xs, y=ys, name=data_name)
-                    curve.setPen(color=color, width=1)
-                    plot_item.addItem(curve)
-                    self._data_curves.setdefault(data_name, []).append(curve)
+            data_descs: Dict[str, PlotDataDesc] = {}
+            for data_name in data_names:
+                color = self._data_items.get(data_name, (QColor("black"), None))[0]
+                xs, ys = self._data.get(data_name, ([], []))  # None is valid for dict.get, cast to satisfy typer
+                data_descs[data_name or ""] = PlotDataDesc(xs, ys, color)
+            plot_item.set_data(data_descs)
 
     def autorange(self, enable: bool) -> None:
         is_first = True

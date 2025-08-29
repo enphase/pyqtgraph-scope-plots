@@ -20,15 +20,61 @@ live x-axis cursor, region selection, and points-of-interest.
 import bisect
 import math
 from abc import abstractmethod
-from typing import List, Tuple, Dict, Optional, Any, cast, NamedTuple, Union
+from typing import List, Tuple, Dict, Optional, Any, cast, NamedTuple, Union, Sequence, Mapping
 
 import numpy as np
+from numpy import typing as npt
 import pyqtgraph as pg
 from PySide6.QtCore import QPointF, QSignalBlocker, Signal, Slot
 from PySide6.QtGui import Qt, QColor, QKeyEvent
 from PySide6.QtWidgets import QGraphicsSceneMouseEvent
 from pyqtgraph import mkPen
 from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent
+
+
+class PlotDataDesc(NamedTuple):
+    xs: npt.NDArray[np.float64]
+    ys: npt.NDArray
+    color: QColor
+
+
+class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
+    """Abstract base class for a PlotItem that takes some data."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._data: Dict[str, PlotDataDesc] = {}
+        self._data_graphics: Dict[str, List[pg.GraphicsObject]] = {}
+
+    def set_data(self, data: Mapping[str, PlotDataDesc]) -> None:
+        """Sets and generates plots for the input data items. A default is provided."""
+        for graphics in self._data_graphics.values():
+            for item in graphics:
+                self.removeItem(item)
+
+        self._data = dict(data)
+        self._data_graphics = {name: self._generate_plot_items(name, data) for name, data in self._data.items()}
+        for graphics in self._data_graphics.values():
+            for item in graphics:
+                self.addItem(item)
+
+    @abstractmethod
+    def _generate_plot_items(self, name: str, data: PlotDataDesc) -> List[pg.GraphicsObject]:
+        """Defines how to generate a pyqtgraph graphics item (eg, PlotCurveItem) from some data.
+        May apply transforms to optimize rendering.
+        May return multiple items, but the first one should be the main one. Must be nonempty.
+        Only one should have a name, which is used for the legend.
+        INTERNAL API - STABILITY NOT GUARANTEED"""
+        raise NotImplementedError
+
+
+class DataPlotCurveItem(DataPlotItem):
+    """DataPlotItem that generates a PlotCurveItem"""
+
+    def _generate_plot_items(self, name: str, data: PlotDataDesc) -> List[pg.GraphicsObject]:
+        curve = pg.PlotCurveItem(x=data.xs, y=data.ys, name=name)
+        curve.setPen(color=data.color, width=1)
+        return [curve]
 
 
 class DeltaAxisItem(pg.AxisItem):  # type: ignore[misc]
@@ -46,38 +92,36 @@ class HoverSnapData(NamedTuple):
     snap_pos: Optional[QPointF]  # None if no nearby point
 
 
-class HasDataValueAt(pg.PlotItem):  # type: ignore[misc]
+class HasDataValueAt(DataPlotItem):
     """Base class that provides a shared (and overrideable) function that returns multiple y-position and labels
     given some x position"""
 
     def _data_value_label_at(self, pos: float, precision_factor: float = 1.0) -> List[Tuple[float, str, QColor]]:
         outs = []
-        for data_item in self.listDataItems():  # type: pg.PlotDataItem
-            if not isinstance(data_item, pg.PlotCurveItem):  # ignore scatter points
+        for name, data in self._data.items():
+            if not self._data_graphics[name][0].isVisible():
                 continue
-            if not data_item.isVisible():
+            if not len(data.xs):
                 continue
-            xpts, ypts = data_item.getData()
-            if xpts is None or not len(xpts):
-                continue
-            index = bisect.bisect_left(xpts, pos)
-            if index < len(xpts) and xpts[index] == pos:  # found exact match
+
+            index = bisect.bisect_left(data.xs, pos)
+            if index < len(data.xs) and data.xs[index] == pos:  # found exact match
                 outs.append(
                     (
-                        ypts[index],
+                        data.ys[index],
                         LiveCursorPlot._value_axis_label(
-                            ypts[index],
+                            data.ys[index],
                             self,
                             "left",
                             precision_factor=precision_factor,
                         ),
-                        mkPen(data_item.opts["pen"]).color(),  # opts['pen'] has multiple formats
+                        data.color,
                     )
                 )
         return outs
 
 
-class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
+class SnappableHoverPlot(DataPlotCurveItem):
     """Mixin for PlotItem that provides an optional snapped nearest data point on user hover.
     Shows a visual target on the snapped point."""
 
@@ -101,18 +145,16 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
         self._hover_target: Optional[pg.TargetItem] = None
 
     def _snap_pos(self, target_pos: QPointF, x_lo: float, x_hi: float) -> Optional[QPointF]:
-        """Returns the closest point in the snappable data set to the target_pos, with x-value between x_lo and x_hi.
-        Pulls from self.listDataItems() by default, override this to provide different snapping points.
-        """
-        # closest point for each curve: (curve, index, distance)
-        curve_index_dist: List[Tuple[pg.PlotDataItem, int, float]] = []
-        visible_data_items = [data_item for data_item in self.listDataItems() if data_item.isVisible()]
-        for data_item in visible_data_items:  # type: pg.PlotDataItem
-            xpts, ypts = data_item.getData()
-            if xpts is None or not len(xpts):
+        """Returns the closest point in the snappable data set to the target_pos, with x-value between x_lo and x_hi."""
+        # closest point for each curve: (data, index, distance)
+        data_index_dists: List[Tuple[PlotDataDesc, int, float]] = []
+        for name, data in self._data.items():
+            if not self._data_graphics[name][0].isVisible():
                 continue
-            index_lo = bisect.bisect_left(xpts, x_lo)
-            index_hi = bisect.bisect_right(xpts, x_hi)
+            if not len(data.xs):
+                continue
+            index_lo = bisect.bisect_left(data.xs, x_lo)
+            index_hi = bisect.bisect_right(data.xs, x_hi)
             if index_hi - index_lo > self.MAX_PTS:
                 continue
 
@@ -120,19 +162,17 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
             index_dist = self._closest_index(
                 [
                     self.mapFromView(QPointF(xpt, ypt))
-                    for xpt, ypt in zip(xpts[index_lo:index_hi], ypts[index_lo:index_hi])
+                    for xpt, ypt in zip(data.xs[index_lo:index_hi], data.ys[index_lo:index_hi])
                 ],
                 self.mapFromView(target_pos),
             )
             if index_dist is None:
                 continue
-            curve_index_dist.append((data_item, index_dist[0] + index_lo, index_dist[1]))
+            data_index_dists.append((data, index_dist[0] + index_lo, index_dist[1]))
 
-        if curve_index_dist:
-            closest_item = min(curve_index_dist, key=lambda tup: tup[2])
-            closest_curve, closest_index, _ = closest_item
-            closest_xs, closest_ys = closest_curve.getData()
-            return QPointF(closest_xs[closest_index], closest_ys[closest_index])
+        if data_index_dists:
+            closest_data, closest_index, _ = min(data_index_dists, key=lambda tup: tup[2])
+            return QPointF(closest_data.xs[closest_index], closest_data.ys[closest_index])
         else:
             return None
 
@@ -187,8 +227,7 @@ class SnappableHoverPlot(pg.PlotItem):  # type: ignore[misc]
         if not dists:
             return None
         min_dist_index = np.argmin(dists)
-        min_dist = dists[min_dist_index]
-        return int(min_dist_index), min_dist
+        return int(min_dist_index), dists[min_dist_index]
 
 
 class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):

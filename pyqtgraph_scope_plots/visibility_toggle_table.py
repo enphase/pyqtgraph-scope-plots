@@ -58,17 +58,25 @@ class VisibilityPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
 
         if update:
             for data_item in data_items:
-                for curve in self._data_curves.get(data_item, []):
+                plot_item = self._data_name_to_plot_item.get(data_item, None)
+                if plot_item is None:
+                    continue
+                graphics = plot_item._data_graphics.get(data_item, [])
+                for item in graphics:
                     if hidden:
-                        curve.hide()
+                        item.hide()
                     else:
-                        curve.show()
+                        item.show()
 
     def _update_plots(self) -> None:
         super()._update_plots()
         for data_item in self._hidden_data:
-            for curve in self._data_curves.get(data_item, []):
-                curve.hide()
+            plot_item = self._data_name_to_plot_item.get(data_item, None)
+            if plot_item is None:
+                continue
+            graphics = plot_item._data_graphics.get(data_item, [])
+            for item in graphics:
+                item.hide()
 
 
 class VisibilityToggleSignalsTable(SignalsTable):

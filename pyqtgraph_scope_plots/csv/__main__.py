@@ -64,4 +64,5 @@ if __name__ == "__main__":
     )
 
     plots.show()
+    plots._plots.autorange(True)
     app.exec()

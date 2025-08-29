@@ -331,6 +331,7 @@ class CsvLoaderPlotsTableWidget(AnimationPlotsTableWidget, PlotsTableWidget, Has
         if not csv_filenames:  # nothing selected, user canceled
             return
         self._load_csvs(csv_filenames)
+        self._plots.autorange(True)
 
     def _on_append_csv(self) -> None:
         csv_filenames, _ = QFileDialog.getOpenFileNames(None, "Select CSV Files", filter="CSV files (*.csv)")

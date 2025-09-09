@@ -19,7 +19,6 @@ live x-axis cursor, region selection, and points-of-interest.
 
 import bisect
 import math
-import time
 from abc import abstractmethod
 from typing import List, Tuple, Dict, Optional, Any, cast, NamedTuple, Union, Mapping
 
@@ -136,7 +135,7 @@ class SnappableHoverPlot(DataPlotCurveItem):
     sigDragCursorCleared = Signal()
 
     SNAP_DISTANCE_PX = 12
-    MAX_PTS = 128  # if more than this many points in the window, give up
+    MAX_PTS = 1024  # if more than this many points in the window, give up
 
     _Z_VALUE_SNAP_TARGET = 1000
 
@@ -150,7 +149,8 @@ class SnappableHoverPlot(DataPlotCurveItem):
         # closest point for each curve: (data, index, distance)
         data_index_dists: List[Tuple[PlotDataDesc, int, float]] = []
         for name, data in self._data.items():
-            if not self._data_graphics[name][0].isVisible():
+            data_graphics = self._data_graphics.get(name)
+            if not data_graphics or not data_graphics[0].isVisible():
                 continue
             if not len(data.xs):
                 continue
@@ -159,17 +159,18 @@ class SnappableHoverPlot(DataPlotCurveItem):
             if index_hi - index_lo > self.MAX_PTS:
                 continue
 
-            # compare in screen coordination since X/Y scaling may not be uniform
-            index_dist = self._closest_index(
-                [
-                    self.mapFromView(QPointF(xpt, ypt))
-                    for xpt, ypt in zip(data.xs[index_lo:index_hi], data.ys[index_lo:index_hi])
-                ],
-                self.mapFromView(target_pos),
-            )
-            if index_dist is None:
+            # this code inspired by ScatterPlotItem._maskAt, which is used to find intersecting items fast
+            # account for graph scaling
+            px, py = data_graphics[0].pixelVectors()
+            if px is None or py is None or px == 0 or py == 0:  # invalid
                 continue
-            data_index_dists.append((data, index_dist[0] + index_lo, index_dist[1]))
+            dxs = (data.xs[index_lo:index_hi] - target_pos.x()) / px.x()
+            dys = (data.ys[index_lo:index_hi] - target_pos.y()) / py.y()
+            dists = np.hypot(dxs, dys)
+            if not len(dists):
+                continue
+            min_dist_index = int(np.argmin(dists))
+            data_index_dists.append((data, min_dist_index + index_lo, dists[min_dist_index]))
 
         if data_index_dists:
             closest_data, closest_index, _ = min(data_index_dists, key=lambda tup: tup[2])
@@ -217,17 +218,6 @@ class SnappableHoverPlot(DataPlotCurveItem):
 
         self.hover_snap_point = snap_data
         self.sigHoverSnapChanged.emit(snap_data)
-
-    @staticmethod
-    def _closest_index(pts: List[QPointF], pos: QPointF) -> Optional[Tuple[int, float]]:
-        """Returns the (index, dist) of the closest point (by xy distance) to (xpos, ypos) in the series xpts, ypts.
-        Returns None if no point is found."""
-        # TODO use collective operations for performance
-        dists = [math.sqrt((pos.x() - pt.x()) ** 2 + (pos.y() - pt.y()) ** 2) for pt in pts]
-        if not dists:
-            return None
-        min_dist_index = np.argmin(dists)
-        return int(min_dist_index), dists[min_dist_index]
 
 
 class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):

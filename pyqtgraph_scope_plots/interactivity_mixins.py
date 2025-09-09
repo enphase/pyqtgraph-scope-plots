@@ -160,9 +160,8 @@ class SnappableHoverPlot(DataPlotCurveItem):
                 continue
 
             # this code inspired by ScatterPlotItem._maskAt, which is used to find intersecting items fast
-            # account for graph scaling
-            px, py = data_graphics[0].pixelVectors()
-            if px is None or py is None or px == 0 or py == 0:  # invalid
+            px, py = data_graphics[0].pixelVectors()  # account for graph scaling
+            if px is None or py is None or px.x() == 0 or py.y() == 0:  # invalid
                 continue
             dxs = (data.xs[index_lo:index_hi] - target_pos.x()) / px.x()
             dys = (data.ys[index_lo:index_hi] - target_pos.y()) / py.y()

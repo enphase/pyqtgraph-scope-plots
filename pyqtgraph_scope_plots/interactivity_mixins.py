@@ -19,8 +19,9 @@ live x-axis cursor, region selection, and points-of-interest.
 
 import bisect
 import math
+import time
 from abc import abstractmethod
-from typing import List, Tuple, Dict, Optional, Any, cast, NamedTuple, Union, Sequence, Mapping
+from typing import List, Tuple, Dict, Optional, Any, cast, NamedTuple, Union, Mapping
 
 import numpy as np
 from numpy import typing as npt
@@ -178,7 +179,6 @@ class SnappableHoverPlot(DataPlotCurveItem):
 
     def hoverEvent(self, ev: HoverEvent) -> None:
         super().hoverEvent(ev)
-
         if ev.exit:  # use last data point, since position may not be available here
             snap_data = HoverSnapData(hover_pos=self.hover_snap_point.hover_pos, snap_pos=None)
             if self._hover_target is not None:
@@ -245,7 +245,10 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
 
         self.hover_cursor: Optional[pg.InfiniteLine] = None
         self._hover_x_label: Optional[pg.TextItem] = None
-        self._hover_y_pts: List[pg.ScatterPlotItem] = []
+        # create one point that contains the data as a series, for efficiency
+        self._hover_y_pts = pg.ScatterPlotItem(x=[], y=[], symbol="o")
+        self._hover_y_pts.setZValue(self._Z_VALUE_HOVER_TARGET)
+        self.addItem(self._hover_y_pts, ignoreBounds=True)
         self._hover_y_labels: List[pg.TextItem] = []
 
         self.sigHoverSnapChanged.connect(self._update_live_cursor)
@@ -254,9 +257,6 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
         """Sets the live cursor to some specified location, or deletes it (if None).
         If a y position is specified, draws the time label there, otherwise no time label.
         """
-        for pts in self._hover_y_pts:  # clear old widgets as needed, then re-create
-            self.removeItem(pts)
-        self._hover_y_pts = []
         for label in self._hover_y_labels:
             self.removeItem(label)
         self._hover_y_labels = []
@@ -282,16 +282,20 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
                     self.removeItem(self._hover_x_label)
                     self._hover_x_label = None
 
+            # build up the X and Y points to stuff into one scatterplot
+            x_poss = []
+            y_poss = []
+            colors = []
             for y_pos, text, color in self._data_value_label_at(pos, precision_factor=0.1):
-                hover_pt = pg.ScatterPlotItem(x=[pos], y=[y_pos], symbol="o", brush=color)
-                hover_pt.setZValue(self._Z_VALUE_HOVER_TARGET)
-                self.addItem(hover_pt, ignoreBounds=True)
-                self._hover_y_pts.append(hover_pt)
+                x_poss.append(pos)
+                y_poss.append(y_pos)
+                colors.append(color)
                 hover_label = pg.TextItem(text, anchor=self.LIVE_CURSOR_Y_ANCHOR, color=color)
                 hover_label.setZValue(self._Z_VALUE_HOVER_TARGET)
                 hover_label.setPos(QPointF(pos, y_pos))
                 self.addItem(hover_label, ignoreBounds=True)
                 self._hover_y_labels.append(hover_label)
+            self._hover_y_pts.setData(x=x_poss, y=y_poss, brush=colors)
         else:  # delete live cursor
             if self.hover_cursor is not None:
                 self.removeItem(self.hover_cursor)
@@ -299,6 +303,7 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
             if self._hover_x_label is not None:
                 self.removeItem(self._hover_x_label)
                 self._hover_x_label = None
+            self._hover_y_pts.setData(x=[], y=[])
         self.sigHoverCursorChanged.emit(pos)
 
     def _update_live_cursor(self, snap_data: HoverSnapData) -> None:

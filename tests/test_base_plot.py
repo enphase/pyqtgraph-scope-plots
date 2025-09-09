@@ -99,20 +99,21 @@ def test_plot_restore(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     plot._plots._load_model(model)
     plot._plots.set_data(plot._plots._data)  # bulk update that happens at top level
     qtbot.waitUntil(lambda: plot._plots.count() == 1)
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 3
+    # +1 is for the empty hover scatterpoints
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 3 + 1
 
     model.plot_widgets = [PlotWidgetModel(data_items=["0"]), PlotWidgetModel(data_items=["2"])]
     plot._plots._load_model(model)
     plot._plots.set_data(plot._plots._data)  # bulk update that happens at top level
     qtbot.waitUntil(lambda: plot._plots.count() == 2)
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 1
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(1)).getPlotItem()).listDataItems()) == 1
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 1 + 1
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(1)).getPlotItem()).listDataItems()) == 1 + 1
 
     model.plot_widgets = []  # test empty case
     plot._plots._load_model(model)
     plot._plots.set_data(plot._plots._data)  # bulk update that happens at top level
     qtbot.waitUntil(lambda: plot._plots.count() == 1)  # should leave the empty widget intact
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 0
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 0 + 1
 
 
 def test_plot_restore_range(qtbot: QtBot, plot: PlotsTableWidget) -> None:
@@ -157,7 +158,8 @@ def test_no_excessive_plots(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     )
 
     qtbot.waitUntil(lambda: plot._plots.count() == 1)  # should just create an empty plot
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 0
+    # +1 is for the empty hover scatterpoints
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 0 + 1
 
 
 def test_export_csv(qtbot: QtBot, plot: PlotsTableWidget) -> None:

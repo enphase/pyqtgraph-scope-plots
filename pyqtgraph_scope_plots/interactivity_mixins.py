@@ -18,16 +18,15 @@ live x-axis cursor, region selection, and points-of-interest.
 """
 
 import bisect
-import math
 from abc import abstractmethod
-from typing import List, Tuple, Dict, Optional, Any, cast, NamedTuple, Union, Sequence, Mapping
+from typing import List, Tuple, Dict, Optional, Any, cast, NamedTuple, Union, Mapping
 
 import numpy as np
-from numpy import typing as npt
 import pyqtgraph as pg
 from PySide6.QtCore import QPointF, QSignalBlocker, Signal, Slot
 from PySide6.QtGui import Qt, QColor, QKeyEvent
 from PySide6.QtWidgets import QGraphicsSceneMouseEvent
+from numpy import typing as npt
 from pyqtgraph import mkPen
 from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent
 
@@ -135,7 +134,7 @@ class SnappableHoverPlot(DataPlotCurveItem):
     sigDragCursorCleared = Signal()
 
     SNAP_DISTANCE_PX = 12
-    MAX_PTS = 128  # if more than this many points in the window, give up
+    MAX_PTS = 1024  # if more than this many points in the window, give up
 
     _Z_VALUE_SNAP_TARGET = 1000
 
@@ -149,7 +148,8 @@ class SnappableHoverPlot(DataPlotCurveItem):
         # closest point for each curve: (data, index, distance)
         data_index_dists: List[Tuple[PlotDataDesc, int, float]] = []
         for name, data in self._data.items():
-            if not self._data_graphics[name][0].isVisible():
+            data_graphics = self._data_graphics.get(name)
+            if not data_graphics or not data_graphics[0].isVisible():
                 continue
             if not len(data.xs):
                 continue
@@ -158,17 +158,17 @@ class SnappableHoverPlot(DataPlotCurveItem):
             if index_hi - index_lo > self.MAX_PTS:
                 continue
 
-            # compare in screen coordination since X/Y scaling may not be uniform
-            index_dist = self._closest_index(
-                [
-                    self.mapFromView(QPointF(xpt, ypt))
-                    for xpt, ypt in zip(data.xs[index_lo:index_hi], data.ys[index_lo:index_hi])
-                ],
-                self.mapFromView(target_pos),
-            )
-            if index_dist is None:
+            # this code inspired by ScatterPlotItem._maskAt, which is used to find intersecting items fast
+            px, py = data_graphics[0].pixelVectors()  # account for graph scaling
+            if px is None or py is None or px.x() == 0 or py.y() == 0:  # invalid
                 continue
-            data_index_dists.append((data, index_dist[0] + index_lo, index_dist[1]))
+            dxs = (data.xs[index_lo:index_hi] - target_pos.x()) / px.x()
+            dys = (data.ys[index_lo:index_hi] - target_pos.y()) / py.y()
+            dists = np.hypot(dxs, dys)
+            if not len(dists):
+                continue
+            min_dist_index = int(np.argmin(dists))
+            data_index_dists.append((data, min_dist_index + index_lo, dists[min_dist_index]))
 
         if data_index_dists:
             closest_data, closest_index, _ = min(data_index_dists, key=lambda tup: tup[2])
@@ -178,7 +178,6 @@ class SnappableHoverPlot(DataPlotCurveItem):
 
     def hoverEvent(self, ev: HoverEvent) -> None:
         super().hoverEvent(ev)
-
         if ev.exit:  # use last data point, since position may not be available here
             snap_data = HoverSnapData(hover_pos=self.hover_snap_point.hover_pos, snap_pos=None)
             if self._hover_target is not None:
@@ -218,17 +217,6 @@ class SnappableHoverPlot(DataPlotCurveItem):
         self.hover_snap_point = snap_data
         self.sigHoverSnapChanged.emit(snap_data)
 
-    @staticmethod
-    def _closest_index(pts: List[QPointF], pos: QPointF) -> Optional[Tuple[int, float]]:
-        """Returns the (index, dist) of the closest point (by xy distance) to (xpos, ypos) in the series xpts, ypts.
-        Returns None if no point is found."""
-        # TODO use collective operations for performance
-        dists = [math.sqrt((pos.x() - pt.x()) ** 2 + (pos.y() - pt.y()) ** 2) for pt in pts]
-        if not dists:
-            return None
-        min_dist_index = np.argmin(dists)
-        return int(min_dist_index), dists[min_dist_index]
-
 
 class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
     """Mixin for PlotItem that displays a live snappable x-axis (vertical line) cursor that follows the user's mouse."""
@@ -245,7 +233,10 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
 
         self.hover_cursor: Optional[pg.InfiniteLine] = None
         self._hover_x_label: Optional[pg.TextItem] = None
-        self._hover_y_pts: List[pg.ScatterPlotItem] = []
+        # create one point that contains the data as a series, for efficiency
+        self._hover_y_pts = pg.ScatterPlotItem(x=[], y=[], symbol="o")
+        self._hover_y_pts.setZValue(self._Z_VALUE_HOVER_TARGET)
+        self.addItem(self._hover_y_pts, ignoreBounds=True)
         self._hover_y_labels: List[pg.TextItem] = []
 
         self.sigHoverSnapChanged.connect(self._update_live_cursor)
@@ -254,9 +245,6 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
         """Sets the live cursor to some specified location, or deletes it (if None).
         If a y position is specified, draws the time label there, otherwise no time label.
         """
-        for pts in self._hover_y_pts:  # clear old widgets as needed, then re-create
-            self.removeItem(pts)
-        self._hover_y_pts = []
         for label in self._hover_y_labels:
             self.removeItem(label)
         self._hover_y_labels = []
@@ -282,16 +270,20 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
                     self.removeItem(self._hover_x_label)
                     self._hover_x_label = None
 
+            # build up the X and Y points to stuff into one scatterplot
+            x_poss = []
+            y_poss = []
+            colors = []
             for y_pos, text, color in self._data_value_label_at(pos, precision_factor=0.1):
-                hover_pt = pg.ScatterPlotItem(x=[pos], y=[y_pos], symbol="o", brush=color)
-                hover_pt.setZValue(self._Z_VALUE_HOVER_TARGET)
-                self.addItem(hover_pt, ignoreBounds=True)
-                self._hover_y_pts.append(hover_pt)
+                x_poss.append(pos)
+                y_poss.append(y_pos)
+                colors.append(color)
                 hover_label = pg.TextItem(text, anchor=self.LIVE_CURSOR_Y_ANCHOR, color=color)
                 hover_label.setZValue(self._Z_VALUE_HOVER_TARGET)
                 hover_label.setPos(QPointF(pos, y_pos))
                 self.addItem(hover_label, ignoreBounds=True)
                 self._hover_y_labels.append(hover_label)
+            self._hover_y_pts.setData(x=x_poss, y=y_poss, brush=colors)
         else:  # delete live cursor
             if self.hover_cursor is not None:
                 self.removeItem(self.hover_cursor)
@@ -299,6 +291,7 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
             if self._hover_x_label is not None:
                 self.removeItem(self._hover_x_label)
                 self._hover_x_label = None
+            self._hover_y_pts.setData(x=[], y=[])
         self.sigHoverCursorChanged.emit(pos)
 
     def _update_live_cursor(self, snap_data: HoverSnapData) -> None:

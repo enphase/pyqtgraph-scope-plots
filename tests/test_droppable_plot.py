@@ -44,8 +44,9 @@ def test_plot_merge(qtbot: QtBot, plots: DroppableMultiPlotWidget) -> None:
 
     plots._merge_data_into_item(["0"], 1)  # merge
     qtbot.waitUntil(lambda: plots.count() == 2)  # wait for widgets to merge
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 2
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(1)).getPlotItem()).listDataItems()) == 1
+    # +1 is for the empty hover scatterpoints
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 2 + 1
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(1)).getPlotItem()).listDataItems()) == 1 + 1
     assert table.rowCount() == 3  # signals table should not change
     assert table.item(0, table.COL_NAME).text() == "0"
     assert table.item(1, table.COL_NAME).text() == "1"
@@ -53,8 +54,8 @@ def test_plot_merge(qtbot: QtBot, plots: DroppableMultiPlotWidget) -> None:
 
     plots._merge_data_into_item(["0"], 1)  # move
     qtbot.waitUntil(lambda: plots.count() == 2)
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 1
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(1)).getPlotItem()).listDataItems()) == 2
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 1 + 1
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(1)).getPlotItem()).listDataItems()) == 2 + 1
     assert table.rowCount() == 3  # signals table should not change
     assert table.item(0, table.COL_NAME).text() == "0"
     assert table.item(1, table.COL_NAME).text() == "1"
@@ -62,7 +63,7 @@ def test_plot_merge(qtbot: QtBot, plots: DroppableMultiPlotWidget) -> None:
 
     plots._merge_data_into_item(["1"], 1)  # merge all
     qtbot.waitUntil(lambda: plots.count() == 1)
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 3
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 3 + 1
     assert table.rowCount() == 3  # signals table should not change
     assert table.item(0, table.COL_NAME).text() == "0"
     assert table.item(1, table.COL_NAME).text() == "1"
@@ -84,21 +85,22 @@ def test_plot_merge_multi(qtbot: QtBot, plots: DroppableMultiPlotWidget) -> None
 
     plots._merge_data_into_item(["0", "1"], 0)  # merge into self, including self
     qtbot.waitUntil(lambda: plots.count() == 2)  # wait for widgets to merge
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 2
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(1)).getPlotItem()).listDataItems()) == 1
+    # +1 is for the empty hover scatterpoints
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 2 + 1
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(1)).getPlotItem()).listDataItems()) == 1 + 1
 
     plots._merge_data_into_item(["0", "1"], 1)  # merge into other, not including self
     qtbot.waitUntil(lambda: plots.count() == 1)  # wait for widgets to merge
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 3
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 3 + 1
 
     plots._merge_data_into_item(["1", "2"], 2, insert=True)  # insert at bottom
     qtbot.waitUntil(lambda: plots.count() == 2)
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 1
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(1)).getPlotItem()).listDataItems()) == 2
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 1 + 1
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(1)).getPlotItem()).listDataItems()) == 2 + 1
 
     plots._merge_data_into_item(["0", "1", "2"], 2, insert=True)  # insert all
     qtbot.waitUntil(lambda: plots.count() == 1)
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 3
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 3 + 1
 
 
 def test_invalid_plot_merge(qtbot: QtBot, plots: DroppableMultiPlotWidget) -> None:
@@ -126,16 +128,17 @@ def test_plot_remove(qtbot: QtBot, plots: DroppableMultiPlotWidget) -> None:
 
     plots._merge_data_into_item(["2"], 0)  # merge all into top
     qtbot.waitUntil(lambda: plots.count() == 1)
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 2
+    # +1 is for the empty hover scatterpoints
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 2 + 1
 
     plots.remove_plot_items(["0"])
     qtbot.waitUntil(
-        lambda: len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 1
+        lambda: len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 1 + 1
     )
 
     plots.remove_plot_items(["2"])  # delete the last plot, the empty plot should appear
     qtbot.waitUntil(
-        lambda: len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 0
+        lambda: len(cast(pg.PlotItem, cast(pg.PlotWidget, plots.widget(0)).getPlotItem()).listDataItems()) == 0 + 1
     )
 
 

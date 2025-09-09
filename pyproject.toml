@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "pyqtgraph-scope-plots"
 description = "Scope like plot utilities for pyqtgraph"
 readme = "README.md"
-version = "1.5.6"
+version = "1.5.7"
 authors = [
     { name = "Richard Lin", email = "richardlin@enphaseenergy.com" }
 ]

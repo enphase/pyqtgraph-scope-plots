@@ -18,16 +18,15 @@ live x-axis cursor, region selection, and points-of-interest.
 """
 
 import bisect
-import math
 from abc import abstractmethod
 from typing import List, Tuple, Dict, Optional, Any, cast, NamedTuple, Union, Mapping
 
 import numpy as np
-from numpy import typing as npt
 import pyqtgraph as pg
 from PySide6.QtCore import QPointF, QSignalBlocker, Signal, Slot
 from PySide6.QtGui import Qt, QColor, QKeyEvent
 from PySide6.QtWidgets import QGraphicsSceneMouseEvent
+from numpy import typing as npt
 from pyqtgraph import mkPen
 from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent
 

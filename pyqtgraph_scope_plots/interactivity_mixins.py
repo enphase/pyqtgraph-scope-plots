@@ -229,13 +229,13 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-        self.hover_cursor = pg.InfiniteLine(
+        self._hover_cursor = pg.InfiniteLine(
             angle=90,
             movable=False,
             pen=mkPen(style=Qt.PenStyle.DotLine),
         )  # moves with hover not drag
-        self.hover_cursor.hide()
-        self.addItem(self.hover_cursor, ignoreBounds=True)
+        self._hover_cursor.hide()
+        self.addItem(self._hover_cursor, ignoreBounds=True)
 
         self._hover_x_label = pg.TextItem(anchor=self.LIVE_CURSOR_X_ANCHOR)
         self._hover_x_label.hide()
@@ -254,8 +254,8 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
         If a y position is specified, draws the time label there, otherwise no time label.
         """
         if pos is not None:  # create or update live cursor
-            self.hover_cursor.setPos(pos)
-            self.hover_cursor.show()
+            self._hover_cursor.setPos(pos)
+            self._hover_cursor.show()
 
             if pos_y is not None:
                 self._hover_x_label.setPos(QPointF(pos, pos_y))  # y follows mouse, x is at cursor
@@ -268,7 +268,7 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
                 (pos, y_pos, text, color) for y_pos, text, color in self._data_value_label_at(pos, precision_factor=0.1)
             ]
         else:  # delete live cursor
-            self.hover_cursor.hide()
+            self._hover_cursor.hide()
             self._hover_x_label.hide()
 
             x_y_text_colors = []

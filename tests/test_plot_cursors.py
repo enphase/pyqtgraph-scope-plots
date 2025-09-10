@@ -133,7 +133,7 @@ def test_snap_gui(qtbot: QtBot) -> None:
     qtbot.waitUntil(lambda: plot_item._hover_target.isVisible())
     assert plot_item._hover_target.pos() == QPointF(1, 0.25)
     assert not_none(plot_item.hover_snap_point.snap_pos) == QPointF(1, 0.25)
-    assert plot_item.hover_cursor.pos().x() == 1
+    assert plot_item._hover_cursor.pos().x() == 1
     assert [label.toPlainText() for label in plot_item._hover_y_labels._labels] == ["1.000", "0.250", "0.600"]
     assert [label.color for label in plot_item._hover_y_labels._labels] == [
         QColor("yellow"),
@@ -153,7 +153,7 @@ def test_snap_gui(qtbot: QtBot) -> None:
             Qt.KeyboardModifier.NoModifier,
         )
     )
-    qtbot.waitUntil(lambda: not plot_item.hover_cursor.isVisible())
+    qtbot.waitUntil(lambda: not plot_item._hover_cursor.isVisible())
 
 
 def test_range_gui(qtbot: QtBot) -> None:

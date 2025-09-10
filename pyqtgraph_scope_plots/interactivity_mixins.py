@@ -557,72 +557,62 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
         super().__init__(*args, **kwargs)
 
         self.pois: List[pg.InfiniteLine] = []  # lines
-        self._poi_items: Dict[pg.InfiniteLine, List[Union[pg.GraphicsObject]]] = {}
+        self._poi_items: Dict[pg.InfiniteLine, Tuple[ScatterItemCollection, TextItemCollection]] = {}
 
         self.sigRangeChanged.connect(self._update_all_poi_labels)
 
     def set_pois(self, pois: List[float]) -> None:
-        for poi, items in self._poi_items.items():
-            self.removeItem(poi)
-            for item in items:
-                self.removeItem(item)
-        self.pois = []
-        self._poi_items = {}
-
-        for poi in pois:
-            self._add_poi(poi)
+        for _ in range(len(self.pois), len(pois)):  # POIs to be added
+            self._add_poi(0)
+        for _ in range(len(pois), len(self.pois)):  # POIs to be removed
+            self._remove_poi(self.pois[-1])
+        for poi, pos in zip(self.pois, pois):
+            poi.setPos(pos)
+            self._update_poi(poi)
 
     def _on_poi_drag(self, cursor: pg.InfiniteLine) -> None:
         if self.hover_snap_point.snap_pos is not None:
             cursor.setPos(self.hover_snap_point.snap_pos)
-        for item in self._poi_items[cursor]:
-            self.removeItem(item)
-        self._poi_items[cursor] = []
-        self._generate_poi_items(cursor)
+        self._update_poi(cursor)
         self.sigPoiChanged.emit([poi.x() for poi in self.pois])
 
-    def _generate_poi_items(self, cursor: pg.InfiniteLine) -> None:
-        for y_pos, text, color in self._data_value_label_at(cursor.x(), precision_factor=0.1):
-            poi_pt = pg.ScatterPlotItem(x=[cursor.x()], y=[y_pos], symbol="o", brush=color)
-            self.addItem(poi_pt, ignoreBounds=True)
-            self._poi_items[cursor].append(poi_pt)
-            y_label = pg.TextItem(anchor=self.POI_ANCHOR)
-            y_label.setPos(QPointF(cursor.x(), y_pos))
-            y_label.setText(text)
-            y_label.setColor(color)
-            self.addItem(y_label, ignoreBounds=True)
-            self._poi_items[cursor].append(y_label)
+    def _update_poi(self, cursor: pg.InfiniteLine) -> None:
+        scatter, texts = self._poi_items[cursor]
+        x_y_text_color = [
+            (cursor.x(), y_pos, text, color)
+            for y_pos, text, color in self._data_value_label_at(cursor.x(), precision_factor=0.1)
+        ]
+        scatter.update([(x_pos, y_pos, color) for x_pos, y_pos, text, color in x_y_text_color])
+        texts.update(x_y_text_color)
 
     @Slot()
     def _update_all_poi_labels(self) -> None:
         """Regenerate text for all POI labels, eg to account for scale changes"""
-        for line, items in self._poi_items.items():
-            for item in items:
-                self.removeItem(item)
-            self._poi_items[line] = []
-            self._generate_poi_items(line)
+        for line, _ in self._poi_items.items():
+            self._update_poi(line)
 
-    def addItem(self, item: Any, *args: Any, **kargs: Any) -> None:
-        super().addItem(item, *args, **kargs)
-        if isinstance(item, pg.PlotCurveItem):  # update labels if plot changed
-            self._update_all_poi_labels()
-
-    def removeItem(self, item: Any) -> None:
-        super().removeItem(item)
-        if isinstance(item, pg.PlotCurveItem):  # update labels if plot changed
-            self._update_all_poi_labels()
+    def set_data(self, *args: Any, **kwargs: Any) -> None:
+        super().set_data(*args, **kwargs)
+        self._update_all_poi_labels()  # update if plot changed
 
     def _add_poi(self, pos: float) -> None:
-        if pos in [cursor.pos().x() for cursor in self.pois]:
-            return  # don't double-create
-
+        """Adds a new POI at the location"""
         cursor = pg.InfiniteLine(movable=True)
         cursor.setPos((pos, 0))
         cursor.sigDragged.connect(self._on_poi_drag)
         self.addItem(cursor, ignoreBounds=True)
         self.pois.append(cursor)
-        self._poi_items[cursor] = []
-        self._generate_poi_items(cursor)
+        self._poi_items[cursor] = (ScatterItemCollection(self), TextItemCollection(self, anchor=self.POI_ANCHOR))
+        self._update_poi(cursor)
+        self.sigPoiChanged.emit([poi.x() for poi in self.pois])
+
+    def _remove_poi(self, cursor: pg.InfiniteLine):
+        scatter, texts = self._poi_items[cursor]
+        scatter.remove()
+        texts.remove()
+        del self._poi_items[cursor]
+        self.pois.remove(cursor)
+        self.removeItem(cursor)
         self.sigPoiChanged.emit([poi.x() for poi in self.pois])
 
     def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent) -> None:
@@ -634,23 +624,16 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
             create_pos = self.hover_snap_point.snap_pos
         else:
             create_pos = self.hover_snap_point.hover_pos
-        self._add_poi(create_pos.x())
+
+        if create_pos.x() not in [poi.pos().x() for poi in self.pois]:  # don't duplicate
+            self._add_poi(create_pos.x())
 
     def keyPressEvent(self, ev: QKeyEvent) -> None:
         super().keyPressEvent(ev)
         if ev.key() == Qt.Key.Key_Delete:
-            deleted = False
             for poi in reversed(self.pois):
                 if poi.mouseHovering:
-                    if poi in self._poi_items:
-                        for item in self._poi_items[poi]:
-                            self.removeItem(item)
-                        del self._poi_items[poi]
-                    self.pois.remove(poi)
-                    self.removeItem(poi)
-                    deleted = True
-            if deleted:
-                self.sigPoiChanged.emit([poi.x() for poi in self.pois])
+                    self._remove_poi(poi)
 
 
 class DraggableCursorPlot(SnappableHoverPlot, HasDataValueAt):

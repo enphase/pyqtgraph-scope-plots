@@ -313,7 +313,7 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
             if index is not None:
                 del self._refgeo_fns[index]
                 if update:
-                    self._update()
+                    self._update_datasets()
                     self.sigXyDataItemsChanged.emit()
             return
         parsed = self._simpleeval.parse(expr_str)
@@ -330,11 +330,11 @@ class RefGeoXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
             self._refgeo_fns.append(new_fns)
 
         if update:
-            self._update()
+            self._update_datasets()
             self.sigXyDataItemsChanged.emit()
 
-    def _update(self) -> None:
-        super()._update()  # data items drawn here
+    def _update_datasets(self) -> None:
+        super()._update_datasets()  # data items drawn here
 
         region = HasRegionSignalsTable._region_of_plot(self._plots)
 

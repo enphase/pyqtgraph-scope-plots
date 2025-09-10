@@ -94,15 +94,15 @@ class FullXySplitter(XyPlotSplitter):
             self._thickness: float = 1
             super().__init__(*args, **kwargs)
 
-        def _update(self) -> None:
-            super()._update()
+        def _update_datasets(self) -> None:
+            super()._update_datasets()
             for item in self.items():
                 if isinstance(item, pg.PlotCurveItem):
                     item.setPen(color=item.opts["pen"].color(), width=self._thickness)
 
         def set_thickness(self, thickness: float) -> None:
             self._thickness = thickness
-            self._update()
+            self._update_datasets()
 
     class FullXyPlotTable(
         VisibilityXyPlotTable, RefGeoXyPlotTable, SignalRemovalXyPlotTable, DeleteableXyPlotTable, XyPlotTable

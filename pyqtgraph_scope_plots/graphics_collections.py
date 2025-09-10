@@ -71,5 +71,5 @@ class ScatterItemCollection:
         self._scatter.setData(x=x_poss, y=y_poss, brush=colors)
 
     def remove(self) -> None:
-        """Removes all labels from the container. Call before this item is deleted."""
+        """Removes the scatter points from the container. Call before this item is deleted."""
         self._parent.removeItem(self._scatter)

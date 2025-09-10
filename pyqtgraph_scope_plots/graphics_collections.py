@@ -47,15 +47,21 @@ class TextItemCollection:
             text_item.setText(text)
             text_item.setColor(color)
 
+    def remove(self) -> None:
+        """Removes all labels from the container. Call before this item is deleted."""
+        while len(self._labels):
+            self._parent.removeItem(self._labels.pop())
+
 
 class ScatterItemCollection:
     """Presents a unified API drawing multiple points into a single scatterplot (for efficiency)"""
 
     def __init__(self, parent: pg.PlotItem, *, z_value: Optional[float] = None) -> None:
+        self._parent = parent
         self._scatter = pg.ScatterPlotItem(x=[], y=[], symbol="o")
         if z_value is not None:
             self._scatter.setZValue(z_value)
-        parent.addItem(self._scatter, ignoreBounds=True)
+        self._parent.addItem(self._scatter, ignoreBounds=True)
 
     def update(self, pts: List[Tuple[float, float, QColor]]) -> None:
         if len(pts) > 0:  # convert the list-of-tuples into a lists of point values for scatterplot format
@@ -63,3 +69,7 @@ class ScatterItemCollection:
         else:  # zip returns empty for empty inputs
             x_poss, y_poss, colors = [], [], []
         self._scatter.setData(x=x_poss, y=y_poss, brush=colors)
+
+    def remove(self) -> None:
+        """Removes all labels from the container. Call before this item is deleted."""
+        self._parent.removeItem(self._scatter)

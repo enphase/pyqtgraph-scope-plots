@@ -141,7 +141,10 @@ class SnappableHoverPlot(DataPlotCurveItem):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.hover_snap_point = HoverSnapData(QPointF(0, 0), None)  # stores the last hover state
-        self._hover_target: Optional[pg.TargetItem] = None
+        self._hover_target = pg.TargetItem(movable=False)
+        self._hover_target.setZValue(self._Z_VALUE_SNAP_TARGET)
+        self._hover_target.hide()
+        self.addItem(self._hover_target, ignoreBounds=True)
 
     def _snap_pos(self, target_pos: QPointF, x_lo: float, x_hi: float) -> Optional[QPointF]:
         """Returns the closest point in the snappable data set to the target_pos, with x-value between x_lo and x_hi."""
@@ -180,9 +183,7 @@ class SnappableHoverPlot(DataPlotCurveItem):
         super().hoverEvent(ev)
         if ev.exit:  # use last data point, since position may not be available here
             snap_data = HoverSnapData(hover_pos=self.hover_snap_point.hover_pos, snap_pos=None)
-            if self._hover_target is not None:
-                self.removeItem(self._hover_target)
-                self._hover_target = None
+            self._hover_target.hide()
             self.hover_snap_point = snap_data
             self.sigHoverSnapChanged.emit(snap_data)
             return
@@ -204,15 +205,10 @@ class SnappableHoverPlot(DataPlotCurveItem):
         )
 
         if snap_data.snap_pos is not None:
-            if self._hover_target is None:
-                self._hover_target = pg.TargetItem(movable=False)
-                self._hover_target.setZValue(self._Z_VALUE_SNAP_TARGET)
-                self.addItem(self._hover_target, ignoreBounds=True)
+            self._hover_target.show()
             self._hover_target.setPos(snap_data.snap_pos)
         else:
-            if self._hover_target is not None:
-                self.removeItem(self._hover_target)
-                self._hover_target = None
+            self._hover_target.hide()
 
         self.hover_snap_point = snap_data
         self.sigHoverSnapChanged.emit(snap_data)
@@ -290,6 +286,7 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
         for _ in reversed(range(len(y_text_colors), len(self._hover_y_labels))):
             self.removeItem(self._hover_y_labels.pop())
         for text_item, (y_pos, text, color) in zip(self._hover_y_labels, y_text_colors):
+            assert pos is not None  # satisfy type checker, y_text_colors only nonempty if pos is not None
             text_item.setText(text)
             text_item.setPos(QPointF(pos, y_pos))
             text_item.setColor(color)

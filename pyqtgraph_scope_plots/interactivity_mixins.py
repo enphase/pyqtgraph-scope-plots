@@ -569,6 +569,7 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
         for poi, pos in zip(self.pois, pois):
             poi.setPos(pos)
             self._update_poi(poi)
+        self.sigPoiChanged.emit([poi.x() for poi in self.pois])
 
     def _on_poi_drag(self, cursor: pg.InfiniteLine) -> None:
         if self.hover_snap_point.snap_pos is not None:
@@ -604,16 +605,14 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
         self.pois.append(cursor)
         self._poi_items[cursor] = (ScatterItemCollection(self), TextItemCollection(self, anchor=self.POI_ANCHOR))
         self._update_poi(cursor)
-        self.sigPoiChanged.emit([poi.x() for poi in self.pois])
 
-    def _remove_poi(self, cursor: pg.InfiniteLine):
+    def _remove_poi(self, cursor: pg.InfiniteLine) -> None:
         scatter, texts = self._poi_items[cursor]
         scatter.remove()
         texts.remove()
         del self._poi_items[cursor]
         self.pois.remove(cursor)
         self.removeItem(cursor)
-        self.sigPoiChanged.emit([poi.x() for poi in self.pois])
 
     def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         super().mouseDoubleClickEvent(event)
@@ -627,6 +626,7 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
 
         if create_pos.x() not in [poi.pos().x() for poi in self.pois]:  # don't duplicate
             self._add_poi(create_pos.x())
+            self.sigPoiChanged.emit([poi.x() for poi in self.pois])
 
     def keyPressEvent(self, ev: QKeyEvent) -> None:
         super().keyPressEvent(ev)
@@ -634,6 +634,7 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
             for poi in reversed(self.pois):
                 if poi.mouseHovering:
                     self._remove_poi(poi)
+            self.sigPoiChanged.emit([poi.x() for poi in self.pois])
 
 
 class DraggableCursorPlot(SnappableHoverPlot, HasDataValueAt):

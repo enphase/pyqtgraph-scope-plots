@@ -241,7 +241,7 @@ class XyPlotLinkedPoiWidget(XyPlotWidget):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         assert isinstance(self._plots, LinkedMultiPlotWidget)
-        self._poi_pts: List[pg.ScatterPlotItem] = []
+        self._poi_pts = ScatterItemCollection(self, z_value=LiveCursorPlot._Z_VALUE_HOVER_TARGET)
 
         self._plots.sigPoiChanged.connect(self._on_linked_poi_change)
 
@@ -251,15 +251,11 @@ class XyPlotLinkedPoiWidget(XyPlotWidget):
 
     def _on_linked_poi_change(self) -> None:
         assert isinstance(self._plots, LinkedMultiPlotWidget)
-        for pts in self._poi_pts:  # clear old widgets as needed, then re-create
-            self.removeItem(pts)
-        self._poi_pts = []
 
+        all_x_y_colors = []
         for t in self._plots._last_pois:
-            for x, y, color in self._get_visible_xys_at_t(t):
-                poi_pt = pg.ScatterPlotItem(x=[x], y=[y], symbol="o", brush=color)
-                self.addItem(poi_pt, ignoreBounds=True)
-                self._poi_pts.append(poi_pt)
+            all_x_y_colors.extend(self._get_visible_xys_at_t(t))
+        self._poi_pts.update(all_x_y_colors)
 
 
 class XyDragDroppable(BaseXyPlot):

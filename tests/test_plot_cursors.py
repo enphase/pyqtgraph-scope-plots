@@ -112,10 +112,11 @@ def test_snap_gui(qtbot: QtBot) -> None:
             Qt.KeyboardModifier.NoModifier,
         )
     )
-    qtbot.waitUntil(lambda: not_none(plot_item._hover_target).pos() == QPointF(0.1, 1))
+    qtbot.waitUntil(lambda: plot_item._hover_target.isVisible())
+    assert plot_item._hover_target.pos() == QPointF(0.1, 1)
     assert not_none(plot_item.hover_snap_point.snap_pos) == QPointF(0.1, 1)
-    assert [label.color for label in plot_item._hover_y_labels] == [QColor("yellow")]
-    assert [label.toPlainText() for label in plot_item._hover_y_labels] == ["1.000"]  # single label only
+    assert [label.color for label in plot_item._hover_y_labels._labels] == [QColor("yellow")]
+    assert [label.toPlainText() for label in plot_item._hover_y_labels._labels] == ["1.000"]  # single label only
 
     # disambiguate on target with shared x axis
     qtbot.wait(10)  # pyqtgraph rate-limits, so add a wait
@@ -129,11 +130,16 @@ def test_snap_gui(qtbot: QtBot) -> None:
             Qt.KeyboardModifier.NoModifier,
         )
     )
-    qtbot.waitUntil(lambda: not_none(plot_item._hover_target).pos() == QPointF(1, 0.25))
+    qtbot.waitUntil(lambda: plot_item._hover_target.isVisible())
+    assert plot_item._hover_target.pos() == QPointF(1, 0.25)
     assert not_none(plot_item.hover_snap_point.snap_pos) == QPointF(1, 0.25)
-    assert plot_item.hover_cursor.pos().x() == 1
-    assert [label.toPlainText() for label in plot_item._hover_y_labels] == ["1.000", "0.250", "0.600"]
-    assert [label.color for label in plot_item._hover_y_labels] == [QColor("yellow"), QColor("orange"), QColor("blue")]
+    assert plot_item._hover_cursor.pos().x() == 1
+    assert [label.toPlainText() for label in plot_item._hover_y_labels._labels] == ["1.000", "0.250", "0.600"]
+    assert [label.color for label in plot_item._hover_y_labels._labels] == [
+        QColor("yellow"),
+        QColor("orange"),
+        QColor("blue"),
+    ]
 
     # off screen, cursor should disappear
     qtbot.wait(10)
@@ -147,7 +153,7 @@ def test_snap_gui(qtbot: QtBot) -> None:
             Qt.KeyboardModifier.NoModifier,
         )
     )
-    qtbot.waitUntil(lambda: plot_item.hover_cursor is None)
+    qtbot.waitUntil(lambda: not plot_item._hover_cursor.isVisible())
 
 
 def test_range_gui(qtbot: QtBot) -> None:
@@ -236,13 +242,13 @@ def test_poi_gui(qtbot: QtBot) -> None:
     )
     qtbot.waitUntil(lambda: len(plot_item.pois) == 1)
     assert plot_item.pois[0].pos().x() == 0
-    assert len(plot_item._poi_items[plot_item.pois[0]]) == 3 * 2
-    assert plot_item._poi_items[plot_item.pois[0]][1].toPlainText() == "0.010"
-    assert plot_item._poi_items[plot_item.pois[0]][1].color == QColor("yellow")
-    assert plot_item._poi_items[plot_item.pois[0]][3].toPlainText() == "0.500"
-    assert plot_item._poi_items[plot_item.pois[0]][3].color == QColor("orange")
-    assert plot_item._poi_items[plot_item.pois[0]][5].toPlainText() == "0.700"
-    assert plot_item._poi_items[plot_item.pois[0]][5].color == QColor("blue")
+    assert len(plot_item._poi_items[plot_item.pois[0]][1]._labels) == 3
+    assert plot_item._poi_items[plot_item.pois[0]][1]._labels[0].toPlainText() == "0.010"
+    assert plot_item._poi_items[plot_item.pois[0]][1]._labels[0].color == QColor("yellow")
+    assert plot_item._poi_items[plot_item.pois[0]][1]._labels[1].toPlainText() == "0.500"
+    assert plot_item._poi_items[plot_item.pois[0]][1]._labels[1].color == QColor("orange")
+    assert plot_item._poi_items[plot_item.pois[0]][1]._labels[2].toPlainText() == "0.700"
+    assert plot_item._poi_items[plot_item.pois[0]][1]._labels[2].color == QColor("blue")
 
     # must be near-exact
     qtbot.mouseClick(plot.viewport(), Qt.MouseButton.LeftButton, pos=data_to_screen(plot_item, 0, 0))  # force update

@@ -30,6 +30,8 @@ from numpy import typing as npt
 from pyqtgraph import mkPen
 from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent
 
+from pyqtgraph_scope_plots.graphics_collections import ScatterItemCollection, TextItemCollection
+
 
 class PlotDataDesc(NamedTuple):
     xs: npt.NDArray[np.float64]
@@ -141,7 +143,10 @@ class SnappableHoverPlot(DataPlotCurveItem):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.hover_snap_point = HoverSnapData(QPointF(0, 0), None)  # stores the last hover state
-        self._hover_target: Optional[pg.TargetItem] = None
+        self._hover_target = pg.TargetItem(movable=False)
+        self._hover_target.setZValue(self._Z_VALUE_SNAP_TARGET)
+        self._hover_target.hide()
+        self.addItem(self._hover_target, ignoreBounds=True)
 
     def _snap_pos(self, target_pos: QPointF, x_lo: float, x_hi: float) -> Optional[QPointF]:
         """Returns the closest point in the snappable data set to the target_pos, with x-value between x_lo and x_hi."""
@@ -180,9 +185,7 @@ class SnappableHoverPlot(DataPlotCurveItem):
         super().hoverEvent(ev)
         if ev.exit:  # use last data point, since position may not be available here
             snap_data = HoverSnapData(hover_pos=self.hover_snap_point.hover_pos, snap_pos=None)
-            if self._hover_target is not None:
-                self.removeItem(self._hover_target)
-                self._hover_target = None
+            self._hover_target.hide()
             self.hover_snap_point = snap_data
             self.sigHoverSnapChanged.emit(snap_data)
             return
@@ -204,15 +207,10 @@ class SnappableHoverPlot(DataPlotCurveItem):
         )
 
         if snap_data.snap_pos is not None:
-            if self._hover_target is None:
-                self._hover_target = pg.TargetItem(movable=False)
-                self._hover_target.setZValue(self._Z_VALUE_SNAP_TARGET)
-                self.addItem(self._hover_target, ignoreBounds=True)
+            self._hover_target.show()
             self._hover_target.setPos(snap_data.snap_pos)
         else:
-            if self._hover_target is not None:
-                self.removeItem(self._hover_target)
-                self._hover_target = None
+            self._hover_target.hide()
 
         self.hover_snap_point = snap_data
         self.sigHoverSnapChanged.emit(snap_data)
@@ -231,13 +229,23 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-        self.hover_cursor: Optional[pg.InfiniteLine] = None
-        self._hover_x_label: Optional[pg.TextItem] = None
+        self._hover_cursor = pg.InfiniteLine(
+            angle=90,
+            movable=False,
+            pen=mkPen(style=Qt.PenStyle.DotLine),
+        )  # moves with hover not drag
+        self._hover_cursor.hide()
+        self.addItem(self._hover_cursor, ignoreBounds=True)
+
+        self._hover_x_label = pg.TextItem(anchor=self.LIVE_CURSOR_X_ANCHOR)
+        self._hover_x_label.hide()
+        self.addItem(self._hover_x_label, ignoreBounds=True)
+
         # create one point that contains the data as a series, for efficiency
-        self._hover_y_pts = pg.ScatterPlotItem(x=[], y=[], symbol="o")
-        self._hover_y_pts.setZValue(self._Z_VALUE_HOVER_TARGET)
-        self.addItem(self._hover_y_pts, ignoreBounds=True)
-        self._hover_y_labels: List[pg.TextItem] = []
+        self._hover_y_pts = ScatterItemCollection(self, z_value=self._Z_VALUE_HOVER_TARGET)
+        self._hover_y_labels = TextItemCollection(
+            self, anchor=self.LIVE_CURSOR_Y_ANCHOR, z_value=self._Z_VALUE_HOVER_TARGET
+        )
 
         self.sigHoverSnapChanged.connect(self._update_live_cursor)
 
@@ -245,53 +253,29 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
         """Sets the live cursor to some specified location, or deletes it (if None).
         If a y position is specified, draws the time label there, otherwise no time label.
         """
-        for label in self._hover_y_labels:
-            self.removeItem(label)
-        self._hover_y_labels = []
-
         if pos is not None:  # create or update live cursor
-            if self.hover_cursor is None:  # create new widgets as needed
-                self.hover_cursor = pg.InfiniteLine(
-                    angle=90,
-                    movable=False,
-                    pen=mkPen(style=Qt.PenStyle.DotLine),
-                )  # moves with hover not drag
-                self.addItem(self.hover_cursor, ignoreBounds=True)
-            self.hover_cursor.setPos(pos)
+            self._hover_cursor.setPos(pos)
+            self._hover_cursor.show()
 
             if pos_y is not None:
-                if self._hover_x_label is None:
-                    self._hover_x_label = pg.TextItem(anchor=self.LIVE_CURSOR_X_ANCHOR)
-                    self.addItem(self._hover_x_label, ignoreBounds=True)
                 self._hover_x_label.setPos(QPointF(pos, pos_y))  # y follows mouse, x is at cursor
                 self._hover_x_label.setText(self._value_axis_label(pos, self, "bottom"))
+                self._hover_x_label.show()
             else:
-                if self._hover_x_label is not None:
-                    self.removeItem(self._hover_x_label)
-                    self._hover_x_label = None
+                self._hover_x_label.hide()
 
-            # build up the X and Y points to stuff into one scatterplot
-            x_poss = []
-            y_poss = []
-            colors = []
-            for y_pos, text, color in self._data_value_label_at(pos, precision_factor=0.1):
-                x_poss.append(pos)
-                y_poss.append(y_pos)
-                colors.append(color)
-                hover_label = pg.TextItem(text, anchor=self.LIVE_CURSOR_Y_ANCHOR, color=color)
-                hover_label.setZValue(self._Z_VALUE_HOVER_TARGET)
-                hover_label.setPos(QPointF(pos, y_pos))
-                self.addItem(hover_label, ignoreBounds=True)
-                self._hover_y_labels.append(hover_label)
-            self._hover_y_pts.setData(x=x_poss, y=y_poss, brush=colors)
+            x_y_text_colors = [
+                (pos, y_pos, text, color) for y_pos, text, color in self._data_value_label_at(pos, precision_factor=0.1)
+            ]
         else:  # delete live cursor
-            if self.hover_cursor is not None:
-                self.removeItem(self.hover_cursor)
-                self.hover_cursor = None
-            if self._hover_x_label is not None:
-                self.removeItem(self._hover_x_label)
-                self._hover_x_label = None
-            self._hover_y_pts.setData(x=[], y=[])
+            self._hover_cursor.hide()
+            self._hover_x_label.hide()
+
+            x_y_text_colors = []
+
+        self._hover_y_pts.update([(x_pos, y_pos, color) for x_pos, y_pos, text, color in x_y_text_colors])
+        self._hover_y_labels.update(x_y_text_colors)
+
         self.sigHoverCursorChanged.emit(pos)
 
     def _update_live_cursor(self, snap_data: HoverSnapData) -> None:
@@ -573,73 +557,63 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
         super().__init__(*args, **kwargs)
 
         self.pois: List[pg.InfiniteLine] = []  # lines
-        self._poi_items: Dict[pg.InfiniteLine, List[Union[pg.GraphicsObject]]] = {}
+        self._poi_items: Dict[pg.InfiniteLine, Tuple[ScatterItemCollection, TextItemCollection]] = {}
 
         self.sigRangeChanged.connect(self._update_all_poi_labels)
 
     def set_pois(self, pois: List[float]) -> None:
-        for poi, items in self._poi_items.items():
-            self.removeItem(poi)
-            for item in items:
-                self.removeItem(item)
-        self.pois = []
-        self._poi_items = {}
-
-        for poi in pois:
-            self._add_poi(poi)
+        for _ in range(len(self.pois), len(pois)):  # POIs to be added
+            self._add_poi(0)
+        for _ in range(len(pois), len(self.pois)):  # POIs to be removed
+            self._remove_poi(self.pois[-1])
+        assert len(self.pois) == len(pois)
+        for poi, pos in zip(self.pois, pois):
+            poi.setPos(pos)
+            self._update_poi(poi)
+        self.sigPoiChanged.emit([poi.x() for poi in self.pois])
 
     def _on_poi_drag(self, cursor: pg.InfiniteLine) -> None:
         if self.hover_snap_point.snap_pos is not None:
             cursor.setPos(self.hover_snap_point.snap_pos)
-        for item in self._poi_items[cursor]:
-            self.removeItem(item)
-        self._poi_items[cursor] = []
-        self._generate_poi_items(cursor)
+        self._update_poi(cursor)
         self.sigPoiChanged.emit([poi.x() for poi in self.pois])
 
-    def _generate_poi_items(self, cursor: pg.InfiniteLine) -> None:
-        for y_pos, text, color in self._data_value_label_at(cursor.x(), precision_factor=0.1):
-            poi_pt = pg.ScatterPlotItem(x=[cursor.x()], y=[y_pos], symbol="o", brush=color)
-            self.addItem(poi_pt, ignoreBounds=True)
-            self._poi_items[cursor].append(poi_pt)
-            y_label = pg.TextItem(anchor=self.POI_ANCHOR)
-            y_label.setPos(QPointF(cursor.x(), y_pos))
-            y_label.setText(text)
-            y_label.setColor(color)
-            self.addItem(y_label, ignoreBounds=True)
-            self._poi_items[cursor].append(y_label)
+    def _update_poi(self, cursor: pg.InfiniteLine) -> None:
+        scatter, texts = self._poi_items[cursor]
+        x_y_text_color = [
+            (cursor.x(), y_pos, text, color)
+            for y_pos, text, color in self._data_value_label_at(cursor.x(), precision_factor=0.1)
+        ]
+        scatter.update([(x_pos, y_pos, color) for x_pos, y_pos, text, color in x_y_text_color])
+        texts.update(x_y_text_color)
 
     @Slot()
     def _update_all_poi_labels(self) -> None:
         """Regenerate text for all POI labels, eg to account for scale changes"""
-        for line, items in self._poi_items.items():
-            for item in items:
-                self.removeItem(item)
-            self._poi_items[line] = []
-            self._generate_poi_items(line)
+        for line, _ in self._poi_items.items():
+            self._update_poi(line)
 
-    def addItem(self, item: Any, *args: Any, **kargs: Any) -> None:
-        super().addItem(item, *args, **kargs)
-        if isinstance(item, pg.PlotCurveItem):  # update labels if plot changed
-            self._update_all_poi_labels()
-
-    def removeItem(self, item: Any) -> None:
-        super().removeItem(item)
-        if isinstance(item, pg.PlotCurveItem):  # update labels if plot changed
-            self._update_all_poi_labels()
+    def set_data(self, *args: Any, **kwargs: Any) -> None:
+        super().set_data(*args, **kwargs)
+        self._update_all_poi_labels()  # update if plot changed
 
     def _add_poi(self, pos: float) -> None:
-        if pos in [cursor.pos().x() for cursor in self.pois]:
-            return  # don't double-create
-
+        """Adds a new POI at the location"""
         cursor = pg.InfiniteLine(movable=True)
         cursor.setPos((pos, 0))
         cursor.sigDragged.connect(self._on_poi_drag)
         self.addItem(cursor, ignoreBounds=True)
         self.pois.append(cursor)
-        self._poi_items[cursor] = []
-        self._generate_poi_items(cursor)
-        self.sigPoiChanged.emit([poi.x() for poi in self.pois])
+        self._poi_items[cursor] = (ScatterItemCollection(self), TextItemCollection(self, anchor=self.POI_ANCHOR))
+        self._update_poi(cursor)
+
+    def _remove_poi(self, cursor: pg.InfiniteLine) -> None:
+        scatter, texts = self._poi_items[cursor]
+        scatter.remove()
+        texts.remove()
+        del self._poi_items[cursor]
+        self.pois.remove(cursor)
+        self.removeItem(cursor)
 
     def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         super().mouseDoubleClickEvent(event)
@@ -650,23 +624,18 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
             create_pos = self.hover_snap_point.snap_pos
         else:
             create_pos = self.hover_snap_point.hover_pos
-        self._add_poi(create_pos.x())
+
+        if create_pos.x() not in [poi.pos().x() for poi in self.pois]:  # don't duplicate
+            self._add_poi(create_pos.x())
+            self.sigPoiChanged.emit([poi.x() for poi in self.pois])
 
     def keyPressEvent(self, ev: QKeyEvent) -> None:
         super().keyPressEvent(ev)
         if ev.key() == Qt.Key.Key_Delete:
-            deleted = False
             for poi in reversed(self.pois):
                 if poi.mouseHovering:
-                    if poi in self._poi_items:
-                        for item in self._poi_items[poi]:
-                            self.removeItem(item)
-                        del self._poi_items[poi]
-                    self.pois.remove(poi)
-                    self.removeItem(poi)
-                    deleted = True
-            if deleted:
-                self.sigPoiChanged.emit([poi.x() for poi in self.pois])
+                    self._remove_poi(poi)
+            self.sigPoiChanged.emit([poi.x() for poi in self.pois])
 
 
 class DraggableCursorPlot(SnappableHoverPlot, HasDataValueAt):

@@ -566,6 +566,7 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
             self._add_poi(0)
         for _ in range(len(pois), len(self.pois)):  # POIs to be removed
             self._remove_poi(self.pois[-1])
+        assert len(self.pois) == len(pois)
         for poi, pos in zip(self.pois, pois):
             poi.setPos(pos)
             self._update_poi(poi)

@@ -40,7 +40,7 @@ class TextItemCollection:
                 label.setZValue(self._z_value)
             self._parent.addItem(label, ignoreBounds=True)
             self._labels.append(label)
-        for _ in reversed(range(len(pts), len(self._labels))):
+        for _ in range(len(pts), len(self._labels)):
             self._parent.removeItem(self._labels.pop())
         assert len(self._labels) == len(pts)
         for text_item, (x_pos, y_pos, text, color) in zip(self._labels, pts):

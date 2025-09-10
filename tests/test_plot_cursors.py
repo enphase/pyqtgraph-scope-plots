@@ -115,8 +115,8 @@ def test_snap_gui(qtbot: QtBot) -> None:
     qtbot.waitUntil(lambda: plot_item._hover_target.isVisible())
     assert plot_item._hover_target.pos() == QPointF(0.1, 1)
     assert not_none(plot_item.hover_snap_point.snap_pos) == QPointF(0.1, 1)
-    assert [label.color for label in plot_item._hover_y_labels] == [QColor("yellow")]
-    assert [label.toPlainText() for label in plot_item._hover_y_labels] == ["1.000"]  # single label only
+    assert [label.color for label in plot_item._hover_y_labels._labels] == [QColor("yellow")]
+    assert [label.toPlainText() for label in plot_item._hover_y_labels._labels] == ["1.000"]  # single label only
 
     # disambiguate on target with shared x axis
     qtbot.wait(10)  # pyqtgraph rate-limits, so add a wait
@@ -134,8 +134,12 @@ def test_snap_gui(qtbot: QtBot) -> None:
     assert plot_item._hover_target.pos() == QPointF(1, 0.25)
     assert not_none(plot_item.hover_snap_point.snap_pos) == QPointF(1, 0.25)
     assert plot_item.hover_cursor.pos().x() == 1
-    assert [label.toPlainText() for label in plot_item._hover_y_labels] == ["1.000", "0.250", "0.600"]
-    assert [label.color for label in plot_item._hover_y_labels] == [QColor("yellow"), QColor("orange"), QColor("blue")]
+    assert [label.toPlainText() for label in plot_item._hover_y_labels._labels] == ["1.000", "0.250", "0.600"]
+    assert [label.color for label in plot_item._hover_y_labels._labels] == [
+        QColor("yellow"),
+        QColor("orange"),
+        QColor("blue"),
+    ]
 
     # off screen, cursor should disappear
     qtbot.wait(10)

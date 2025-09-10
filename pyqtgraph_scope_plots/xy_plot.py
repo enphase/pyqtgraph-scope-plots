@@ -23,6 +23,7 @@ from PySide6.QtWidgets import QMessageBox, QWidget, QTableWidgetItem, QMenu
 from numpy import typing as npt
 from pydantic import BaseModel
 
+from .graphics_collections import ScatterItemCollection
 from .interactivity_mixins import LiveCursorPlot
 from .multi_plot_widget import DragTargetOverlay, MultiPlotWidget, LinkedMultiPlotWidget
 from .util import HasSaveLoadConfig, MixinColsTable
@@ -219,9 +220,7 @@ class XyPlotLinkedCursorWidget(XyPlotWidget):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         assert isinstance(self._plots, LinkedMultiPlotWidget)
-        self._hover_pts = pg.ScatterPlotItem(x=[], y=[], symbol="o")
-        self._hover_pts.setZValue(LiveCursorPlot._Z_VALUE_HOVER_TARGET)
-        self.addItem(self._hover_pts, ignoreBounds=True)
+        self._hover_pts = ScatterItemCollection(self, z_value=LiveCursorPlot._Z_VALUE_HOVER_TARGET)
 
         self._plots.sigHoverCursorChanged.connect(self._on_linked_hover_cursor_change)
 
@@ -235,12 +234,7 @@ class XyPlotLinkedCursorWidget(XyPlotWidget):
         t = self._plots._last_hover
         if t is None:
             return
-        x_y_colors = self._get_visible_xys_at_t(t)
-        if len(x_y_colors) > 0:  # convert the list-of-tuples into a lists of point values for scatterplot format
-            x_poss, y_poss, colors = tuple(map(list, zip(*x_y_colors)))
-        else:  # zip returns empty for empty inputs
-            x_poss, y_poss, colors = [], [], []
-        self._hover_pts.setData(x=x_poss, y=y_poss, brush=colors)
+        self._hover_pts.update(self._get_visible_xys_at_t(t))
 
 
 class XyPlotLinkedPoiWidget(XyPlotWidget):

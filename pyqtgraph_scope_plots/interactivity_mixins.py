@@ -231,8 +231,18 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-        self.hover_cursor: Optional[pg.InfiniteLine] = None
-        self._hover_x_label: Optional[pg.TextItem] = None
+        self.hover_cursor = pg.InfiniteLine(
+            angle=90,
+            movable=False,
+            pen=mkPen(style=Qt.PenStyle.DotLine),
+        )  # moves with hover not drag
+        self.hover_cursor.hide()
+        self.addItem(self.hover_cursor, ignoreBounds=True)
+
+        self._hover_x_label = pg.TextItem(anchor=self.LIVE_CURSOR_X_ANCHOR)
+        self._hover_x_label.hide()
+        self.addItem(self._hover_x_label, ignoreBounds=True)
+
         # create one point that contains the data as a series, for efficiency
         self._hover_y_pts = pg.ScatterPlotItem(x=[], y=[], symbol="o")
         self._hover_y_pts.setZValue(self._Z_VALUE_HOVER_TARGET)
@@ -245,53 +255,45 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
         """Sets the live cursor to some specified location, or deletes it (if None).
         If a y position is specified, draws the time label there, otherwise no time label.
         """
-        for label in self._hover_y_labels:
-            self.removeItem(label)
-        self._hover_y_labels = []
-
         if pos is not None:  # create or update live cursor
-            if self.hover_cursor is None:  # create new widgets as needed
-                self.hover_cursor = pg.InfiniteLine(
-                    angle=90,
-                    movable=False,
-                    pen=mkPen(style=Qt.PenStyle.DotLine),
-                )  # moves with hover not drag
-                self.addItem(self.hover_cursor, ignoreBounds=True)
             self.hover_cursor.setPos(pos)
+            self.hover_cursor.show()
 
             if pos_y is not None:
-                if self._hover_x_label is None:
-                    self._hover_x_label = pg.TextItem(anchor=self.LIVE_CURSOR_X_ANCHOR)
-                    self.addItem(self._hover_x_label, ignoreBounds=True)
                 self._hover_x_label.setPos(QPointF(pos, pos_y))  # y follows mouse, x is at cursor
                 self._hover_x_label.setText(self._value_axis_label(pos, self, "bottom"))
+                self._hover_x_label.show()
             else:
-                if self._hover_x_label is not None:
-                    self.removeItem(self._hover_x_label)
-                    self._hover_x_label = None
+                self._hover_x_label.hide()
 
-            # build up the X and Y points to stuff into one scatterplot
-            x_poss = []
-            y_poss = []
-            colors = []
-            for y_pos, text, color in self._data_value_label_at(pos, precision_factor=0.1):
-                x_poss.append(pos)
-                y_poss.append(y_pos)
-                colors.append(color)
-                hover_label = pg.TextItem(text, anchor=self.LIVE_CURSOR_Y_ANCHOR, color=color)
-                hover_label.setZValue(self._Z_VALUE_HOVER_TARGET)
-                hover_label.setPos(QPointF(pos, y_pos))
-                self.addItem(hover_label, ignoreBounds=True)
-                self._hover_y_labels.append(hover_label)
-            self._hover_y_pts.setData(x=x_poss, y=y_poss, brush=colors)
+            y_text_colors: List[Tuple[float, str, QColor]] = self._data_value_label_at(pos, precision_factor=0.1)
         else:  # delete live cursor
-            if self.hover_cursor is not None:
-                self.removeItem(self.hover_cursor)
-                self.hover_cursor = None
-            if self._hover_x_label is not None:
-                self.removeItem(self._hover_x_label)
-                self._hover_x_label = None
-            self._hover_y_pts.setData(x=[], y=[])
+            self.hover_cursor.hide()
+            self._hover_x_label.hide()
+
+            y_text_colors = []
+
+        # convert the list-of-tuples into a lists of point values for scatterplot format
+        if len(y_text_colors) > 0:
+            x_poss = [pos] * len(y_text_colors)
+            y_poss, _, colors = tuple(map(list, zip(*y_text_colors)))
+        else:
+            x_poss, y_poss, colors = [], [], []
+        self._hover_y_pts.setData(x=x_poss, y=y_poss, brush=colors)
+
+        # update labels, in-place for efficiency (TextItem creation is somewhat expensive)
+        for _ in range(len(self._hover_y_labels), len(y_text_colors)):
+            hover_label = pg.TextItem("", anchor=self.LIVE_CURSOR_Y_ANCHOR)
+            hover_label.setZValue(self._Z_VALUE_HOVER_TARGET)
+            self.addItem(hover_label, ignoreBounds=True)
+            self._hover_y_labels.append(hover_label)
+        for _ in reversed(range(len(y_text_colors), len(self._hover_y_labels))):
+            self.removeItem(self._hover_y_labels.pop())
+        for text_item, (y_pos, text, color) in zip(self._hover_y_labels, y_text_colors):
+            text_item.setText(text)
+            text_item.setPos(QPointF(pos, y_pos))
+            text_item.setColor(color)
+
         self.sigHoverCursorChanged.emit(pos)
 
     def _update_live_cursor(self, snap_data: HoverSnapData) -> None:

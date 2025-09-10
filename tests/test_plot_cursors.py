@@ -147,7 +147,7 @@ def test_snap_gui(qtbot: QtBot) -> None:
             Qt.KeyboardModifier.NoModifier,
         )
     )
-    qtbot.waitUntil(lambda: plot_item.hover_cursor is None)
+    qtbot.waitUntil(lambda: not plot_item.hover_cursor.isVisible())
 
 
 def test_range_gui(qtbot: QtBot) -> None:

@@ -25,17 +25,18 @@ def test_linked_live_cursor(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     """This (and subsequent) tests use internal APIs to set cursor positions and whatnot
     because these APIs are much more reliable than using QtBot mouse actions."""
     for i in range(3):
-        assert plot_item(plot, i).hover_cursor is None  # verify initial state
+        assert not plot_item(plot, i).hover_cursor.isVisible()  # verify initial state
 
     plot_item(plot, 0).set_live_cursor(0.1)
     qtbot.waitSignal(plot._plots.sigHoverCursorChanged)
-    qtbot.waitUntil(lambda: not_none(plot_item(plot, 1).hover_cursor).x() == 0.1)
+    qtbot.waitUntil(lambda: plot_item(plot, 1).hover_cursor.isVisible())
+    assert plot_item(plot, 1).hover_cursor.x() == 0.1
     assert not_none(plot_item(plot, 2).hover_cursor).x() == 0.1
 
     plot_item(plot, 1).set_live_cursor(None)
     qtbot.waitSignal(plot._plots.sigHoverCursorChanged)
-    qtbot.waitUntil(lambda: plot_item(plot, 0).hover_cursor is None)
-    assert plot_item(plot, 2).hover_cursor is None
+    qtbot.waitUntil(lambda: not plot_item(plot, 0).hover_cursor.isVisible())
+    qtbot.waitUntil(lambda: not plot_item(plot, 2).hover_cursor.isVisible())
 
 
 def test_linked_region(qtbot: QtBot, plot: PlotsTableWidget) -> None:

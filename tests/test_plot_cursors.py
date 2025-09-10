@@ -242,13 +242,13 @@ def test_poi_gui(qtbot: QtBot) -> None:
     )
     qtbot.waitUntil(lambda: len(plot_item.pois) == 1)
     assert plot_item.pois[0].pos().x() == 0
-    assert len(plot_item._poi_items[plot_item.pois[0]]) == 3 * 2
-    assert plot_item._poi_items[plot_item.pois[0]][1].toPlainText() == "0.010"
-    assert plot_item._poi_items[plot_item.pois[0]][1].color == QColor("yellow")
-    assert plot_item._poi_items[plot_item.pois[0]][3].toPlainText() == "0.500"
-    assert plot_item._poi_items[plot_item.pois[0]][3].color == QColor("orange")
-    assert plot_item._poi_items[plot_item.pois[0]][5].toPlainText() == "0.700"
-    assert plot_item._poi_items[plot_item.pois[0]][5].color == QColor("blue")
+    assert len(plot_item._poi_items[plot_item.pois[0]][1]._labels) == 3
+    assert plot_item._poi_items[plot_item.pois[0]][1]._labels[0].toPlainText() == "0.010"
+    assert plot_item._poi_items[plot_item.pois[0]][1]._labels[0].color == QColor("yellow")
+    assert plot_item._poi_items[plot_item.pois[0]][1]._labels[1].toPlainText() == "0.500"
+    assert plot_item._poi_items[plot_item.pois[0]][1]._labels[1].color == QColor("orange")
+    assert plot_item._poi_items[plot_item.pois[0]][1]._labels[2].toPlainText() == "0.700"
+    assert plot_item._poi_items[plot_item.pois[0]][1]._labels[2].color == QColor("blue")
 
     # must be near-exact
     qtbot.mouseClick(plot.viewport(), Qt.MouseButton.LeftButton, pos=data_to_screen(plot_item, 0, 0))  # force update

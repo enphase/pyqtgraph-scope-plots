@@ -137,8 +137,9 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         return (xt_lo, xt_hi), (yt_lo, yt_hi)
 
     def _update(self) -> None:
-        for data_item in self.listDataItems():  # clear existing
-            self.removeItem(data_item)
+        for xy_curves in self._xy_curves.values():  # clear existing
+            for xy_curve in xy_curves:
+                self.removeItem(xy_curve)
         self._xy_curves = {}
 
         region = HasRegionSignalsTable._region_of_plot(self._plots)
@@ -218,7 +219,9 @@ class XyPlotLinkedCursorWidget(XyPlotWidget):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         assert isinstance(self._plots, LinkedMultiPlotWidget)
-        self._hover_pts: List[pg.ScatterPlotItem] = []
+        self._hover_pts = pg.ScatterPlotItem(x=[], y=[], symbol="o")
+        self._hover_pts.setZValue(LiveCursorPlot._Z_VALUE_HOVER_TARGET)
+        self.addItem(self._hover_pts, ignoreBounds=True)
 
         self._plots.sigHoverCursorChanged.connect(self._on_linked_hover_cursor_change)
 
@@ -228,18 +231,16 @@ class XyPlotLinkedCursorWidget(XyPlotWidget):
 
     def _on_linked_hover_cursor_change(self) -> None:
         assert isinstance(self._plots, LinkedMultiPlotWidget)
-        for pts in self._hover_pts:  # clear old widgets as needed, then re-create
-            self.removeItem(pts)
-        self._hover_pts = []
 
         t = self._plots._last_hover
         if t is None:
             return
-        for x, y, color in self._get_visible_xys_at_t(t):
-            hover_pt = pg.ScatterPlotItem(x=[x], y=[y], symbol="o", brush=color)
-            hover_pt.setZValue(LiveCursorPlot._Z_VALUE_HOVER_TARGET)
-            self.addItem(hover_pt, ignoreBounds=True)
-            self._hover_pts.append(hover_pt)
+        x_y_colors = self._get_visible_xys_at_t(t)
+        if len(x_y_colors) > 0:  # convert the list-of-tuples into a lists of point values for scatterplot format
+            x_poss, y_poss, colors = tuple(map(list, zip(*x_y_colors)))
+        else:  # zip returns empty for empty inputs
+            x_poss, y_poss, colors = [], [], []
+        self._hover_pts.setData(x=x_poss, y=y_poss, brush=colors)
 
 
 class XyPlotLinkedPoiWidget(XyPlotWidget):

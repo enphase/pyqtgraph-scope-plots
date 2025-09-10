@@ -269,11 +269,10 @@ class LiveCursorPlot(SnappableHoverPlot, HasDataValueAt):
 
             y_text_colors = []
 
-        # convert the list-of-tuples into a lists of point values for scatterplot format
-        if len(y_text_colors) > 0:
+        if len(y_text_colors) > 0:  # convert the list-of-tuples into a lists of point values for scatterplot format
             x_poss = [pos] * len(y_text_colors)
             y_poss, _, colors = tuple(map(list, zip(*y_text_colors)))
-        else:
+        else:  # zip returns empty for empty inputs
             x_poss, y_poss, colors = [], [], []
         self._hover_y_pts.setData(x=x_poss, y=y_poss, brush=colors)
 

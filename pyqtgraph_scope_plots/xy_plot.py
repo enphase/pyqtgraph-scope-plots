@@ -234,7 +234,7 @@ class XyPlotLinkedCursorWidget(XyPlotWidget):
 
     def _update_datasets(self) -> None:
         super()._update_datasets()
-        self._on_linked_hover_cursor_change()
+        self._on_linked_hover_cursor_change()  # generate initial points
 
     def _on_linked_hover_cursor_change(self) -> None:
         assert isinstance(self._plots, LinkedMultiPlotWidget)
@@ -256,7 +256,7 @@ class XyPlotLinkedPoiWidget(XyPlotWidget):
 
     def _update_datasets(self) -> None:
         super()._update_datasets()
-        self._on_linked_poi_change()
+        self._on_linked_poi_change()  # generate initial points
 
     def _on_linked_poi_change(self) -> None:
         assert isinstance(self._plots, LinkedMultiPlotWidget)

@@ -186,7 +186,10 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
 
             last_segment_end = xt_lo
             for i, curve in enumerate(xy_curves):
-                this_end = int(i / (len(xy_curves) - 1) * (xt_hi - xt_lo)) + xt_lo
+                if len(xy_curves) > 1:
+                    this_end = int(i / (len(xy_curves) - 1) * (xt_hi - xt_lo)) + xt_lo
+                else:  # handle single curve case
+                    this_end = xt_hi
                 curve.setData(
                     x=x_ys[last_segment_end:this_end],
                     y=y_ys[last_segment_end + yt_lo - xt_lo : this_end + yt_lo - xt_lo],

@@ -229,9 +229,12 @@ class XyPlotLinkedCursorWidget(XyPlotWidget):
         assert isinstance(self._plots, LinkedMultiPlotWidget)
         self._hover_pts = ScatterItemCollection(self, z_value=LiveCursorPlot._Z_VALUE_HOVER_TARGET)
 
-        self._plots.sigDataUpdated.connect(self._on_linked_hover_cursor_change)
         self._plots.sigHoverCursorChanged.connect(self._on_linked_hover_cursor_change)
         self._plots.sigCursorRangeChanged.connect(self._on_linked_hover_cursor_change)
+
+    def _update_datasets(self) -> None:
+        super()._update_datasets()
+        self._on_linked_hover_cursor_change()
 
     def _on_linked_hover_cursor_change(self) -> None:
         assert isinstance(self._plots, LinkedMultiPlotWidget)
@@ -248,9 +251,12 @@ class XyPlotLinkedPoiWidget(XyPlotWidget):
         assert isinstance(self._plots, LinkedMultiPlotWidget)
         self._poi_pts = ScatterItemCollection(self, z_value=LiveCursorPlot._Z_VALUE_HOVER_TARGET)
 
-        self._plots.sigDataUpdated.connect(self._on_linked_poi_change)
         self._plots.sigPoiChanged.connect(self._on_linked_poi_change)
         self._plots.sigCursorRangeChanged.connect(self._on_linked_poi_change)
+
+    def _update_datasets(self) -> None:
+        super()._update_datasets()
+        self._on_linked_poi_change()
 
     def _on_linked_poi_change(self) -> None:
         assert isinstance(self._plots, LinkedMultiPlotWidget)

@@ -27,7 +27,7 @@ class XyTableLegends(BaseLegendSaveLoad, XyTable):
         self._show_legend = True
         for xy_plot in self._xy_plots:
             cast(pg.PlotItem, xy_plot.get_plot_widget().getPlotItem()).addLegend()
-            xy_plot.get_plot_widget()._update()
+            xy_plot.get_plot_widget()._update_datasets()
 
     def create_xy(self) -> BaseXyPlot:
         xy_plot = super().create_xy()

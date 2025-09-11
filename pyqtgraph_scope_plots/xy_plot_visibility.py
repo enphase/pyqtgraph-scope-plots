@@ -59,8 +59,8 @@ class VisibilityXyPlotWidget(XyPlotWidget, HasSaveLoadConfig):
                 else:
                     curve.show()
 
-    def _update(self) -> None:
-        super()._update()  # all curves refreshed and start shown
+    def _update_datasets(self) -> None:
+        super()._update_datasets()  # all curves refreshed and start shown
         for hidden_xy in self._hidden_data:
             for curve in self._xy_curves.get(hidden_xy, []):
                 curve.hide()

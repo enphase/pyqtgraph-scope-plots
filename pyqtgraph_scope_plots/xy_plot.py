@@ -64,7 +64,7 @@ class BaseXyPlot(HasSaveLoadConfig):
 
 
 class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
-    _FADE_SEGMENTS = 16
+    _FADE_SEGMENTS = 10
 
     sigXyDataItemsChanged = Signal()
 
@@ -73,9 +73,9 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         self._xys: List[Tuple[str, str]] = []
         self._xy_curves: Dict[Tuple[str, str], List[pg.PlotCurveItem]] = {}
 
-        plots.sigDataUpdated.connect(self._update)
+        plots.sigDataUpdated.connect(self._update_datasets)
         if isinstance(self._plots, LinkedMultiPlotWidget):
-            plots.sigCursorRangeChanged.connect(self._update)
+            plots.sigCursorRangeChanged.connect(self._update_xys)
 
     def _write_model(self, model: BaseModel) -> None:
         super()._write_model(model)
@@ -107,12 +107,12 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     def add_xy(self, x_name: str, y_name: str) -> None:
         if (x_name, y_name) not in self._xys:
             self._xys.append((x_name, y_name))
-            self._update()
+            self._update_datasets()
             self.sigXyDataItemsChanged.emit()
 
     def remove_xy(self, x_name: str, y_name: str) -> None:
         self._xys.remove((x_name, y_name))
-        self._update()
+        self._update_datasets()
         self.sigXyDataItemsChanged.emit()
 
     def get_plot_widget(self) -> "XyPlotWidget":
@@ -137,15 +137,39 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             return None
         return (xt_lo, xt_hi), (yt_lo, yt_hi)
 
-    def _update(self) -> None:
+    def _update_datasets(self) -> None:
         for xy_curves in self._xy_curves.values():  # clear existing
             for xy_curve in xy_curves:
                 self.removeItem(xy_curve)
         self._xy_curves = {}
 
+        for x_name, y_name in self._xys:
+            this_curve_list = self._xy_curves.setdefault((x_name, y_name), [])
+            # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
+            y_color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
+
+            for i in range(self._FADE_SEGMENTS):
+                if i == self._FADE_SEGMENTS - 1:  # last segment has a name for the legend
+                    curve_kwargs = {"name": f"{x_name} (x), {y_name} (y)"}
+                else:
+                    curve_kwargs = {}
+                curve = pg.PlotCurveItem(x=[], y=[], **curve_kwargs)
+                segment_color = QColor(
+                    y_color.red() * (i + 1) // self._FADE_SEGMENTS,
+                    y_color.green() * (i + 1) // self._FADE_SEGMENTS,
+                    y_color.blue() * (i + 1) // self._FADE_SEGMENTS,
+                )
+                curve.setPen(color=segment_color, width=1)
+                self.addItem(curve)
+                this_curve_list.append(curve)
+        self._update_xys()
+
+    def _update_xys(self) -> None:
+        """Updates the data points for XYs that have already been created.
+        Efficient when only the data has changed."""
         region = HasRegionSignalsTable._region_of_plot(self._plots)
         data = self._plots._data
-        for x_name, y_name in self._xys:
+        for (x_name, y_name), xy_curves in self._xy_curves.items():
             x_ts, x_ys = data.get(x_name, (None, None))
             y_ts, y_ys = data.get(y_name, (None, None))
             if x_ts is None or x_ys is None or y_ts is None or y_ys is None:
@@ -160,36 +184,19 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
                 continue
             (xt_lo, xt_hi), (yt_lo, yt_hi) = indices
 
-            this_curve_list = self._xy_curves.setdefault((x_name, y_name), [])
-            # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
-            y_color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
-            fade_segments = min(
-                self._FADE_SEGMENTS, xt_hi - xt_lo
-            )  # keep track of the x time indices, apply offset for y time indices
             last_segment_end = xt_lo
-            for i in range(fade_segments):
-                this_end = int(i / (fade_segments - 1) * (xt_hi - xt_lo)) + xt_lo
-                if i == fade_segments - 1:
-                    curve_kwargs = {"name": f"{x_name} (x), {y_name} (y)"}
-                else:
-                    curve_kwargs = {}
-                curve = pg.PlotCurveItem(
+            for i, curve in enumerate(xy_curves):
+                if len(xy_curves) > 1:
+                    this_end = int(i / (len(xy_curves) - 1) * (xt_hi - xt_lo)) + xt_lo
+                else:  # handle single curve case
+                    this_end = xt_hi
+                curve.setData(
                     x=x_ys[last_segment_end:this_end],
                     y=y_ys[last_segment_end + yt_lo - xt_lo : this_end + yt_lo - xt_lo],
-                    **curve_kwargs,
                 )
                 # make sure segments are continuous since this_end is exclusive,
                 # but only as far as the beginning of this segment
                 last_segment_end = max(last_segment_end, this_end - 1)
-
-                segment_color = QColor(
-                    y_color.red() * (i + 1) // self._FADE_SEGMENTS,
-                    y_color.green() * (i + 1) // self._FADE_SEGMENTS,
-                    y_color.blue() * (i + 1) // self._FADE_SEGMENTS,
-                )
-                curve.setPen(color=segment_color, width=1)
-                self.addItem(curve)
-                this_curve_list.append(curve)
 
     def _get_visible_xys_at_t(self, t: float) -> List[Tuple[float, float, QColor]]:
         """For a t, return all points (with color) on visible curves."""
@@ -223,9 +230,10 @@ class XyPlotLinkedCursorWidget(XyPlotWidget):
         self._hover_pts = ScatterItemCollection(self, z_value=LiveCursorPlot._Z_VALUE_HOVER_TARGET)
 
         self._plots.sigHoverCursorChanged.connect(self._on_linked_hover_cursor_change)
+        self._plots.sigCursorRangeChanged.connect(self._on_linked_hover_cursor_change)
 
-    def _update(self) -> None:
-        super()._update()
+    def _update_datasets(self) -> None:
+        super()._update_datasets()
         self._on_linked_hover_cursor_change()  # generate initial points
 
     def _on_linked_hover_cursor_change(self) -> None:
@@ -244,9 +252,10 @@ class XyPlotLinkedPoiWidget(XyPlotWidget):
         self._poi_pts = ScatterItemCollection(self, z_value=LiveCursorPlot._Z_VALUE_HOVER_TARGET)
 
         self._plots.sigPoiChanged.connect(self._on_linked_poi_change)
+        self._plots.sigCursorRangeChanged.connect(self._on_linked_poi_change)
 
-    def _update(self) -> None:
-        super()._update()
+    def _update_datasets(self) -> None:
+        super()._update_datasets()
         self._on_linked_poi_change()  # generate initial points
 
     def _on_linked_poi_change(self) -> None:

@@ -26,7 +26,7 @@ from pyqtgraph_scope_plots.interactivity_mixins import (
     LiveCursorPlot,
     RegionPlot,
     DataPlotItem,
-    NudgeablePlot,
+    NudgeablePlot, DataPlotCurveItem,
 )
 
 
@@ -163,7 +163,7 @@ def test_snap_gui(qtbot: QtBot) -> None:
     qtbot.waitUntil(lambda: not plot_item._hover_cursor.isVisible())
 
 
-class NudgeableLiveCursorPlot(NudgeablePlot, RegionPlot, LiveCursorPlot):
+class NudgeableLiveCursorPlot(NudgeablePlot, RegionPlot, LiveCursorPlot, DataPlotCurveItem):
     pass
 
 

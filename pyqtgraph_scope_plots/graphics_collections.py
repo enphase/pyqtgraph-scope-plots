@@ -33,7 +33,7 @@ class TextItemCollection:
 
     def update(self, pts: List[Tuple[float, float, str, QColor]]) -> None:
         for _ in range(len(self._labels), len(pts)):
-            label = pg.TextItem("")
+            label = pg.TextItem()
             if self._anchor is not None:
                 label.setAnchor(self._anchor)
             if self._z_value is not None:
@@ -42,7 +42,7 @@ class TextItemCollection:
             self._labels.append(label)
         for _ in range(len(pts), len(self._labels)):
             self._parent.removeItem(self._labels.pop())
-        assert len(self._labels) == len(pts)
+        assert len(self._labels) == len(pts), f"unexpected label {len(self._labels)} / points {len(pts)} mismatch"
         for text_item, (x_pos, y_pos, text, color) in zip(self._labels, pts):
             text_item.setPos(QPointF(x_pos, y_pos))
             text_item.setText(text)

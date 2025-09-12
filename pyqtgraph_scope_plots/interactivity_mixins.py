@@ -638,6 +638,35 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
             self.sigPoiChanged.emit([poi.x() for poi in self.pois])
 
 
+class NudgeablePlot(HasDataValueAt):
+    def _next_x_pos(self, curr_pos: float, dir: int) -> Optional[float]:
+        candidate: Optional[float] = None
+        for name, data in self._data.items():
+            data_graphics = self._data_graphics.get(name)
+            if not data_graphics or not data_graphics[0].isVisible():
+                continue
+            if not len(data.xs):
+                continue
+            if dir < 0:  # find previous
+                index = bisect.bisect_left(data.xs, curr_pos) - 1
+            else:  # find next
+                index = bisect.bisect_right(data.xs, curr_pos)
+            if index < 0 or index >= len(data.xs):  # out of bounds
+                continue
+            next_pos = data.xs[index]
+            if candidate is None or abs(next_pos - curr_pos) < abs(candidate - curr_pos):
+                candidate = next_pos
+        return candidate
+
+    def keyPressEvent(self, ev: QKeyEvent) -> None:
+        super().keyPressEvent(ev)
+        if ev.key() in (Qt.Key.Key_Left, Qt.Key.Key_Right):
+            dir = -1 if ev.key() == Qt.Key.Key_Left else 1
+            if isinstance(self, LiveCursorPlot):
+                if self._hover_cursor.isVisible():
+                    self.set_live_cursor(self._next_x_pos(self._hover_cursor.pos().x(), dir))
+
+
 class DraggableCursorPlot(SnappableHoverPlot, HasDataValueAt):
     """Mixin for PlotItem that allows a programmatically created draggable time-cursor,
     which generates a signal when it is moved.

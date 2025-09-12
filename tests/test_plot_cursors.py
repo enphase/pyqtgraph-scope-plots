@@ -26,7 +26,8 @@ from pyqtgraph_scope_plots.interactivity_mixins import (
     LiveCursorPlot,
     RegionPlot,
     DataPlotItem,
-    NudgeablePlot, DataPlotCurveItem,
+    NudgeablePlot,
+    DataPlotCurveItem,
 )
 
 

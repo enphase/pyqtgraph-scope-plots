@@ -33,16 +33,19 @@ from .interactivity_mixins import (
     PlotDataDesc,
     DataPlotCurveItem,
     DataPlotItem,
+    NudgeablePlot,
 )
 from .util import BaseTopModel, HasSaveLoadDataConfig
 
 
-class InteractivePlot(DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DataPlotCurveItem):
+class InteractivePlot(
+    DraggableCursorPlot, NudgeablePlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DataPlotCurveItem
+):
     """PlotItem with interactivity mixins"""
 
 
 class EnumWaveformInteractivePlot(
-    DraggableCursorPlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot, EnumWaveformPlot
+    DraggableCursorPlot, NudgeablePlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot, EnumWaveformPlot
 ):
     """Enum plot with all the interactivity mixins"""
 

@@ -17,7 +17,7 @@ from typing import cast
 import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QPointF, QPoint, QEvent
-from PySide6.QtGui import QColor, Qt, QMouseEvent
+from PySide6.QtGui import QColor, Qt, QMouseEvent, QKeyEvent
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.util.util import not_none
@@ -27,6 +27,7 @@ from pyqtgraph_scope_plots.interactivity_mixins import (
     RegionPlot,
     DataPlotItem,
     PlotDataDesc,
+    NudgeablePlot,
 )
 
 
@@ -154,6 +155,58 @@ def test_snap_gui(qtbot: QtBot) -> None:
         )
     )
     qtbot.waitUntil(lambda: not plot_item._hover_cursor.isVisible())
+
+
+class NudgeableLiveCursorPlot(NudgeablePlot, RegionPlot, LiveCursorPlot):
+    pass
+
+
+def test_nudge(qtbot: QtBot) -> None:
+    KEY_EVENT_LEFT = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Left, Qt.KeyboardModifier.NoModifier)
+    KEY_EVENT_RIGHT = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Right, Qt.KeyboardModifier.NoModifier)
+
+    plot_item = NudgeableLiveCursorPlot()
+    plot = pg.PlotWidget(plotItem=plot_item)
+    qtbot.addWidget(plot)
+    plot.show()
+    qtbot.waitExposed(plot)
+    init_plot(qtbot, plot)
+    plot.set_live_cursor(0)  # create the live cursor at a defined point
+    plot_item.keyPressEvent(KEY_EVENT_RIGHT)
+    qtbot.waitUntil(lambda: plot_item._hover_cursor.pos().x() == 0.1)
+    plot_item.keyPressEvent(KEY_EVENT_LEFT)
+    qtbot.waitUntil(lambda: plot_item._hover_cursor.pos().x() == 0.0)
+    plot_item.keyPressEvent(KEY_EVENT_LEFT)  # check bounds behavior
+    qtbot.wait(10)
+    assert plot_item._hover_cursor.pos().x() == 0.0
+
+    plot.set_live_cursor(2.0)
+    plot_item.keyPressEvent(KEY_EVENT_RIGHT)  # check bounds behavior, right side
+    qtbot.wait(10)
+    assert plot_item._hover_cursor.pos().x() == 2.0
+    plot_item.keyPressEvent(KEY_EVENT_LEFT)
+    qtbot.waitUntil(lambda: plot_item._hover_cursor.pos().x() == 1.0)
+
+    plot.set_live_cursor(1.5)  # test misaligned start
+    plot_item.keyPressEvent(KEY_EVENT_RIGHT)
+    qtbot.waitUntil(lambda: plot_item._hover_cursor.pos().x() == 2.0)
+
+    plot_item.set_region((0, 0.5))  # misaligned
+    plot_item.cursor_range.mouseHovering = True
+    plot_item.keyPressEvent(KEY_EVENT_RIGHT)
+    qtbot.waitUntil(lambda: plot_item.cursor_range.getRegion() == (0.5, 1.0))
+    plot_item.keyPressEvent(KEY_EVENT_LEFT)
+    qtbot.waitUntil(lambda: plot_item.cursor_range.getRegion() == (-0.4, 0.1))
+    plot_item.keyPressEvent(KEY_EVENT_LEFT)
+    qtbot.waitUntil(lambda: plot_item.cursor_range.getRegion() == (-0.5, 0))
+    plot_item.keyPressEvent(KEY_EVENT_LEFT)
+    qtbot.wait(10)
+    assert plot_item.cursor_range.getRegion() == (-0.5, 0)
+
+    plot_item.set_region((1.9, 2.0))  # misaligned
+    plot_item.keyPressEvent(KEY_EVENT_RIGHT)  # check bounds behavior, right side
+    qtbot.wait(10)
+    assert plot_item.cursor_range.getRegion() == (1.9, 2.0)
 
 
 def test_range_gui(qtbot: QtBot) -> None:

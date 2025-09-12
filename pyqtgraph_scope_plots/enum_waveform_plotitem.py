@@ -21,7 +21,7 @@ import pyqtgraph as pg
 from PySide6.QtCore import QPointF, QRect
 from PySide6.QtGui import QColor
 
-from .interactivity_mixins import SnappableHoverPlot, DataPlotItem, PlotDataDesc, HasDataValueAt
+from .interactivity_mixins import SnappableHoverPlot, DataPlotItem, HasDataValueAt
 
 
 class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
@@ -74,7 +74,8 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         else:
             return []
 
-    def _generate_plot_items(self, name: str, data: PlotDataDesc) -> List[pg.GraphicsObject]:
+    def _generate_plot_items(self, name: str, color: QColor) -> List[pg.GraphicsObject]:
+        return []
         # generate the control points for half of the waveform using numpy operations for efficiency
         ys_values, ys_int = np.unique(data.ys, return_inverse=True)  # map to integer for efficiency
         # do change detection to find edges, element is true if it is different from the next element
@@ -113,11 +114,16 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         curve_comp.setPen(color=data.color, width=1)
         return [curve_true, curve_comp]
 
+    def _update_plot_data(
+        self, name: str, graphics: List[pg.GraphicsObject], xs: npt.NDArray[np.float64], ys: npt.NDArray
+    ) -> None:
+        return
+
     def resizeEvent(self, ev: Any) -> None:
         super().resizeEvent(ev)
         self._update_plot_labels()
 
-    def set_data(self, data: Mapping[str, PlotDataDesc]) -> None:
+    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray]]) -> None:
         super().set_data(data)
         self._update_plot_labels()
 
@@ -134,7 +140,8 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         for label in self._curves_labels:
             self.addItem(label)
 
-    def _generate_plot_labels(self, data: PlotDataDesc, edges: npt.NDArray[np.float64]) -> List[pg.TextItem]:
+    def _generate_plot_labels(self, data: None, edges: npt.NDArray[np.float64]) -> List[pg.TextItem]:
+        return []
         # generate plot labels by testing character-width points in view space and using bisect to turn those
         # into data indices, which makes this mostly (outside the log-factor of bisect) runtime independent
         # of the data set - it should handle very large datasets just as performantly

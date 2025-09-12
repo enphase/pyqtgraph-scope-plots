@@ -30,7 +30,6 @@ from .interactivity_mixins import (
     RegionPlot,
     LiveCursorPlot,
     DraggableCursorPlot,
-    PlotDataDesc,
     DataPlotCurveItem,
     DataPlotItem,
     NudgeablePlot,
@@ -174,7 +173,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
 
         self._clean_plot_widgets()
         self._update_plots_x_axis()
-        self._update_data_name_to_plot_item()
+        self._update_plot_item_data_items()
 
     def render_value(self, data_name: str, value: float) -> str:
         """Float-to-string conversion for a value. Optionally override this to provide smarter precision."""
@@ -198,12 +197,15 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
             widget.setAxisItems({"bottom": self._x_axis_fn()})
         self._update_plots_x_axis()
 
-    def _update_data_name_to_plot_item(self) -> None:
-        """Creates the data name to plot item dict."""
+    def _update_plot_item_data_items(self) -> None:
+        """Called when the plot item data items change, to update the plot items state and the reverse mapping dict."""
         self._data_name_to_plot_item = {}
         for plot_item, data_names in self._plot_item_data.items():
             for name in data_names:
                 self._data_name_to_plot_item[name] = plot_item
+            plot_item.set_data_items(
+                {data_name: self._data_items.get(data_name, (QColor("black"), None))[0] for data_name in data_names}
+            )
 
     def _create_plot_item(self, plot_type: "MultiPlotWidget.PlotType") -> DataPlotItem:
         """Given a PlotType, creates the PlotItem and returns it. Override to change the instantiated PlotItem type."""
@@ -278,7 +280,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
 
         self._clean_plot_widgets()
         self._update_plots_x_axis()
-        self._update_data_name_to_plot_item()
+        self._update_plot_item_data_items()
         self._update_plots()
 
     def show_data_items(
@@ -329,7 +331,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         self._data_items = {name: (color, plot_type) for name, color, plot_type in new_data_items}
 
         self._clean_plot_widgets()
-        self._update_data_name_to_plot_item()
+        self._update_plot_item_data_items()
         self._update_plots_x_axis()
         self.sigDataItemsUpdated.emit()
 
@@ -358,12 +360,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
     def _update_plots(self) -> None:
         self._data = self._transform_data(self._raw_data)
         for plot_item, data_names in self._plot_item_data.items():
-            data_descs: Dict[str, PlotDataDesc] = {}
-            for data_name in data_names:
-                color = self._data_items.get(data_name, (QColor("black"), None))[0]
-                xs, ys = self._data.get(data_name, ([], []))  # None is valid for dict.get, cast to satisfy typer
-                data_descs[data_name or ""] = PlotDataDesc(xs, ys, color)
-            plot_item.set_data(data_descs)
+            plot_item.set_data({data_name: self._data.get(data_name, ([], [])) for data_name in data_names})
 
     def autorange(self, enable: bool) -> None:
         is_first = True
@@ -561,7 +558,7 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
                     self._clean_plot_widgets()
                     self._update_plots_x_axis()
 
-        self._update_data_name_to_plot_item()
+        self._update_plot_item_data_items()
         self._update_plots()
 
     def dragEnterEvent(self, event: QDragMoveEvent) -> None:

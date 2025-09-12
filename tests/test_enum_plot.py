@@ -21,7 +21,6 @@ from PySide6.QtGui import QColor
 import pyqtgraph as pg
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.interactivity_mixins import PlotDataDesc
 from pyqtgraph_scope_plots.multi_plot_widget import EnumWaveformInteractivePlot
 from pyqtgraph_scope_plots.util.util import not_none
 

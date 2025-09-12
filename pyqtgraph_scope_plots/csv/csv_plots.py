@@ -16,10 +16,9 @@ import itertools
 import os.path
 import time
 from functools import partial
-from typing import Dict, Tuple, Any, List, Optional, Callable, Sequence, cast, Set, Iterable, Type
+from typing import Dict, Tuple, Any, List, Optional, Callable, Sequence, cast, Set, Iterable
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import pyqtgraph as pg
 import yaml
@@ -37,21 +36,19 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from ..legend_plot_widget import LegendPlotWidget
-from ..recents import RecentsManager
-from ..xy_plot_legends import XyTableLegends
-from ..xy_plot_visibility import VisibilityXyPlotWidget, VisibilityXyPlotTable
-from ..visibility_toggle_table import VisibilityToggleSignalsTable, VisibilityPlotWidget
 from ..animation_plot_table_widget import AnimationPlotsTableWidget
 from ..color_signals_table import ColorPickerSignalsTable, ColorPickerPlotWidget
+from ..filter_signals_table import FilterSignalsTable
+from ..legend_plot_widget import LegendPlotWidget
 from ..multi_plot_widget import MultiPlotWidget
 from ..plots_table_widget import PlotsTableWidget
-from ..util import int_color, BaseTopModel, HasSaveLoadDataConfig
-from ..filter_signals_table import FilterSignalsTable
+from ..recents import RecentsManager
 from ..stats_signals_table import StatsSignalsTable
 from ..time_axis import TimeAxisItem
 from ..timeshift_signals_table import TimeshiftSignalsTable, TimeshiftPlotWidget
 from ..transforms_signal_table import TransformsSignalsTable, TransformsPlotWidget
+from ..util import int_color, BaseTopModel, HasSaveLoadDataConfig
+from ..visibility_toggle_table import VisibilityToggleSignalsTable, VisibilityPlotWidget
 from ..xy_plot import (
     XyPlotWidget,
     XyDragDroppable,
@@ -61,9 +58,11 @@ from ..xy_plot import (
     XyPlotLinkedCursorWidget,
     XyPlotLinkedPoiWidget,
 )
-from ..xy_plot_table import XyTable
-from ..xy_plot_splitter import XyPlotSplitter
+from ..xy_plot_legends import XyTableLegends
 from ..xy_plot_refgeo import RefGeoXyPlotWidget, RefGeoXyPlotTable
+from ..xy_plot_splitter import XyPlotSplitter
+from ..xy_plot_table import XyTable
+from ..xy_plot_visibility import VisibilityXyPlotWidget, VisibilityXyPlotTable
 
 
 class TupleSafeLoader(yaml.SafeLoader):

@@ -54,6 +54,8 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
             for item in graphics:
                 self.addItem(item)
 
+        self.set_data(self._data)  # don't clear existing data
+
     def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray]]) -> None:
         """Updates data for plots defined in set_data_items."""
         self._data = dict(data)
@@ -122,7 +124,7 @@ class HasDataValueAt(DataPlotItem):
     def _data_value_label_at(self, pos: float, precision_factor: float = 1.0) -> List[Tuple[float, str, QColor]]:
         outs = []
         for name, (xs, ys) in self._data.items():
-            if not self._data_graphics[name][0].isVisible():
+            if name not in self._data_graphics or not self._data_graphics[name][0].isVisible():
                 continue
             if not len(xs):
                 continue

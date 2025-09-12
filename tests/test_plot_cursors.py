@@ -157,15 +157,14 @@ def test_snap_gui(qtbot: QtBot) -> None:
     qtbot.waitUntil(lambda: not plot_item._hover_cursor.isVisible())
 
 
-class NudgeableLiveCursorPlot(NudgeablePlot, LiveCursorPlot):
+class NudgeableLiveCursorPlot(NudgeablePlot, RegionPlot, LiveCursorPlot):
     pass
 
 
-KEY_EVENT_LEFT = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Left, Qt.KeyboardModifier.NoModifier)
-KEY_EVENT_RIGHT = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Right, Qt.KeyboardModifier.NoModifier)
+def test_nudge(qtbot: QtBot) -> None:
+    KEY_EVENT_LEFT = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Left, Qt.KeyboardModifier.NoModifier)
+    KEY_EVENT_RIGHT = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Right, Qt.KeyboardModifier.NoModifier)
 
-
-def test_cursor_nudge(qtbot: QtBot) -> None:
     plot_item = NudgeableLiveCursorPlot()
     plot = pg.PlotWidget(plotItem=plot_item)
     qtbot.addWidget(plot)
@@ -187,6 +186,27 @@ def test_cursor_nudge(qtbot: QtBot) -> None:
     assert plot_item._hover_cursor.pos().x() == 2.0
     plot_item.keyPressEvent(KEY_EVENT_LEFT)
     qtbot.waitUntil(lambda: plot_item._hover_cursor.pos().x() == 1.0)
+
+    plot.set_live_cursor(1.5)  # test misaligned start
+    plot_item.keyPressEvent(KEY_EVENT_RIGHT)
+    qtbot.waitUntil(lambda: plot_item._hover_cursor.pos().x() == 2.0)
+
+    plot_item.set_region((0, 0.5))  # misaligned
+    plot_item.cursor_range.mouseHovering = True
+    plot_item.keyPressEvent(KEY_EVENT_RIGHT)
+    qtbot.waitUntil(lambda: plot_item.cursor_range.getRegion() == (0.5, 1.0))
+    plot_item.keyPressEvent(KEY_EVENT_LEFT)
+    qtbot.waitUntil(lambda: plot_item.cursor_range.getRegion() == (-0.4, 0.1))
+    plot_item.keyPressEvent(KEY_EVENT_LEFT)
+    qtbot.waitUntil(lambda: plot_item.cursor_range.getRegion() == (-0.5, 0))
+    plot_item.keyPressEvent(KEY_EVENT_LEFT)
+    qtbot.wait(10)
+    assert plot_item.cursor_range.getRegion() == (-0.5, 0)
+
+    plot_item.set_region((1.9, 2.0))  # misaligned
+    plot_item.keyPressEvent(KEY_EVENT_RIGHT)  # check bounds behavior, right side
+    qtbot.wait(10)
+    assert plot_item.cursor_range.getRegion() == (1.9, 2.0)
 
 
 def test_range_gui(qtbot: QtBot) -> None:

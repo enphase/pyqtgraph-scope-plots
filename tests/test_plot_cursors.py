@@ -37,11 +37,18 @@ def data_to_screen(plot_item: pg.PlotItem, x: float, y: float) -> QPoint:
 def init_plot(qtbot: QtBot, plot: pg.PlotWidget) -> None:
     plot_item = plot.plotItem
     assert isinstance(plot_item, DataPlotItem)
+    plot.set_data_items(
+        {
+            "A": QColor("yellow"),
+            "B": QColor("orange"),
+            "C": QColor("blue"),
+        }
+    )
     plot.set_data(
         {
-            "A": PlotDataDesc(np.array([0, 0.1, 1, 2]), np.array([0.01, 1, 1, 0]), QColor("yellow")),
-            "B": PlotDataDesc(np.array([0, 1, 2]), np.array([0.5, 0.25, 0.5]), QColor("orange")),
-            "C": PlotDataDesc(np.array([0, 1, 2]), np.array([0.7, 0.6, 0.5]), QColor("blue")),
+            "A": (np.array([0, 0.1, 1, 2]), np.array([0.01, 1, 1, 0])),
+            "B": (np.array([0, 1, 2]), np.array([0.5, 0.25, 0.5])),
+            "C": (np.array([0, 1, 2]), np.array([0.7, 0.6, 0.5])),
         }
     )
     qtbot.wait(100)  # wait for plot to initialize and range to stabilize

@@ -664,7 +664,15 @@ class NudgeablePlot(HasDataValueAt):
             dir = -1 if ev.key() == Qt.Key.Key_Left else 1
             if isinstance(self, LiveCursorPlot):
                 if self._hover_cursor.isVisible():
-                    self.set_live_cursor(self._next_x_pos(self._hover_cursor.pos().x(), dir))
+                    next_pos = self._next_x_pos(self._hover_cursor.pos().x(), dir)
+                    if next_pos is not None:
+                        self.set_live_cursor(next_pos)
+            if isinstance(self, RegionPlot):
+                if self.cursor_range is not None and self.cursor_range.mouseHovering:
+                    curr_start_pos, curr_end_pos = self.cursor_range.getRegion()
+                    next_end_pos = self._next_x_pos(curr_end_pos, dir)
+                    if next_end_pos is not None:
+                        self.set_region((curr_start_pos + next_end_pos - curr_end_pos, next_end_pos))
 
 
 class DraggableCursorPlot(SnappableHoverPlot, HasDataValueAt):

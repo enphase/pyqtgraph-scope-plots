@@ -33,38 +33,54 @@ from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent
 from pyqtgraph_scope_plots.graphics_collections import ScatterItemCollection, TextItemCollection
 
 
-class PlotDataDesc(NamedTuple):
-    xs: npt.NDArray[np.float64]
-    ys: npt.NDArray
-    color: QColor
-
-
 class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
     """Abstract base class for a PlotItem that takes some data."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._data: Dict[str, PlotDataDesc] = {}
+        self._data_items: Dict[str, QColor] = {}
         self._data_graphics: Dict[str, List[pg.GraphicsObject]] = {}
+        self._data: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray]] = {}
 
-    def set_data(self, data: Mapping[str, PlotDataDesc]) -> None:
-        """Sets and generates plots for the input data items. A default is provided."""
-        for graphics in self._data_graphics.values():
+    def set_data_items(self, data_items: Mapping[str, QColor]) -> None:
+        """Generates plot items for the input data items."""
+        for graphics in self._data_graphics.values():  # re-create the graphical items
             for item in graphics:
                 self.removeItem(item)
 
-        self._data = dict(data)
-        self._data_graphics = {name: self._generate_plot_items(name, data) for name, data in self._data.items()}
+        self._data_items = dict(data_items)
+        self._data_graphics = {name: self._generate_plot_items(name, color) for name, color in data_items.items()}
         for graphics in self._data_graphics.values():
             for item in graphics:
                 self.addItem(item)
 
+        self.set_data(self._data)  # don't clear existing data
+
+    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray]]) -> None:
+        """Updates data for plots defined in set_data_items."""
+        self._data = dict(data)
+        for data_name, (xs, ys) in data.items():
+            graphics = self._data_graphics.get(data_name)
+            if graphics is None:  # not pre-defined in set_data_items, ignore
+                continue
+            self._update_plot_data(data_name, graphics, xs, ys)
+
     @abstractmethod
-    def _generate_plot_items(self, name: str, data: PlotDataDesc) -> List[pg.GraphicsObject]:
-        """Defines how to generate a pyqtgraph graphics item (eg, PlotCurveItem) from some data.
-        May apply transforms to optimize rendering.
+    def _generate_plot_items(self, name: str, color: QColor) -> List[pg.GraphicsObject]:
+        """Defines how to generate a pyqtgraph graphics item (eg, PlotCurveItem) from a data definition.
         May return multiple items, but the first one should be the main one. Must be nonempty.
         Only one should have a name, which is used for the legend.
+        No data is passed in at this point, set_data will be called later.
+        INTERNAL API - STABILITY NOT GUARANTEED"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def _update_plot_data(
+        self, name: str, graphics: List[pg.GraphicsObject], xs: npt.NDArray[np.float64], ys: npt.NDArray
+    ) -> None:
+        """Called when the data is updated, but the data items (and graphical objects) remain the same.
+        Not re-creating the graphical objects helps performance slightly.
+        May apply transforms, such as for rendering efficiency.
         INTERNAL API - STABILITY NOT GUARANTEED"""
         raise NotImplementedError
 
@@ -72,10 +88,18 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
 class DataPlotCurveItem(DataPlotItem):
     """DataPlotItem that generates a PlotCurveItem"""
 
-    def _generate_plot_items(self, name: str, data: PlotDataDesc) -> List[pg.GraphicsObject]:
-        curve = pg.PlotCurveItem(x=data.xs, y=data.ys, name=name)
-        curve.setPen(color=data.color, width=1)
+    def _generate_plot_items(self, name: str, color: QColor) -> List[pg.GraphicsObject]:
+        curve = pg.PlotCurveItem(x=[], y=[], name=name)
+        curve.setPen(color=color, width=1)
         return [curve]
+
+    def _update_plot_data(
+        self, name: str, graphics: List[pg.GraphicsObject], xs: npt.NDArray[np.float64], ys: npt.NDArray
+    ) -> None:
+        assert len(graphics) == 1
+        curve = graphics[0]
+        assert isinstance(curve, pg.PlotCurveItem)
+        curve.setData(x=xs, y=ys)
 
 
 class DeltaAxisItem(pg.AxisItem):  # type: ignore[misc]
@@ -99,24 +123,24 @@ class HasDataValueAt(DataPlotItem):
 
     def _data_value_label_at(self, pos: float, precision_factor: float = 1.0) -> List[Tuple[float, str, QColor]]:
         outs = []
-        for name, data in self._data.items():
-            if not self._data_graphics[name][0].isVisible():
+        for name, (xs, ys) in self._data.items():
+            if name not in self._data_graphics or not self._data_graphics[name][0].isVisible():
                 continue
-            if not len(data.xs):
+            if not len(xs):
                 continue
 
-            index = bisect.bisect_left(data.xs, pos)
-            if index < len(data.xs) and data.xs[index] == pos:  # found exact match
+            index = bisect.bisect_left(xs, pos)
+            if index < len(xs) and xs[index] == pos:  # found exact match
                 outs.append(
                     (
-                        data.ys[index],
+                        ys[index],
                         LiveCursorPlot._value_axis_label(
-                            data.ys[index],
+                            ys[index],
                             self,
                             "left",
                             precision_factor=precision_factor,
                         ),
-                        data.color,
+                        self._data_items[name],
                     )
                 )
         return outs
@@ -151,15 +175,15 @@ class SnappableHoverPlot(DataPlotCurveItem):
     def _snap_pos(self, target_pos: QPointF, x_lo: float, x_hi: float) -> Optional[QPointF]:
         """Returns the closest point in the snappable data set to the target_pos, with x-value between x_lo and x_hi."""
         # closest point for each curve: (data, index, distance)
-        data_index_dists: List[Tuple[PlotDataDesc, int, float]] = []
-        for name, data in self._data.items():
+        data_index_dists: List[Tuple[Tuple[npt.NDArray[np.float64], npt.NDArray], int, float]] = []
+        for name, (xs, ys) in self._data.items():
             data_graphics = self._data_graphics.get(name)
             if not data_graphics or not data_graphics[0].isVisible():
                 continue
-            if not len(data.xs):
+            if not len(xs):
                 continue
-            index_lo = bisect.bisect_left(data.xs, x_lo)
-            index_hi = bisect.bisect_right(data.xs, x_hi)
+            index_lo = bisect.bisect_left(xs, x_lo)
+            index_hi = bisect.bisect_right(xs, x_hi)
             if index_hi - index_lo > self.MAX_PTS:
                 continue
 
@@ -167,17 +191,17 @@ class SnappableHoverPlot(DataPlotCurveItem):
             px, py = data_graphics[0].pixelVectors()  # account for graph scaling
             if px is None or py is None or px.x() == 0 or py.y() == 0:  # invalid
                 continue
-            dxs = (data.xs[index_lo:index_hi] - target_pos.x()) / px.x()
-            dys = (data.ys[index_lo:index_hi] - target_pos.y()) / py.y()
+            dxs = (xs[index_lo:index_hi] - target_pos.x()) / px.x()
+            dys = (ys[index_lo:index_hi] - target_pos.y()) / py.y()
             dists = np.hypot(dxs, dys)
             if not len(dists):
                 continue
             min_dist_index = int(np.argmin(dists))
-            data_index_dists.append((data, min_dist_index + index_lo, dists[min_dist_index]))
+            data_index_dists.append(((xs, ys), min_dist_index + index_lo, dists[min_dist_index]))
 
         if data_index_dists:
-            closest_data, closest_index, _ = min(data_index_dists, key=lambda tup: tup[2])
-            return QPointF(closest_data.xs[closest_index], closest_data.ys[closest_index])
+            (closest_xs, closest_ys), closest_index, _ = min(data_index_dists, key=lambda tup: tup[2])
+            return QPointF(closest_xs[closest_index], closest_ys[closest_index])
         else:
             return None
 
@@ -641,19 +665,19 @@ class PointsOfInterestPlot(SnappableHoverPlot, HasDataValueAt):
 class NudgeablePlot(HasDataValueAt):
     def _next_x_pos(self, curr_pos: float, dir: int) -> Optional[float]:
         candidate: Optional[float] = None
-        for name, data in self._data.items():
+        for name, (xs, ys) in self._data.items():
             data_graphics = self._data_graphics.get(name)
             if not data_graphics or not data_graphics[0].isVisible():
                 continue
-            if not len(data.xs):
+            if not len(xs):
                 continue
             if dir < 0:  # find previous
-                index = bisect.bisect_left(data.xs, curr_pos) - 1
+                index = bisect.bisect_left(xs, curr_pos) - 1
             else:  # find next
-                index = bisect.bisect_right(data.xs, curr_pos)
-            if index < 0 or index >= len(data.xs):  # out of bounds
+                index = bisect.bisect_right(xs, curr_pos)
+            if index < 0 or index >= len(xs):  # out of bounds
                 continue
-            next_pos = data.xs[index]
+            next_pos = xs[index]
             if candidate is None or abs(next_pos - curr_pos) < abs(candidate - curr_pos):
                 candidate = next_pos
         return candidate

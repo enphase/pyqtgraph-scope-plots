@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 
 from PySide6.QtGui import QColor, QAction
 from PySide6.QtWidgets import QMenu, QColorDialog
@@ -51,25 +51,26 @@ class ColorPickerPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
             if data_model.color is not None:
                 self.set_colors([data_name], QColor(data_model.color), update=False)
 
-    def _update_data_item_colors(self) -> None:
-        # TODO: not needed right now, but a better architecture might be to store the raw data items
-        # and have a _transform_data_items function
-        new_data_items = {}
-        for data_item_name, (color, plot_type) in self._data_items.items():
+    def _update_data_item_colors(
+        self, data_items: List[Tuple[str, QColor, MultiPlotWidget.PlotType]]
+    ) -> List[Tuple[str, QColor, MultiPlotWidget.PlotType]]:
+        # transforms data items to reflect the color settings
+        new_data_items = []
+        for data_item_name, color, plot_type in data_items:
             changed_color = self._colors.get(data_item_name, None)
             if changed_color is not None:
                 color = changed_color
-            new_data_items[data_item_name] = (color, plot_type)
-        self._data_items = new_data_items
+            new_data_items.append((data_item_name, color, plot_type))
+        return new_data_items
 
-    def show_data_items(self, *args: Any, **kwargs: Any) -> None:
-        super().show_data_items(*args, **kwargs)
-        self._update_data_item_colors()
+    def show_data_items(
+        self, new_data_items: List[Tuple[str, QColor, MultiPlotWidget.PlotType]], **kwargs: Any
+    ) -> None:
+        super().show_data_items(self._update_data_item_colors(new_data_items), **kwargs)
 
     def set_colors(self, data_names: List[str], color: QColor, update: bool = True) -> None:
         for data_name in data_names:
             self._colors[data_name] = color
-        self._update_data_item_colors()
         if update:
             self._update_plots()
             self.sigDataItemsUpdated.emit()

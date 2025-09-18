@@ -13,10 +13,12 @@
 #    limitations under the License.
 
 from typing import cast
+from unittest import mock
 
 import pytest
 from PySide6.QtGui import Qt, QPen, QColor
 import pyqtgraph as pg
+from PySide6.QtWidgets import QColorDialog
 from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots import (
@@ -47,25 +49,35 @@ def color_of_curve(curve: pg.PlotCurveItem) -> QColor:
 
 
 def test_color(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
-    color_plots.set_colors(["1"], QColor("pink"))
-    assert color_of_curve(color_plots._data_name_to_plot_item["1"]._data_graphics["1"][0]) == QColor("pink")
+    color_plots.set_colors(["1"], QColor("indigo"))
+    assert color_of_curve(color_plots._data_name_to_plot_item["1"]._data_graphics["1"][0]) == QColor("indigo")
 
     # rest should not have changed
     assert color_of_curve(color_plots._data_name_to_plot_item["0"]._data_graphics["0"][0]) == QColor("yellow")
     assert color_of_curve(color_plots._data_name_to_plot_item["2"]._data_graphics["2"][0]) == QColor("blue")
 
 
-def test_visibility_table(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
-    # TODO
-    pass
+def test_color_table(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
+    color_table = ColorPickerSignalsTable(color_plots)
+
+    # test API => table
+    color_plots.set_colors(["1"], QColor("goldenrod"))
+    assert color_table.item(1, 0).foreground().color() == QColor("goldenrod")
+
+    # test table UI => table
+    with mock.patch.object(QColorDialog, "getColor", QColor("lavender")):
+        color_table.selectRow(1)
+        color_table._on_set_color()
+    assert color_of_curve(color_plots._data_name_to_plot_item["1"]._data_graphics["1"][0]) == QColor("lavender")
+    assert color_table.item(1, 0).foreground().color() == QColor("lavender")
 
 
-def test_visibility_save(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
+def test_color_save(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
     # TODO
     model = color_plots._dump_data_model(["0", "1", "2"])
 
 
-def test_visibility_load(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
+def test_color_load(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
     # TODO
     color_table = ColorPickerSignalsTable(color_plots)
     model = color_plots._dump_data_model(["0", "1", "2"])

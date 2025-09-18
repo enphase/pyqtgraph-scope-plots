@@ -65,7 +65,7 @@ def test_color_table(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
     assert color_table.item(1, 0).foreground().color() == QColor("goldenrod")
 
     # test table UI => table
-    with mock.patch.object(QColorDialog, "getColor", QColor("lavender")):
+    with mock.patch.object(QColorDialog, "getColor", lambda: QColor("lavender")):
         color_table.selectRow(1)
         color_table._on_set_color()
     assert color_of_curve(color_plots._data_name_to_plot_item["1"]._data_graphics["1"][0]) == QColor("lavender")

@@ -53,27 +53,26 @@ class ColorPickerPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
             if data_model.color is not None:
                 self.set_colors([data_name], QColor(data_model.color), update=False)
 
-    def _update_data_item_colors(
-        self, data_items: List[Tuple[str, QColor, MultiPlotWidget.PlotType]]
-    ) -> List[Tuple[str, QColor, MultiPlotWidget.PlotType]]:
-        # transforms data items to reflect the color settings
-        new_data_items = []
-        for data_item_name, color, plot_type in data_items:
-            changed_color = self._colors.get(data_item_name, None)
-            if changed_color is not None:
-                color = changed_color
-            new_data_items.append((data_item_name, color, plot_type))
-        return new_data_items
-
     def show_data_items(
         self, new_data_items: List[Tuple[str, QColor, MultiPlotWidget.PlotType]], **kwargs: Any
     ) -> None:
-        super().show_data_items(self._update_data_item_colors(new_data_items), **kwargs)
+        # transforms data items to reflect the color settings
+        colored_new_data_items = []
+        for data_item_name, color, plot_type in new_data_items:
+            changed_color = self._colors.get(data_item_name, None)
+            if changed_color is not None:
+                color = changed_color
+            colored_new_data_items.append((data_item_name, color, plot_type))
+
+        super().show_data_items(colored_new_data_items, **kwargs)
 
     def set_colors(self, data_names: List[str], color: QColor, update: bool = True) -> None:
         for data_name in data_names:
             self._colors[data_name] = color
         if update:
+            self.show_data_items(
+                [(data_item_name, color, plot_type) for data_item_name, (color, plot_type) in self._data_items.items()]
+            )
             self._update_plots()
             self.sigDataItemsUpdated.emit()
 

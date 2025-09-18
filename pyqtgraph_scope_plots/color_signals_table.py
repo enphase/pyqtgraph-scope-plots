@@ -28,6 +28,8 @@ class ColorPickerDataStateModel(DataTopModel):
 
 
 class ColorPickerPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
+    """Provides an API to set the color on signals, which overrides the color from show_data_items."""
+
     _DATA_MODEL_BASES = [ColorPickerDataStateModel]
 
     def __init__(self, *args: Any, **kwargs: Any):

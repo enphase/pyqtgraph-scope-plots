@@ -1,0 +1,76 @@
+# Copyright 2025 Enphase Energy, Inc.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.
+
+from typing import cast
+
+import pytest
+from PySide6.QtGui import Qt, QPen, QColor
+import pyqtgraph as pg
+from pytestqt.qtbot import QtBot
+
+from pyqtgraph_scope_plots import (
+    VisibilityPlotWidget,
+    VisibilityToggleSignalsTable,
+    ColorPickerPlotWidget,
+    ColorPickerSignalsTable,
+)
+from pyqtgraph_scope_plots.color_signals_table import ColorPickerDataStateModel
+from pyqtgraph_scope_plots.visibility_toggle_table import VisibilityDataStateModel
+from .common_testdata import DATA_ITEMS, DATA
+
+
+@pytest.fixture()
+def color_plots(qtbot: QtBot) -> ColorPickerPlotWidget:
+    """Creates a signals plot with multiple data items"""
+    plots = ColorPickerPlotWidget()
+    plots.show_data_items(DATA_ITEMS)
+    plots.set_data(DATA)
+    qtbot.addWidget(plots)
+    plots.show()
+    qtbot.waitExposed(plots)
+    return plots
+
+
+def color_of_curve(curve: pg.PlotCurveItem) -> QColor:
+    return cast(QPen, curve.opts["pen"]).color()
+
+
+def test_color(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
+    color_plots.set_colors(["1"], QColor("pink"))
+    assert color_of_curve(color_plots._data_name_to_plot_item["1"]._data_graphics["1"][0]) == QColor("pink")
+
+    # rest should not have changed
+    assert color_of_curve(color_plots._data_name_to_plot_item["0"]._data_graphics["0"][0]) == QColor("yellow")
+    assert color_of_curve(color_plots._data_name_to_plot_item["2"]._data_graphics["2"][0]) == QColor("blue")
+
+
+def test_visibility_table(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
+    # TODO
+    pass
+
+
+def test_visibility_save(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
+    # TODO
+    model = color_plots._dump_data_model(["0", "1", "2"])
+
+
+def test_visibility_load(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
+    # TODO
+    color_table = ColorPickerSignalsTable(color_plots)
+    model = color_plots._dump_data_model(["0", "1", "2"])
+    cast(ColorPickerDataStateModel, model.data["1"]).color = "pink"
+
+    color_plots._load_model(model)
+    color_plots.set_data(DATA)  # trigger a curve-visibility update
+    color_table._update()  # trigger update

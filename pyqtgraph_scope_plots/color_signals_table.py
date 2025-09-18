@@ -71,7 +71,10 @@ class ColorPickerPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
             self._colors[data_name] = color
         if update:
             self.show_data_items(
-                [(data_item_name, color, plot_type) for data_item_name, (color, plot_type) in self._data_items.items()]
+                [
+                    (data_item_name, data_color, plot_type)
+                    for data_item_name, (data_color, plot_type) in self._data_items.items()
+                ]
             )
             self._update_plots()
             self.sigDataItemsUpdated.emit()

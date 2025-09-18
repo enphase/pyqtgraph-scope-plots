@@ -77,14 +77,14 @@ def test_color_save(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
     model = color_plots._dump_data_model(["0", "1", "2"])
 
     assert cast(ColorPickerDataStateModel, model.data["0"]).color is None
-    assert cast(ColorPickerDataStateModel, model.data["1"]).color == QColor("goldenrod")
+    assert cast(ColorPickerDataStateModel, model.data["1"]).color == QColor("goldenrod").name()
     assert cast(ColorPickerDataStateModel, model.data["2"]).color is None
 
 
 def test_color_load(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
     color_table = ColorPickerSignalsTable(color_plots)
     model = color_plots._dump_data_model(["0", "1", "2"])
-    cast(ColorPickerDataStateModel, model.data["1"]).color = QColor("goldenrod")
+    cast(ColorPickerDataStateModel, model.data["1"]).color = QColor("goldenrod").name()
 
     color_plots._load_model(model)
     color_plots.show_data_items(DATA_ITEMS)  # trigger a colors update

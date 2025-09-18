@@ -73,16 +73,21 @@ def test_color_table(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
 
 
 def test_color_save(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
-    # TODO
+    color_plots.set_colors(["1"], QColor("goldenrod"))
     model = color_plots._dump_data_model(["0", "1", "2"])
+
+    assert cast(ColorPickerDataStateModel, model.data["0"]).color is None
+    assert cast(ColorPickerDataStateModel, model.data["1"]).color == QColor("goldenrod")
+    assert cast(ColorPickerDataStateModel, model.data["2"]).color is None
 
 
 def test_color_load(qtbot: QtBot, color_plots: ColorPickerPlotWidget) -> None:
-    # TODO
     color_table = ColorPickerSignalsTable(color_plots)
     model = color_plots._dump_data_model(["0", "1", "2"])
-    cast(ColorPickerDataStateModel, model.data["1"]).color = "pink"
+    cast(ColorPickerDataStateModel, model.data["1"]).color = QColor("goldenrod")
 
     color_plots._load_model(model)
-    color_plots.set_data(DATA)  # trigger a curve-visibility update
+    color_plots.show_data_items(DATA_ITEMS)  # trigger a colors update
     color_table._update()  # trigger update
+    assert color_of_curve(color_plots._data_name_to_plot_item["1"]._data_graphics["1"][0]) == QColor("goldenrod")
+    assert color_table.item(1, 0).foreground().color() == QColor("goldenrod")

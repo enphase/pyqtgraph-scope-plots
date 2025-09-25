@@ -32,6 +32,7 @@ from .signals_table import HasRegionSignalsTable, DraggableSignalsTable, Signals
 
 class XyWindowModel(BaseModel):
     xy_data_items: List[Tuple[str, str]] = []  # list of (x, y) data items
+    xy_colors: Dict[Tuple[str, str], str] = {}  # (x, y) => QColor name
     x_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
     y_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
 
@@ -48,7 +49,7 @@ class BaseXyPlot(HasSaveLoadConfig):
         self._plots = plots
 
     @abstractmethod
-    def add_xy(self, x_name: str, y_name: str) -> None:
+    def add_xy(self, x_name: str, y_name: str, *, color: Optional[QColor] = None) -> None:
         """Adds a XY plot to the widget"""
         ...
 
@@ -82,6 +83,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         super()._write_model(model)
         assert isinstance(model, XyWindowModel)
         model.xy_data_items = self._xys
+        model.xy_colors = {xy: color.name() for xy, color in self._xy_colors.items()}
         viewbox = cast(pg.PlotItem, self.getPlotItem()).getViewBox()
         if viewbox.autoRangeEnabled()[0]:
             model.x_range = "auto"
@@ -96,7 +98,10 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         super()._load_model(model)
         assert isinstance(model, XyWindowModel)
         for xy_data_item in model.xy_data_items:
-            self.add_xy(*xy_data_item)
+            if xy_data_item in model.xy_colors:
+                self.add_xy(*xy_data_item, color=QColor(model.xy_colors[xy_data_item]))
+            else:
+                self.add_xy(*xy_data_item)
         viewbox = cast(pg.PlotItem, self.getPlotItem()).getViewBox()
         if model.x_range is not None and model.x_range != "auto":
             viewbox.setXRange(model.x_range[0], model.x_range[1], 0)
@@ -230,7 +235,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             y_index = bisect.bisect_left(y_ts, t)
             if x_index >= len(x_ts) or y_index >= len(y_ts) or x_ts[x_index] != t or y_ts[y_index] != t:
                 continue
-            color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
+            color = self._color_of(x_name, y_name)
             outputs.append((x_ys[x_index], y_ys[y_index], color))
         return outputs
 

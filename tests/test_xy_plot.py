@@ -79,6 +79,7 @@ def test_xy_create_ui(qtbot: QtBot, xy_table: XyTable) -> None:
     qtbot.waitSignal(xy_plot._xy_plots.sigXyDataItemsChanged)
     assert xy_plot is not None
     assert xy_plot._xy_plots._xys == [("1", "0")]
+    assert xy_plot._xy_plots._color_of("1", "0") == QColor("yellow")
 
     xy_table.clearSelection()
     xy_table.item(0, 0).setSelected(True)
@@ -87,6 +88,7 @@ def test_xy_create_ui(qtbot: QtBot, xy_table: XyTable) -> None:
     qtbot.waitSignal(xy_plot._xy_plots.sigXyDataItemsChanged)
     assert xy_plot is not None
     assert xy_plot._xy_plots._xys == [("0", "1")]
+    assert xy_plot._xy_plots._color_of("0", "1") == QColor("orange")
 
     qtbot.wait(10)  # wait for rendering to happen
 
@@ -97,6 +99,12 @@ def test_xy_close_cleanup(qtbot: QtBot, xy_table: XyTable) -> None:
     qtbot.waitUntil(lambda: len(xy_table._xy_plots) > 0)
     xy_plot.close()
     qtbot.waitUntil(lambda: not xy_table._xy_plots)
+
+
+def test_xy_color(qtbot: QtBot, xy_table: XyTable) -> None:
+    xy_plot = cast(XyPlotSplitter, xy_table.create_xy())
+    xy_plot.add_xy("0", "1", color=QColor("lavender"))
+    assert xy_plot._xy_plots._color_of("0", "1") == QColor("lavender")
 
 
 def test_xy_offset(qtbot: QtBot, xy_table: XyTable) -> None:

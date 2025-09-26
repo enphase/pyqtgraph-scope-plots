@@ -66,6 +66,7 @@ class BaseXyPlot(HasSaveLoadConfig):
 
 class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     _FADE_SEGMENTS = 10
+    _DEFAULT_COLOR = QColor("white")
 
     sigXyDataItemsChanged = Signal()
 
@@ -115,7 +116,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         if color is not None:
             return color
         else:
-            return self._plots._data_items.get(y_name, (QColor("white"), None))[0]
+            return self._plots._data_items.get(y_name, (self._DEFAULT_COLOR, None))[0]
 
     def add_xy(self, x_name: str, y_name: str, *, color: Optional[QColor] = None) -> None:
         if (x_name, y_name) not in self._xys:
@@ -235,8 +236,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             y_index = bisect.bisect_left(y_ts, t)
             if x_index >= len(x_ts) or y_index >= len(y_ts) or x_ts[x_index] != t or y_ts[y_index] != t:
                 continue
-            color = self._color_of(x_name, y_name)
-            outputs.append((x_ys[x_index], y_ys[y_index], color))
+            outputs.append((x_ys[x_index], y_ys[y_index], self._color_of(x_name, y_name)))
         return outputs
 
 

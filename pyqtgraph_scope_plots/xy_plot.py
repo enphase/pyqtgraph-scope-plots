@@ -32,6 +32,7 @@ from .signals_table import HasRegionSignalsTable, DraggableSignalsTable, Signals
 
 class XyWindowModel(BaseModel):
     xy_data_items: List[Tuple[str, str]] = []  # list of (x, y) data items
+    xy_colors: Dict[Tuple[str, str], str] = {}  # (x, y) => QColor name
     x_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
     y_range: Optional[Union[Tuple[float, float], Literal["auto"]]] = None
 
@@ -48,7 +49,7 @@ class BaseXyPlot(HasSaveLoadConfig):
         self._plots = plots
 
     @abstractmethod
-    def add_xy(self, x_name: str, y_name: str) -> None:
+    def add_xy(self, x_name: str, y_name: str, *, color: Optional[QColor] = None) -> None:
         """Adds a XY plot to the widget"""
         ...
 
@@ -65,6 +66,7 @@ class BaseXyPlot(HasSaveLoadConfig):
 
 class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
     _FADE_SEGMENTS = 10
+    _DEFAULT_COLOR = QColor("white")
 
     sigXyDataItemsChanged = Signal()
 
@@ -72,6 +74,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         super().__init__(plots)
         self._xys: List[Tuple[str, str]] = []
         self._xy_curves: Dict[Tuple[str, str], List[pg.PlotCurveItem]] = {}
+        self._xy_colors: Dict[Tuple[str, str], QColor] = {}  # empty entry if not specified
 
         plots.sigDataUpdated.connect(self._update_datasets)
         if isinstance(self._plots, LinkedMultiPlotWidget):
@@ -81,6 +84,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         super()._write_model(model)
         assert isinstance(model, XyWindowModel)
         model.xy_data_items = self._xys
+        model.xy_colors = {xy: color.name() for xy, color in self._xy_colors.items()}
         viewbox = cast(pg.PlotItem, self.getPlotItem()).getViewBox()
         if viewbox.autoRangeEnabled()[0]:
             model.x_range = "auto"
@@ -95,7 +99,10 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         super()._load_model(model)
         assert isinstance(model, XyWindowModel)
         for xy_data_item in model.xy_data_items:
-            self.add_xy(*xy_data_item)
+            if xy_data_item in model.xy_colors:
+                self.add_xy(*xy_data_item, color=QColor(model.xy_colors[xy_data_item]))
+            else:
+                self.add_xy(*xy_data_item)
         viewbox = cast(pg.PlotItem, self.getPlotItem()).getViewBox()
         if model.x_range is not None and model.x_range != "auto":
             viewbox.setXRange(model.x_range[0], model.x_range[1], 0)
@@ -104,14 +111,25 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         if model.x_range == "auto" or model.y_range == "auto":
             viewbox.enableAutoRange(x=model.x_range == "auto" or None, y=model.y_range == "auto" or None)
 
-    def add_xy(self, x_name: str, y_name: str) -> None:
+    def _color_of(self, x_name: str, y_name: str) -> QColor:
+        color = self._xy_colors.get((x_name, y_name))
+        if color is not None:
+            return color
+        else:
+            return self._plots._data_items.get(y_name, (self._DEFAULT_COLOR, None))[0]
+
+    def add_xy(self, x_name: str, y_name: str, *, color: Optional[QColor] = None) -> None:
         if (x_name, y_name) not in self._xys:
             self._xys.append((x_name, y_name))
+            if color is not None:
+                self._xy_colors[(x_name, y_name)] = color
             self._update_datasets()
             self.sigXyDataItemsChanged.emit()
 
     def remove_xy(self, x_name: str, y_name: str) -> None:
         self._xys.remove((x_name, y_name))
+        if (x_name, y_name) in self._xy_colors:
+            del self._xy_colors[(x_name, y_name)]
         self._update_datasets()
         self.sigXyDataItemsChanged.emit()
 
@@ -146,7 +164,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
         for x_name, y_name in self._xys:
             this_curve_list = self._xy_curves.setdefault((x_name, y_name), [])
             # PyQtGraph doesn't support native fade colors, so approximate with multiple segments
-            y_color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
+            color = self._color_of(x_name, y_name)
 
             for i in range(self._FADE_SEGMENTS):
                 if i == self._FADE_SEGMENTS - 1:  # last segment has a name for the legend
@@ -155,9 +173,9 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
                     curve_kwargs = {}
                 curve = pg.PlotCurveItem(x=[], y=[], **curve_kwargs)
                 segment_color = QColor(
-                    y_color.red() * (i + 1) // self._FADE_SEGMENTS,
-                    y_color.green() * (i + 1) // self._FADE_SEGMENTS,
-                    y_color.blue() * (i + 1) // self._FADE_SEGMENTS,
+                    color.red() * (i + 1) // self._FADE_SEGMENTS,
+                    color.green() * (i + 1) // self._FADE_SEGMENTS,
+                    color.blue() * (i + 1) // self._FADE_SEGMENTS,
                 )
                 curve.setPen(color=segment_color, width=1)
                 self.addItem(curve)
@@ -218,8 +236,7 @@ class XyPlotWidget(BaseXyPlot, pg.PlotWidget):  # type: ignore[misc]
             y_index = bisect.bisect_left(y_ts, t)
             if x_index >= len(x_ts) or y_index >= len(y_ts) or x_ts[x_index] != t or y_ts[y_index] != t:
                 continue
-            color, _ = self._plots._data_items.get(y_name, (QColor("white"), None))
-            outputs.append((x_ys[x_index], y_ys[y_index], color))
+            outputs.append((x_ys[x_index], y_ys[y_index], self._color_of(x_name, y_name)))
         return outputs
 
 
@@ -345,18 +362,16 @@ class XyPlotTable(MixinColsTable):
         self.setRowCount(0)  # clear table
         self.setRowCount(len(self._xy_plots._xys))
         for row, (x_name, y_name) in enumerate(self._xy_plots._xys):
+            color = self._xy_plots._color_of(x_name, y_name)
+
             x_item = SignalsTable._create_noneditable_table_item()
             x_item.setText(x_name)
-            x_color, _ = self._plots._data_items.get(x_name, (None, None))
-            if x_color is not None:
-                x_item.setForeground(x_color)
+            x_item.setForeground(color)
             self.setItem(row, self.COL_X_NAME, x_item)
 
             y_item = SignalsTable._create_noneditable_table_item()
             y_item.setText(y_name)
-            y_color, _ = self._plots._data_items.get(y_name, (None, None))
-            if y_color is not None:
-                y_item.setForeground(y_color)
+            y_item.setForeground(color)
             self.setItem(row, self.COL_Y_NAME, y_item)
 
 

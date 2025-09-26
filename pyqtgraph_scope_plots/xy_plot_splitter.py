@@ -11,10 +11,11 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-from typing import Type
+from typing import Type, Optional
 
 from PySide6 import QtGui
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QSplitter
 from pydantic import BaseModel
 
@@ -46,8 +47,8 @@ class XyPlotSplitter(BaseXyPlot, QSplitter):
         self._table = self._make_xy_plot_table()
         self.addWidget(self._table)
 
-    def add_xy(self, x_name: str, y_name: str) -> None:
-        self._xy_plots.add_xy(x_name, y_name)
+    def add_xy(self, x_name: str, y_name: str, *, color: Optional[QColor] = None) -> None:
+        self._xy_plots.add_xy(x_name, y_name, color=color)
 
     def remove_xy(self, x_name: str, y_name: str) -> None:
         self._xy_plots.remove_xy(x_name, y_name)

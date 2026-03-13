@@ -45,7 +45,6 @@ class PointOnZoomPlot(DataPlotCurveItem):
         self.getViewBox().sigRangeChanged.connect(self._on_range_changed)
 
     def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
-        """Clear existing state and generate new plot items for all data items"""
         parent_graphics = super()._generate_plot_items(data_items)
 
         self._point_scatters.clear()
@@ -68,7 +67,6 @@ class PointOnZoomPlot(DataPlotCurveItem):
         self._update_point_visibility(name, xs, ys)
 
     def _on_range_changed(self) -> None:
-        # Update visibility for all data items
         for name, (xs, ys) in self._data.items():
             self._update_point_visibility(name, xs, ys)
 
@@ -87,7 +85,6 @@ class PointOnZoomPlot(DataPlotCurveItem):
 
     def _calculate_visible_indices(self, xs: npt.NDArray[np.float64]) -> Optional[Tuple[int, int]]:
         """Calculate start and end indices of points to show, if zoomed in enough"""
-        # Get visible range using bisect
         viewbox = self.getViewBox()
         view_x_range = viewbox.viewRange()[0]
         start_idx = bisect.bisect_left(xs, view_x_range[0])

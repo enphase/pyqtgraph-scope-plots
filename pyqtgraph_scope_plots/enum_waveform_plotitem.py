@@ -82,7 +82,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
     def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
         if len(data_items) != 1:
             raise ValueError("EnumWaveformPlot only supports exactly one data item")
-        
+
         graphics_dict: Dict[str, List[pg.GraphicsObject]] = {}
         for name, color in data_items.items():
             self._curve_true = pg.PlotCurveItem(x=[], y=[], name=name)
@@ -90,12 +90,10 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
             self._curve_comp = pg.PlotCurveItem(x=[], y=[])
             self._curve_comp.setPen(color=color, width=1)
             graphics_dict[name] = [self._curve_true, self._curve_comp]
-        
+
         return graphics_dict
 
-    def _update_plot_data(
-        self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray
-    ) -> None:
+    def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
         # generate the control points for half of the waveform using numpy operations for efficiency
         ys_values, ys_int = np.unique(ys, return_inverse=True)  # map to integer for efficiency
         # do change detection to find edges, element is true if it is different from the next element

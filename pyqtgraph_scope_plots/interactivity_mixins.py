@@ -74,9 +74,7 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
         raise NotImplementedError
 
     @abstractmethod
-    def _update_plot_data(
-        self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray
-    ) -> None:
+    def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
         """Called when the data is updated, but the data items (and graphical objects) remain the same.
         Not re-creating the graphical objects helps performance slightly.
         May apply transforms, such as for rendering efficiency.
@@ -86,6 +84,7 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
 
 class DataPlotCurveItem(DataPlotItem):
     """DataPlotItem that generates a PlotCurveItem"""
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._curves: Dict[str, pg.PlotCurveItem] = {}
@@ -99,12 +98,10 @@ class DataPlotCurveItem(DataPlotItem):
             curve.setPen(color=color, width=1)
             self._curves[name] = curve
             graphics_dict[name] = [curve]
-        
+
         return graphics_dict
 
-    def _update_plot_data(
-        self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray
-    ) -> None:
+    def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
         self._curves[name].setData(x=xs, y=ys)
 
 

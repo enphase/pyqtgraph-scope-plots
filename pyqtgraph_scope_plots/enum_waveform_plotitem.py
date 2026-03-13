@@ -85,8 +85,9 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         return [curve_true, curve_comp]
 
     def _update_plot_data(
-        self, name: str, graphics: List[pg.GraphicsObject], xs: npt.NDArray[np.float64], ys: npt.NDArray
+        self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray
     ) -> None:
+        graphics = self._data_graphics[name]
         # generate the control points for half of the waveform using numpy operations for efficiency
         ys_values, ys_int = np.unique(ys, return_inverse=True)  # map to integer for efficiency
         # do change detection to find edges, element is true if it is different from the next element

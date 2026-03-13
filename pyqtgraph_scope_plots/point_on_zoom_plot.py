@@ -60,10 +60,11 @@ class PointOnZoomPlot(DataPlotCurveItem):
         return items
     
     def _update_plot_data(
-        self, name: str, graphics: List[pg.GraphicsObject], xs: npt.NDArray[np.float64], ys: npt.NDArray
+        self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray
     ) -> None:
         # Update the main curve
-        super()._update_plot_data(name, graphics[:1], xs, ys)
+        graphics = self._data_graphics[name]
+        super()._update_plot_data(name, xs, ys)
         
         # Update the scatter points if we have enough graphics items
         if len(graphics) >= 2:

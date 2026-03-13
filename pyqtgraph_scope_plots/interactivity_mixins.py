@@ -63,7 +63,7 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
             graphics = self._data_graphics.get(data_name)
             if graphics is None:  # not pre-defined in set_data_items, ignore
                 continue
-            self._update_plot_data(data_name, graphics, xs, ys)
+            self._update_plot_data(data_name, xs, ys)
 
     @abstractmethod
     def _generate_plot_items(self, name: str, color: QColor) -> List[pg.GraphicsObject]:
@@ -76,7 +76,7 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
 
     @abstractmethod
     def _update_plot_data(
-        self, name: str, graphics: List[pg.GraphicsObject], xs: npt.NDArray[np.float64], ys: npt.NDArray
+        self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray
     ) -> None:
         """Called when the data is updated, but the data items (and graphical objects) remain the same.
         Not re-creating the graphical objects helps performance slightly.
@@ -94,9 +94,9 @@ class DataPlotCurveItem(DataPlotItem):
         return [curve]
 
     def _update_plot_data(
-        self, name: str, graphics: List[pg.GraphicsObject], xs: npt.NDArray[np.float64], ys: npt.NDArray
+        self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray
     ) -> None:
-        assert len(graphics) == 1
+        graphics = self._data_graphics[name]
         curve = graphics[0]
         assert isinstance(curve, pg.PlotCurveItem)
         curve.setData(x=xs, y=ys)

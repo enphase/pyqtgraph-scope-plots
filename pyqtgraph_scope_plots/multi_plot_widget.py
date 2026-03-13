@@ -39,7 +39,7 @@ from .util import BaseTopModel, HasSaveLoadDataConfig
 
 
 class InteractivePlot(
-    PointOnZoomPlot, DraggableCursorPlot, NudgeablePlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DataPlotCurveItem
+    DraggableCursorPlot, NudgeablePlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot, PointOnZoomPlot, DataPlotCurveItem
 ):
     """PlotItem with interactivity mixins"""
 

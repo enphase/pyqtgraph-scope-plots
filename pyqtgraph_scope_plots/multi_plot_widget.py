@@ -34,11 +34,18 @@ from .interactivity_mixins import (
     DataPlotItem,
     NudgeablePlot,
 )
+from .point_on_zoom_plot import PointOnZoomPlot
 from .util import BaseTopModel, HasSaveLoadDataConfig
 
 
 class InteractivePlot(
-    DraggableCursorPlot, NudgeablePlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot, DataPlotCurveItem
+    DraggableCursorPlot,
+    NudgeablePlot,
+    PointsOfInterestPlot,
+    RegionPlot,
+    LiveCursorPlot,
+    PointOnZoomPlot,
+    DataPlotCurveItem,
 ):
     """PlotItem with interactivity mixins"""
 

@@ -45,7 +45,6 @@ class PointOnZoomPlot(DataPlotCurveItem):
         self.getViewBox().sigRangeChanged.connect(self._on_range_changed)
     
     def _generate_plot_items(self, name: str, color: QColor) -> List[pg.GraphicsObject]:
-        # Generate the main curve item first
         items = super()._generate_plot_items(name, color)
         
         # Create scatter plot item for points (initially empty and hidden)
@@ -56,31 +55,20 @@ class PointOnZoomPlot(DataPlotCurveItem):
         )
         scatter.hide()  # Initially hidden
         items.append(scatter)
+        self._point_scatters[name] = scatter
         
         return items
     
     def _update_plot_data(
         self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray
     ) -> None:
-        # Update the main curve
-        graphics = self._data_graphics[name]
         super()._update_plot_data(name, xs, ys)
-        
-        # Update the scatter points if we have enough graphics items
-        if len(graphics) >= 2:
-            scatter = graphics[1]
-            assert isinstance(scatter, pg.ScatterPlotItem)
-            self._point_scatters[name] = scatter
-            
-            # Update point visibility based on current zoom
-            self._update_point_visibility(name, xs, ys)
+        self._update_point_visibility(name, xs, ys)
     
-    def _on_range_changed(self, view_range: Optional[tuple[tuple[float, float], tuple[float, float]]] = None) -> None:
-        """Called when the view range changes (zoom/pan)"""
+    def _on_range_changed(self) -> None:
         # Update visibility for all data items
         for name, (xs, ys) in self._data.items():
-            if name in self._point_scatters:
-                self._update_point_visibility(name, xs, ys)
+            self._update_point_visibility(name, xs, ys)
     
     def _update_point_visibility(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
         """Update point visibility and data for a specific data item based on current zoom"""

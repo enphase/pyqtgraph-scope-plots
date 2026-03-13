@@ -71,6 +71,7 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
         May return multiple items, but the first one should be the main one. Must be nonempty.
         Only one should have a name, which is used for the legend.
         No data is passed in at this point, set_data will be called later.
+        This should store graphics objects to be updated later in instance variables.
         INTERNAL API - STABILITY NOT GUARANTEED"""
         raise NotImplementedError
 

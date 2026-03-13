@@ -13,7 +13,7 @@
 #    limitations under the License.
 
 import bisect
-from typing import List, Tuple, Optional, Any, cast, Mapping
+from typing import List, Tuple, Optional, Any, cast, Mapping, Dict
 
 import numpy as np
 import numpy.typing as npt
@@ -79,17 +79,23 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         else:
             return []
 
-    def _generate_plot_items(self, name: str, color: QColor) -> List[pg.GraphicsObject]:
-        self._curve_true = pg.PlotCurveItem(x=[], y=[], name=name)
-        self._curve_true.setPen(color=color, width=1)
-        self._curve_comp = pg.PlotCurveItem(x=[], y=[])
-        self._curve_comp.setPen(color=color, width=1)
-        return [self._curve_true, self._curve_comp]
+    def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
+        if len(data_items) != 1:
+            raise ValueError("EnumWaveformPlot only supports exactly one data item")
+        
+        graphics_dict: Dict[str, List[pg.GraphicsObject]] = {}
+        for name, color in data_items.items():
+            self._curve_true = pg.PlotCurveItem(x=[], y=[], name=name)
+            self._curve_true.setPen(color=color, width=1)
+            self._curve_comp = pg.PlotCurveItem(x=[], y=[])
+            self._curve_comp.setPen(color=color, width=1)
+            graphics_dict[name] = [self._curve_true, self._curve_comp]
+        
+        return graphics_dict
 
     def _update_plot_data(
         self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray
     ) -> None:
-        graphics = self._data_graphics[name]
         # generate the control points for half of the waveform using numpy operations for efficiency
         ys_values, ys_int = np.unique(ys, return_inverse=True)  # map to integer for efficiency
         # do change detection to find edges, element is true if it is different from the next element

@@ -49,7 +49,7 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
                 self.removeItem(item)
 
         self._data_items = dict(data_items)
-        self._data_graphics = {name: self._generate_plot_items(name, color) for name, color in data_items.items()}
+        self._data_graphics = self._generate_plot_items(data_items)
         for graphics in self._data_graphics.values():
             for item in graphics:
                 self.addItem(item)
@@ -66,11 +66,9 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
             self._update_plot_data(data_name, xs, ys)
 
     @abstractmethod
-    def _generate_plot_items(self, name: str, color: QColor) -> List[pg.GraphicsObject]:
-        """Defines how to generate a pyqtgraph graphics item (eg, PlotCurveItem) from a data definition.
-        May return multiple items, but the first one should be the main one. Must be nonempty.
-        Only one should have a name, which is used for the legend.
-        No data is passed in at this point, set_data will be called later.
+    def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
+        """Defines how to generate pyqtgraph graphics items from data definitions.
+        Returns a mapping of data item names to their graphics objects.
         This should store graphics objects to be updated later in instance variables.
         INTERNAL API - STABILITY NOT GUARANTEED"""
         raise NotImplementedError
@@ -92,11 +90,17 @@ class DataPlotCurveItem(DataPlotItem):
         super().__init__(*args, **kwargs)
         self._curves: Dict[str, pg.PlotCurveItem] = {}
 
-    def _generate_plot_items(self, name: str, color: QColor) -> List[pg.GraphicsObject]:
-        curve = pg.PlotCurveItem(x=[], y=[], name=name)
-        curve.setPen(color=color, width=1)
-        self._curves[name] = curve
-        return [curve]
+    def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
+        """Clear existing state and generate new plot items for all data items"""
+        self._curves.clear()
+        graphics_dict: Dict[str, List[pg.GraphicsObject]] = {}
+        for name, color in data_items.items():
+            curve = pg.PlotCurveItem(x=[], y=[], name=name)
+            curve.setPen(color=color, width=1)
+            self._curves[name] = curve
+            graphics_dict[name] = [curve]
+        
+        return graphics_dict
 
     def _update_plot_data(
         self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray

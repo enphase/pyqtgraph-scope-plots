@@ -17,7 +17,7 @@ Mixin for PlotItem that draws points at each data point when zoomed in enough.
 """
 
 import bisect
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, Mapping
 
 import numpy as np
 import pyqtgraph as pg
@@ -44,21 +44,23 @@ class PointOnZoomPlot(DataPlotCurveItem):
         self._point_scatters: Dict[str, pg.ScatterPlotItem] = {}
         self.getViewBox().sigRangeChanged.connect(self._on_range_changed)
     
-    def _generate_plot_items(self, name: str, color: QColor) -> List[pg.GraphicsObject]:
-        items = super()._generate_plot_items(name, color)
+    def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
+        """Clear existing state and generate new plot items for all data items"""
+        parent_graphics = super()._generate_plot_items(data_items)
+
+        self._point_scatters.clear()
+        for name, color in data_items.items():
+            scatter = pg.ScatterPlotItem(
+                x=[], y=[], 
+                pen=color, 
+                brush=color,
+                size=4,
+            )
+            scatter.hide()  # Initially hidden
+            parent_graphics[name].append(scatter)
+            self._point_scatters[name] = scatter
         
-        # Create scatter plot item for points (initially empty and hidden)
-        scatter = pg.ScatterPlotItem(
-            x=[], y=[], 
-            pen=color, 
-            brush=color,
-            size=4,
-        )
-        scatter.hide()  # Initially hidden
-        items.append(scatter)
-        self._point_scatters[name] = scatter
-        
-        return items
+        return parent_graphics
     
     def _update_plot_data(
         self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray

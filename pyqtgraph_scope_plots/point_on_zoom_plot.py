@@ -21,7 +21,7 @@ from typing import Dict, List, Optional, Any, Tuple, Mapping
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6.QtCore import QPointF
+from PySide6.QtCore import QPointF, QTimer
 from PySide6.QtGui import QColor
 from numpy import typing as npt
 
@@ -42,6 +42,7 @@ class PointOnZoomPlot(DataPlotCurveItem):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._point_scatters: Dict[str, pg.ScatterPlotItem] = {}
+        self._pending_range_update = False
         self.getViewBox().sigRangeChanged.connect(self._on_range_changed)
 
     def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
@@ -67,8 +68,17 @@ class PointOnZoomPlot(DataPlotCurveItem):
         self._update_point_visibility(name, xs, ys)
 
     def _on_range_changed(self) -> None:
-        for name, (xs, ys) in self._data.items():
-            self._update_point_visibility(name, xs, ys)
+        if self._pending_range_update:
+            return
+        self._pending_range_update = True
+
+        # this may be called before mapFromView produces updated results, so defer the update
+        def _deferred_update() -> None:
+            self._pending_range_update = False
+            for name, (xs, ys) in self._data.items():
+                self._update_point_visibility(name, xs, ys)
+
+        QTimer.singleShot(0, _deferred_update)
 
     def _update_point_visibility(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
         """Update point visibility and data for a specific data item based on current zoom"""
@@ -105,9 +115,11 @@ class PointOnZoomPlot(DataPlotCurveItem):
         if average_spacing < self.MIN_POINT_SPACING_PX:
             return None
 
-        # Check minimum-spacing between points
+        # Check minimum-spacing between points using current view transform
         pixel_x_coords = [self.mapFromView(QPointF(x, 0)).x() for x in xs[start_idx:end_idx]]
         spacings = [abs(pixel_x_coords[i + 1] - pixel_x_coords[i]) for i in range(len(pixel_x_coords) - 1)]
+        if not spacings:
+            return (start_idx, end_idx)
         min_spacing = min(spacings)
         if min_spacing >= self.MIN_POINT_SPACING_PX:
             return (start_idx, end_idx)

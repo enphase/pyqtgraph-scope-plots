@@ -42,7 +42,11 @@ class PointOnZoomPlot(DataPlotCurveItem):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._point_scatters: Dict[str, pg.ScatterPlotItem] = {}
+        # range update may be called before mapFromView produces updated results, so defer the update
         self._pending_range_update = False
+        self._range_update_timer = QTimer(self)
+        self._range_update_timer.setSingleShot(True)
+        self._range_update_timer.timeout.connect(self._do_range_update)
         self.getViewBox().sigRangeChanged.connect(self._on_range_changed)
 
     def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
@@ -72,13 +76,15 @@ class PointOnZoomPlot(DataPlotCurveItem):
             return
         self._pending_range_update = True
 
-        # this may be called before mapFromView produces updated results, so defer the update
-        def _deferred_update() -> None:
-            self._pending_range_update = False
-            for name, (xs, ys) in self._data.items():
-                self._update_point_visibility(name, xs, ys)
+        self._range_update_timer.start(0)
 
-        QTimer.singleShot(0, _deferred_update)
+    def _do_range_update(self) -> None:
+        self._pending_range_update = False
+        for name, (xs, ys) in self._data.items():
+            scatter = self._point_scatters.get(name)
+            if scatter is None:
+                continue
+            self._update_point_visibility(name, xs, ys)
 
     def _update_point_visibility(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
         """Update point visibility and data for a specific data item based on current zoom"""

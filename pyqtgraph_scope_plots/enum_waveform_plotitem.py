@@ -35,6 +35,8 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         self._edges = np.array([])  # list of x positions of edges, sorted but not necessarily unique
         self._curves_labels = TextItemCollection(self, anchor=(0, 0.5))
         self._sample_label = pg.TextItem()  # for character width, assumed boundingRect in screen coordinates
+        self._curve_true = pg.PlotCurveItem(x=[], y=[])
+        self._curve_comp = pg.PlotCurveItem(x=[], y=[])
 
         self.sigXRangeChanged.connect(self._update_plot_labels)
 
@@ -78,11 +80,11 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
             return []
 
     def _generate_plot_items(self, name: str, color: QColor) -> List[pg.GraphicsObject]:
-        curve_true = pg.PlotCurveItem(x=[], y=[], name=name)
-        curve_true.setPen(color=color, width=1)
-        curve_comp = pg.PlotCurveItem(x=[], y=[])
-        curve_comp.setPen(color=color, width=1)
-        return [curve_true, curve_comp]
+        self._curve_true = pg.PlotCurveItem(x=[], y=[], name=name)
+        self._curve_true.setPen(color=color, width=1)
+        self._curve_comp = pg.PlotCurveItem(x=[], y=[])
+        self._curve_comp.setPen(color=color, width=1)
+        return [self._curve_true, self._curve_comp]
 
     def _update_plot_data(
         self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray
@@ -120,12 +122,8 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
 
         self._edges = np.take(xs, changes_prechanges_indices)
 
-        assert len(graphics) == 2
-        curve_true, curve_comp = graphics
-        assert isinstance(curve_true, pg.PlotCurveItem)
-        curve_true.setData(x=self._edges, y=heights)
-        assert isinstance(curve_comp, pg.PlotCurveItem)
-        curve_comp.setData(x=self._edges, y=np.zeros(len(heights)) - heights)
+        self._curve_true.setData(x=self._edges, y=heights)
+        self._curve_comp.setData(x=self._edges, y=np.zeros(len(heights)) - heights)
 
     def resizeEvent(self, ev: Any) -> None:
         super().resizeEvent(ev)

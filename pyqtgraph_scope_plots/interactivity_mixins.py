@@ -88,19 +88,20 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
 
 class DataPlotCurveItem(DataPlotItem):
     """DataPlotItem that generates a PlotCurveItem"""
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._curves: Dict[str, pg.PlotCurveItem] = {}
 
     def _generate_plot_items(self, name: str, color: QColor) -> List[pg.GraphicsObject]:
         curve = pg.PlotCurveItem(x=[], y=[], name=name)
         curve.setPen(color=color, width=1)
+        self._curves[name] = curve
         return [curve]
 
     def _update_plot_data(
         self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray
     ) -> None:
-        graphics = self._data_graphics[name]
-        curve = graphics[0]
-        assert isinstance(curve, pg.PlotCurveItem)
-        curve.setData(x=xs, y=ys)
+        self._curves[name].setData(x=xs, y=ys)
 
 
 class DeltaAxisItem(pg.AxisItem):  # type: ignore[misc]

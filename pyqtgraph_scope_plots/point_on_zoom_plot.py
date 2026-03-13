@@ -101,7 +101,7 @@ class PointOnZoomPlot(DataPlotCurveItem):
         widget_width = viewbox.width()
         if widget_width <= 0:
             return None
-        average_spacing = widget_width / visible_count
+        average_spacing = widget_width / (visible_count - 1)
         if average_spacing < self.MIN_POINT_SPACING_PX:
             return None
 

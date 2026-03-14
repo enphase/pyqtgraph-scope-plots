@@ -17,6 +17,7 @@ Mixin for PlotItem that draws points at each data point when zoomed in enough.
 """
 
 import bisect
+from abc import abstractmethod
 from typing import Dict, List, Optional, Any, Tuple, Mapping
 
 import numpy as np
@@ -25,23 +26,13 @@ from PySide6.QtCore import QPointF, QTimer
 from PySide6.QtGui import QColor
 from numpy import typing as npt
 
-from .interactivity_mixins import DataPlotCurveItem
+from .interactivity_mixins import DataPlotCurveItem, DataPlotItem
 
 
-class PointOnZoomPlot(DataPlotCurveItem):
-    """Mixin for PlotItem that draws points at each data point when zoomed in enough.
-
-    Points are shown when the minimum spacing between data points on the X axis
-    exceeds MIN_POINT_SPACING_PX pixels. This is dynamic and responds to zoom changes
-    and data updates.
-    """
-
-    # Configurable constant: minimum pixel spacing between points to show them
-    MIN_POINT_SPACING_PX: float = 8.0
-
+class BasePointOnZoomPlot(DataPlotItem):
+    """Base mixin that provides some infrastructure for point-on-zoom functionality."""
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._point_scatters: Dict[str, pg.ScatterPlotItem] = {}
         # range update may be called before mapFromView produces updated results, so defer the update
         self._pending_range_update = False
         self._range_update_timer = QTimer(self)
@@ -49,27 +40,15 @@ class PointOnZoomPlot(DataPlotCurveItem):
         self._range_update_timer.timeout.connect(self._do_range_update)
         self.getViewBox().sigRangeChanged.connect(self._on_range_changed)
 
-    def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
-        parent_graphics = super()._generate_plot_items(data_items)
-
-        self._point_scatters.clear()
-        for name, color in data_items.items():
-            scatter = pg.ScatterPlotItem(
-                x=[],
-                y=[],
-                pen=color,
-                brush=color,
-                size=4,
-            )
-            scatter.hide()  # Initially hidden
-            parent_graphics[name].append(scatter)
-            self._point_scatters[name] = scatter
-
-        return parent_graphics
+    @abstractmethod
+    def _update_points(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
+        """Update point visibility and data for a specific data item based on current zoom.
+        This may be called in response to new data or changed zoom."""
+        pass
 
     def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
         super()._update_plot_data(name, xs, ys)
-        self._update_point_visibility(name, xs, ys)
+        self._update_points(name, xs, ys)
 
     def _on_range_changed(self) -> None:
         if self._pending_range_update:
@@ -84,20 +63,7 @@ class PointOnZoomPlot(DataPlotCurveItem):
             scatter = self._point_scatters.get(name)
             if scatter is None:
                 continue
-            self._update_point_visibility(name, xs, ys)
-
-    def _update_point_visibility(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
-        """Update point visibility and data for a specific data item based on current zoom"""
-        points_to_show = self._calculate_visible_indices(xs)
-        scatter = self._point_scatters[name]
-        if points_to_show is None:
-            scatter.hide()
-        else:
-            start_idx, end_idx = points_to_show
-            visible_xs = xs[start_idx:end_idx]
-            visible_ys = ys[start_idx:end_idx]
-            scatter.setData(x=visible_xs, y=visible_ys)
-            scatter.show()
+            self._update_points(name, xs, ys)
 
     def _calculate_visible_indices(self, xs: npt.NDArray[np.float64]) -> Optional[Tuple[int, int]]:
         """Calculate start and end indices of points to show, if zoomed in enough"""
@@ -131,3 +97,48 @@ class PointOnZoomPlot(DataPlotCurveItem):
             return (start_idx, end_idx)
         else:
             return None
+
+
+class PointOnZoomPlot(DataPlotCurveItem, BasePointOnZoomPlot):
+    """Mixin for PlotItem that draws points at each data point when zoomed in enough.
+
+    Points are shown when the minimum spacing between data points on the X axis
+    exceeds MIN_POINT_SPACING_PX pixels. This is dynamic and responds to zoom changes
+    and data updates.
+    """
+    # Configurable constant: minimum pixel spacing between points to show them
+    MIN_POINT_SPACING_PX: float = 8.0
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._point_scatters: Dict[str, pg.ScatterPlotItem] = {}
+
+    def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
+        parent_graphics = super()._generate_plot_items(data_items)
+
+        self._point_scatters.clear()
+        for name, color in data_items.items():
+            scatter = pg.ScatterPlotItem(
+                x=[],
+                y=[],
+                pen=color,
+                brush=color,
+                size=4,
+            )
+            scatter.hide()  # Initially hidden
+            parent_graphics[name].append(scatter)
+            self._point_scatters[name] = scatter
+
+        return parent_graphics
+
+    def _update_points(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
+        points_to_show = self._calculate_visible_indices(xs)
+        scatter = self._point_scatters[name]
+        if points_to_show is None:
+            scatter.hide()
+        else:
+            start_idx, end_idx = points_to_show
+            visible_xs = xs[start_idx:end_idx]
+            visible_ys = ys[start_idx:end_idx]
+            scatter.setData(x=visible_xs, y=visible_ys)
+            scatter.show()

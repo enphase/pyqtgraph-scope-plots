@@ -50,7 +50,7 @@ class BasePointOnZoomPlot(DataPlotItem):
     def _update_points(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
         """Update point visibility and data for a specific data item based on current zoom.
         This may be called in response to new data or changed zoom."""
-        pass
+        raise NotImplementedError
 
     def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
         super()._update_plot_data(name, xs, ys)
@@ -184,5 +184,5 @@ class EnumPointOnZoomPlot(EnumWaveformPlot, BasePointOnZoomPlot):
             visible_xs = xs[start_idx:end_idx]
             ys_true = np.ones(end_idx - start_idx)
             ys_comp = -np.ones(end_idx - start_idx)
-            scatter.setData(x=np.concat([visible_xs, visible_xs]), y=np.concat([ys_true, ys_comp]))
+            scatter.setData(x=np.concatenate([visible_xs, visible_xs]), y=np.concatenate([ys_true, ys_comp]))
             scatter.show()

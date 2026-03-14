@@ -26,11 +26,17 @@ from PySide6.QtCore import QPointF, QTimer
 from PySide6.QtGui import QColor
 from numpy import typing as npt
 
+from .enum_waveform_plotitem import EnumWaveformPlot
 from .interactivity_mixins import DataPlotCurveItem, DataPlotItem
 
 
 class BasePointOnZoomPlot(DataPlotItem):
-    """Base mixin that provides some infrastructure for point-on-zoom functionality."""
+    """Base mixin that provides some infrastructure for point-on-zoom functionality.
+
+    Points are shown when the minimum spacing between data points on the X axis
+    exceeds MIN_POINT_SPACING_PX pixels. This is dynamic and responds to zoom changes
+    and data updates."""
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         # range update may be called before mapFromView produces updated results, so defer the update
@@ -100,12 +106,8 @@ class BasePointOnZoomPlot(DataPlotItem):
 
 
 class PointOnZoomPlot(DataPlotCurveItem, BasePointOnZoomPlot):
-    """Mixin for PlotItem that draws points at each data point when zoomed in enough.
+    """Mixin for PlotItem that draws points at each data point when zoomed in enough."""
 
-    Points are shown when the minimum spacing between data points on the X axis
-    exceeds MIN_POINT_SPACING_PX pixels. This is dynamic and responds to zoom changes
-    and data updates.
-    """
     # Configurable constant: minimum pixel spacing between points to show them
     MIN_POINT_SPACING_PX: float = 8.0
 
@@ -141,4 +143,46 @@ class PointOnZoomPlot(DataPlotCurveItem, BasePointOnZoomPlot):
             visible_xs = xs[start_idx:end_idx]
             visible_ys = ys[start_idx:end_idx]
             scatter.setData(x=visible_xs, y=visible_ys)
+            scatter.show()
+
+
+class EnumPointOnZoomPlot(EnumWaveformPlot, BasePointOnZoomPlot):
+    """Mixin for PlotItem that draws points at each data point when zoomed in enough."""
+
+    # Configurable constant: minimum pixel spacing between points to show them
+    MIN_POINT_SPACING_PX: float = 8.0
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._point_scatters: Dict[str, pg.ScatterPlotItem] = {}
+
+    def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
+        parent_graphics = super()._generate_plot_items(data_items)
+
+        self._point_scatters.clear()
+        for name, color in data_items.items():
+            scatter = pg.ScatterPlotItem(
+                x=[],
+                y=[],
+                pen=color,
+                brush=color,
+                size=4,
+            )
+            scatter.hide()  # Initially hidden
+            parent_graphics[name].append(scatter)
+            self._point_scatters[name] = scatter
+
+        return parent_graphics
+
+    def _update_points(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
+        points_to_show = self._calculate_visible_indices(xs)
+        scatter = self._point_scatters[name]
+        if points_to_show is None:
+            scatter.hide()
+        else:
+            start_idx, end_idx = points_to_show
+            visible_xs = xs[start_idx:end_idx]
+            ys_true = np.ones(end_idx - start_idx)
+            ys_comp = -np.ones(end_idx - start_idx)
+            scatter.setData(x=np.concat([visible_xs, visible_xs]), y=np.concat([ys_true, ys_comp]))
             scatter.show()

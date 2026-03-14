@@ -34,7 +34,7 @@ from .interactivity_mixins import (
     DataPlotItem,
     NudgeablePlot,
 )
-from .point_on_zoom_plot import PointOnZoomPlot
+from .point_on_zoom_plot import PointOnZoomPlot, EnumPointOnZoomPlot
 from .util import BaseTopModel, HasSaveLoadDataConfig
 
 
@@ -51,7 +51,13 @@ class InteractivePlot(
 
 
 class EnumWaveformInteractivePlot(
-    DraggableCursorPlot, NudgeablePlot, PointsOfInterestPlot, RegionPlot, LiveCursorPlot, EnumWaveformPlot
+    DraggableCursorPlot,
+    NudgeablePlot,
+    PointsOfInterestPlot,
+    RegionPlot,
+    LiveCursorPlot,
+    EnumPointOnZoomPlot,
+    EnumWaveformPlot,
 ):
     """Enum plot with all the interactivity mixins"""
 

@@ -52,9 +52,10 @@ class BasePointOnZoomPlot(DataPlotItem):
         This may be called in response to new data or changed zoom."""
         raise NotImplementedError
 
-    def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
-        super()._update_plot_data(name, xs, ys)
-        self._update_points(name, xs, ys)
+    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray]]) -> None:
+        super().set_data(data)
+        for data_name, (xs, ys) in data.items():
+            self._update_points(data_name, xs, ys)
 
     def _on_range_changed(self) -> None:
         if self._pending_range_update:

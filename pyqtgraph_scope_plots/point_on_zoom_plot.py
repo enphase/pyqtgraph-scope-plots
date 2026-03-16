@@ -50,30 +50,24 @@ class BasePointOnZoomPlot(DataPlotItem):
         self.getViewBox().sigRangeChanged.connect(self._on_range_changed)
 
     @abstractmethod
-    def _update_points(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
-        """Update point visibility and data for a specific data item based on current zoom.
+    def _update_points(self) -> None:
+        """Update point visibility based on current zoom.
         This may be called in response to new data or changed zoom."""
         raise NotImplementedError
 
     def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray]]) -> None:
         super().set_data(data)
-        for data_name, (xs, ys) in data.items():
-            self._update_points(data_name, xs, ys)
+        self._update_points()
 
     def _on_range_changed(self) -> None:
         if self._pending_range_update:
             return
         self._pending_range_update = True
-
         self._range_update_timer.start(0)
 
     def _do_range_update(self) -> None:
         self._pending_range_update = False
-        for name, (xs, ys) in self._data.items():
-            scatter = self._point_scatters.get(name)
-            if scatter is None:
-                continue
-            self._update_points(name, xs, ys)
+        self._update_points()
 
     def _calculate_visible_indices(self, xs: npt.NDArray[np.float64]) -> Optional[Tuple[int, int]]:
         """Calculate start and end indices of points to show, if zoomed in enough"""
@@ -134,17 +128,22 @@ class PointOnZoomPlot(DataPlotCurveItem, BasePointOnZoomPlot):
 
         return parent_graphics
 
-    def _update_points(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
-        points_to_show = self._calculate_visible_indices(xs)
-        scatter = self._point_scatters[name]
-        if points_to_show is None:
-            scatter.hide()
-        else:
-            start_idx, end_idx = points_to_show
-            visible_xs = xs[start_idx:end_idx]
-            visible_ys = ys[start_idx:end_idx]
-            scatter.setData(x=visible_xs, y=visible_ys)
-            scatter.show()
+    def _update_points(self) -> None:
+        for name, scatter in self._point_scatters.items():
+            xs, ys = self._data.get(name, (None, None))
+            if xs is None or ys is None:
+                scatter.hide()
+                continue
+
+            points_to_show = self._calculate_visible_indices(xs)
+            if points_to_show is None:
+                scatter.hide()
+            else:
+                start_idx, end_idx = points_to_show
+                visible_xs = xs[start_idx:end_idx]
+                visible_ys = ys[start_idx:end_idx]
+                scatter.setData(x=visible_xs, y=visible_ys)
+                scatter.show()
 
 
 class EnumPointOnZoomPlot(EnumWaveformPlot, BasePointOnZoomPlot):
@@ -172,15 +171,20 @@ class EnumPointOnZoomPlot(EnumWaveformPlot, BasePointOnZoomPlot):
 
         return parent_graphics
 
-    def _update_points(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
-        points_to_show = self._calculate_visible_indices(xs)
-        scatter = self._point_scatters[name]
-        if points_to_show is None:
-            scatter.hide()
-        else:
-            start_idx, end_idx = points_to_show
-            visible_xs = xs[start_idx:end_idx]
-            ys_true = np.ones(end_idx - start_idx)
-            ys_comp = -np.ones(end_idx - start_idx)
-            scatter.setData(x=np.concatenate([visible_xs, visible_xs]), y=np.concatenate([ys_true, ys_comp]))
-            scatter.show()
+    def _update_points(self) -> None:
+        for name, scatter in self._point_scatters.items():
+            xs, _ = self._data.get(name, (None, None))
+            if xs is None:
+                scatter.hide()
+                continue
+
+            points_to_show = self._calculate_visible_indices(xs)
+            if points_to_show is None:
+                scatter.hide()
+            else:
+                start_idx, end_idx = points_to_show
+                visible_xs = xs[start_idx:end_idx]
+                ys_true = np.ones(end_idx - start_idx)
+                ys_comp = -np.ones(end_idx - start_idx)
+                scatter.setData(x=np.concatenate([visible_xs, visible_xs]), y=np.concatenate([ys_true, ys_comp]))
+                scatter.show()

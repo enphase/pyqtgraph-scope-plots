@@ -41,7 +41,7 @@ class AllDataDict:
 
     def __init__(
         self,
-        data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
+        data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[Any]]],
     ):
         self._x = float("NaN")
         self._data = data
@@ -91,7 +91,7 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
         self._transforms: Dict[str, Tuple[str, Any]] = {}  # (expr str, parsed)
         self._transforms_errs: Dict[str, Optional[Exception]] = {}
         self._transforms_cached_results = IdentityCacheDict[
-            npt.NDArray[np.float64], npt.NDArray[np.float64]
+            npt.NDArray[Any], npt.NDArray[Any]
         ]()  # src data -> output data
 
         super().__init__(*args, **kwargs)
@@ -115,11 +115,12 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
                 except Exception as e:
                     print(f"failed to restore transform fn {data_model.transform}: {e}")  # TODO better logging
 
+    T = TypeVar("T", bound=np.generic)
     def _apply_transform(
         self,
         data_name: str,
-        all_data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[Any]]],
-    ) -> Union[npt.NDArray[np.float64], Exception]:
+        all_data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[T]]],
+    ) -> Union[npt.NDArray[T], Exception]:
         """Applies a transform to the specified data_name and data, using self._table.transform.
         Returns the transformed data, which may be the input data if no transform is specified.
         """
@@ -156,7 +157,6 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
         self._transforms_cached_results.set(ys, expr, input_all_data_refs, result)
         return result
 
-    T = TypeVar("T", bound=np.generic)
     def _transform_data(
         self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[T]]]
     ) -> Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[T]]]:

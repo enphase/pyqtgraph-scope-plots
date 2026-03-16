@@ -37,6 +37,9 @@ class BasePointOnZoomPlot(DataPlotItem):
     exceeds MIN_POINT_SPACING_PX pixels. This is dynamic and responds to zoom changes
     and data updates."""
 
+    # Configurable constant: minimum pixel spacing between points to show them
+    MIN_POINT_SPACING_PX: float = 8.0
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         # range update may be called before mapFromView produces updated results, so defer the update
@@ -109,9 +112,6 @@ class BasePointOnZoomPlot(DataPlotItem):
 class PointOnZoomPlot(DataPlotCurveItem, BasePointOnZoomPlot):
     """Mixin for PlotItem that draws points at each data point when zoomed in enough."""
 
-    # Configurable constant: minimum pixel spacing between points to show them
-    MIN_POINT_SPACING_PX: float = 8.0
-
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._point_scatters: Dict[str, pg.ScatterPlotItem] = {}
@@ -149,9 +149,6 @@ class PointOnZoomPlot(DataPlotCurveItem, BasePointOnZoomPlot):
 
 class EnumPointOnZoomPlot(EnumWaveformPlot, BasePointOnZoomPlot):
     """Mixin for PlotItem that draws points at each data point when zoomed in enough."""
-
-    # Configurable constant: minimum pixel spacing between points to show them
-    MIN_POINT_SPACING_PX: float = 8.0
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

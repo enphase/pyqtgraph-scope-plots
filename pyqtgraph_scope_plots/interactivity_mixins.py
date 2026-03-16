@@ -40,7 +40,7 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
         super().__init__(*args, **kwargs)
         self._data_items: Dict[str, QColor] = {}
         self._data_graphics: Dict[str, List[pg.GraphicsObject]] = {}
-        self._data: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray]] = {}
+        self._data: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray[Any]]] = {}
 
     def set_data_items(self, data_items: Mapping[str, QColor]) -> None:
         """Generates plot items for the input data items."""
@@ -56,7 +56,7 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
 
         self.set_data(self._data)  # don't clear existing data
 
-    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray]]) -> None:
+    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[Any]]]) -> None:
         """Updates data for plots defined in set_data_items."""
         self._data = dict(data)
         for data_name, (xs, ys) in data.items():
@@ -74,7 +74,7 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
         raise NotImplementedError
 
     @abstractmethod
-    def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
+    def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray[Any]) -> None:
         """Called when the data is updated, but the data items (and graphical objects) remain the same.
         Not re-creating the graphical objects helps performance slightly.
         May apply transforms, such as for rendering efficiency.
@@ -101,7 +101,7 @@ class DataPlotCurveItem(DataPlotItem):
 
         return graphics_dict
 
-    def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
+    def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray[Any]) -> None:
         self._curves[name].setData(x=xs, y=ys)
 
 
@@ -178,7 +178,7 @@ class SnappableHoverPlot(DataPlotCurveItem):
     def _snap_pos(self, target_pos: QPointF, x_lo: float, x_hi: float) -> Optional[QPointF]:
         """Returns the closest point in the snappable data set to the target_pos, with x-value between x_lo and x_hi."""
         # closest point for each curve: (data, index, distance)
-        data_index_dists: List[Tuple[Tuple[npt.NDArray[np.float64], npt.NDArray], int, float]] = []
+        data_index_dists: List[Tuple[Tuple[npt.NDArray[np.float64], npt.NDArray[Any]], int, float]] = []
         for name, (xs, ys) in self._data.items():
             data_graphics = self._data_graphics.get(name)
             if not data_graphics or not data_graphics[0].isVisible():

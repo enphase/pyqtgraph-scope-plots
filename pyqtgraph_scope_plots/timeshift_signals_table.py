@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 import bisect
-from typing import Dict, List, Any, Mapping, Tuple, Optional
+from typing import Dict, List, Any, Mapping, Tuple, Optional, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -75,7 +75,7 @@ class TimeshiftPlotWidget(LinkedMultiPlotWidget, HasSaveLoadDataConfig):
             self.sigDataUpdated.emit()
 
     def _apply_timeshift(
-        self, data_name: str, all_data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]]
+        self, data_name: str, all_data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[Any]]]
     ) -> npt.NDArray[np.float64]:
         """Applies timeshift on the specified data_name and returns the x points."""
         xs, _ = all_data[data_name]
@@ -88,9 +88,11 @@ class TimeshiftPlotWidget(LinkedMultiPlotWidget, HasSaveLoadDataConfig):
             self._timeshifts_cached_results.set(xs, timeshift, [], result)
         return result
 
+    T = TypeVar("T", bound=np.generic)
+
     def _transform_data(
-        self, data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]]
-    ) -> Mapping[str, Tuple[npt.NDArray, npt.NDArray]]:
+        self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[T]]]
+    ) -> Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[T]]]:
         """Applies timeshifts to the specified data_name and data. Returns the transformed X values (time values, data is not used),
         which may be the input data if no timeshift is specified.
         Returns identical objects for identical inputs and consecutive identical timeshifts (results are cached).

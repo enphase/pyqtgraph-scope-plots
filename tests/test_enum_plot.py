@@ -24,7 +24,6 @@ from pytestqt.qtbot import QtBot
 from pyqtgraph_scope_plots.multi_plot_widget import EnumWaveformInteractivePlot
 from pyqtgraph_scope_plots.util.util import not_none
 
-
 ENUM_DATA_ITEMS = {"0": QColor("yellow")}
 ENUM_DATA = {"0": (np.array([0, 1, 1.5, 2, 6, 7, 7.4]), np.array(["A", "B", "B", "B", "C", "A", "A"]))}
 

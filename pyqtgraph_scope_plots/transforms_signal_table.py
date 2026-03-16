@@ -118,7 +118,7 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
     def _apply_transform(
         self,
         data_name: str,
-        all_data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
+        all_data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[Any]]],
     ) -> Union[npt.NDArray[np.float64], Exception]:
         """Applies a transform to the specified data_name and data, using self._table.transform.
         Returns the transformed data, which may be the input data if no transform is specified.

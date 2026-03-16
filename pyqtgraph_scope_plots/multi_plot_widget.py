@@ -348,11 +348,11 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
         self._update_plots_x_axis()
         self.sigDataItemsUpdated.emit()
 
-    def _to_array(self, x: npt.ArrayLike) -> npt.NDArray[Any]:
+    def _to_array(self, x: npt.ArrayLike, dtype: Optional[npt.DTypeLike] = None) -> npt.NDArray[Any]:
         if isinstance(x, np.ndarray) and x.flags.writeable == False:
             return x
         else:
-            arr = np.array(x)
+            arr = np.array(x, dtype=dtype)
             arr.flags.writeable = False
             return arr
 
@@ -368,7 +368,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
     def set_data(self, data: Mapping[str, Tuple[np.typing.ArrayLike, np.typing.ArrayLike]]) -> None:
         """Sets the data to be plotted as data name -> (xs, ys). Data names must have been previously set with
         set_data_items, missing items will log an error."""
-        self._raw_data = {name: (self._to_array(xs), self._to_array(ys)) for name, (xs, ys) in data.items()}
+        self._raw_data = {name: (self._to_array(xs, dtype=np.float64), self._to_array(ys)) for name, (xs, ys) in data.items()}
         self._update_plots()
         self.sigDataUpdated.emit()
 

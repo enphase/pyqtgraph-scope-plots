@@ -181,6 +181,6 @@ def test_export_csv(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     out_io = StringIO()
     plot._write_csv(out_io)
     assert out_io.getvalue().replace("\r", "").replace("\n", "") == """# time,0,1,2
-0,0.01,0.25,
-1,,0.5,0.7
-2,0.0,,0.6""".replace("\r", "").replace("\n", "")  # ignore newline format
+0.0,0.01,0.25,
+1.0,,0.5,0.7
+2.0,0.0,,0.6""".replace("\r", "").replace("\n", "")  # ignore newline format

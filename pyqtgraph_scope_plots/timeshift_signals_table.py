@@ -89,6 +89,7 @@ class TimeshiftPlotWidget(LinkedMultiPlotWidget, HasSaveLoadDataConfig):
         return result
 
     T = TypeVar("T", bound=np.generic)
+
     def _transform_data(
         self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[T]]]
     ) -> Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[T]]]:

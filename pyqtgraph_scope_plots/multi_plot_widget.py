@@ -357,6 +357,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
             return arr
 
     T = TypeVar("T", bound=np.generic)
+
     def _transform_data(
         self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[T]]]
     ) -> Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[T]]]:
@@ -374,7 +375,9 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
     def _update_plots(self) -> None:
         self._data = self._transform_data(self._raw_data)
         for plot_item, data_names in self._plot_item_data.items():
-            plot_item.set_data({data_name: self._data.get(data_name, (np.empty(0), np.empty(0))) for data_name in data_names})
+            plot_item.set_data(
+                {data_name: self._data.get(data_name, (np.empty(0), np.empty(0))) for data_name in data_names}
+            )
 
     def autorange(self, enable: bool) -> None:
         is_first = True

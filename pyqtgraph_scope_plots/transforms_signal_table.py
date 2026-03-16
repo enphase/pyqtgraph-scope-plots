@@ -116,6 +116,7 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
                     print(f"failed to restore transform fn {data_model.transform}: {e}")  # TODO better logging
 
     T = TypeVar("T", bound=np.generic)
+
     def _apply_transform(
         self,
         data_name: str,

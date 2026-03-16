@@ -12,6 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 """Wrapper classes for collections of graphical objects."""
+
 from typing import List, Tuple, Optional
 
 import pyqtgraph as pg

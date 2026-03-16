@@ -52,7 +52,6 @@ from .xy_plot_legends import XyTableLegends
 # misc utils
 from .recents import RecentsManager
 
-
 __all__ = [
     "HasSaveLoadConfig",
     "HasSaveLoadDataConfig",

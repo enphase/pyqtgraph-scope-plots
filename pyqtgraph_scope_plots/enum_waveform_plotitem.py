@@ -93,7 +93,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
 
         return graphics_dict
 
-    def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray) -> None:
+    def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray[Any]) -> None:
         # generate the control points for half of the waveform using numpy operations for efficiency
         ys_values, ys_int = np.unique(ys, return_inverse=True)  # map to integer for efficiency
         # do change detection to find edges, element is true if it is different from the next element
@@ -133,7 +133,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         super().resizeEvent(ev)
         self._update_plot_labels()
 
-    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray]]) -> None:
+    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[Any]]]) -> None:
         super().set_data(data)
         self._update_plot_labels()
 
@@ -146,7 +146,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         self._curves_labels.update(self._generate_plot_labels(xs, ys, color, self._edges))
 
     def _generate_plot_labels(
-        self, xs: npt.NDArray[np.float64], ys: npt.NDArray, color: QColor, edges: npt.NDArray[np.float64]
+        self, xs: npt.NDArray[np.float64], ys: npt.NDArray[Any], color: QColor, edges: npt.NDArray[np.float64]
     ) -> List[Tuple[float, float, str, QColor]]:
         # generate plot labels by testing character-width points in view space and using bisect to turn those
         # into data indices, which makes this mostly (outside the log-factor of bisect) runtime independent

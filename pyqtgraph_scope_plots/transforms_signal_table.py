@@ -13,7 +13,7 @@
 #    limitations under the License.
 import math
 import numbers
-from typing import Dict, Tuple, List, Any, Mapping, Union, Optional
+from typing import Dict, Tuple, List, Any, Mapping, Union, Optional, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -156,9 +156,10 @@ class TransformsPlotWidget(MultiPlotWidget, HasSaveLoadDataConfig):
         self._transforms_cached_results.set(ys, expr, input_all_data_refs, result)
         return result
 
+    T = TypeVar("T", bound=np.generic)
     def _transform_data(
-        self, data: Mapping[str, Tuple[npt.NDArray, npt.NDArray]]
-    ) -> Mapping[str, Tuple[npt.NDArray, npt.NDArray]]:
+        self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[T]]]
+    ) -> Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[T]]]:
         data = super()._transform_data(data)
         transformed_data = {}
         last_transform_errs = self._transforms_errs

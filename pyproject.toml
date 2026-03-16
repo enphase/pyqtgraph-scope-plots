@@ -10,7 +10,7 @@ version = "1.6.3"
 authors = [
     { name = "Richard Lin", email = "richardlin@enphaseenergy.com" }
 ]
-requires-python = "~=3.8"
+requires-python = "~=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -38,7 +38,7 @@ Issues = "https://github.com/enphase/pyqtgraph-scope-plots/issues"
 dev = [
     "black~=26.0",
     "isort~=8.0",
-    "flake8~=3.9.2",
+    "flake8~=7.3",
     "types-PyYAML",
     "pytest~=9.0",
     "pytest-qt~=4.5",
@@ -80,4 +80,4 @@ norecursedirs = [".git"]
 
 [tool.black]
 line-length = 120
-target-version = ["py39", "py310", "py311", "py312", "py313"]
+target-version = ["py310", "py311", "py312", "py313"]

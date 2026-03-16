@@ -17,7 +17,8 @@ import pyqtgraph as pg
 import pytest
 from pytestqt.qtbot import QtBot
 
-from pyqtgraph_scope_plots.point_on_zoom_plot import PointOnZoomPlot
+from pyqtgraph_scope_plots.point_on_zoom_plot import PointOnZoomPlot, EnumPointOnZoomPlot, BasePointOnZoomPlot
+from .test_enum_plot import ENUM_DATA_ITEMS, ENUM_DATA
 from .common_testdata import DATA_ITEMS, DATA
 
 
@@ -34,7 +35,7 @@ def point_plot(qtbot: QtBot) -> tuple[PointOnZoomPlot, pg.PlotWidget]:
     return plot_item, widget
 
 
-def _scatter_len(plot_item: PointOnZoomPlot, name: str) -> int:
+def _scatter_len(plot_item: BasePointOnZoomPlot, name: str) -> int:
     return len(plot_item._point_scatters[name].getData()[0])
 
 
@@ -87,3 +88,32 @@ def test_empty_data(qtbot: QtBot, point_plot: tuple[PointOnZoomPlot, pg.PlotWidg
 
     qtbot.waitUntil(lambda: not plot_item._point_scatters["0"].isVisible())
     assert _scatter_len(plot_item, "0") == 0
+
+
+@pytest.fixture()
+def enum_point_plot(qtbot: QtBot) -> tuple[EnumPointOnZoomPlot, pg.PlotWidget]:
+    plot_item = EnumPointOnZoomPlot()
+    widget = pg.PlotWidget(plotItem=plot_item)
+    widget.setFixedSize(160, 120)
+    qtbot.addWidget(widget)
+    widget.show()
+    qtbot.waitExposed(widget)
+
+    plot_item.set_data_items(ENUM_DATA_ITEMS)
+    return plot_item, widget
+
+
+def test_enum_zoom_change(qtbot: QtBot, enum_point_plot: tuple[EnumPointOnZoomPlot, pg.PlotWidget]) -> None:
+    # only do a single test for enum point on zoom, it shares a lot with the non-enum version
+    plot_item, _ = enum_point_plot
+    plot_item.set_data(ENUM_DATA)
+    plot_item.getViewBox().setXRange(-0.2, 1.7, padding=0)
+    qtbot.waitUntil(lambda: plot_item._point_scatters["0"].isVisible())
+    assert _scatter_len(plot_item, "0") > 0
+
+    plot_item.getViewBox().setXRange(-5, 25, padding=0)
+    qtbot.waitUntil(lambda: not plot_item._point_scatters["0"].isVisible())
+
+    plot_item.getViewBox().setXRange(-0.2, 1.7, padding=0)
+    qtbot.waitUntil(lambda: plot_item._point_scatters["0"].isVisible())
+    assert _scatter_len(plot_item, "0") > 0

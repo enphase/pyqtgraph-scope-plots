@@ -177,11 +177,11 @@ def test_transform_direct_cell_edit(qtbot: QtBot, transforms_plots: TransformsPl
     transform_item = not_none(transforms_table.item(0, transforms_table.COL_TRANSFORM))
     transform_item.setText("x * 2")
     qtbot.waitUntil(lambda: transforms_plots._apply_transform("0", DATA).tolist() == [0.02, 2, 2, 0])
-    
+
     transform_item = not_none(transforms_table.item(1, transforms_table.COL_TRANSFORM))
     transform_item.setText("x + 1")
     qtbot.waitUntil(lambda: transforms_plots._apply_transform("1", DATA).tolist() == [1.5, 1.25, 1.5])
-    
+
     transform_item = not_none(transforms_table.item(0, transforms_table.COL_TRANSFORM))
     transform_item.setText("")
     qtbot.waitUntil(lambda: transforms_plots._apply_transform("0", DATA).tolist() == [0.01, 1, 1, 0])

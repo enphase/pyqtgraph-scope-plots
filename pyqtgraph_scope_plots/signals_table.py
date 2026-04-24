@@ -17,7 +17,7 @@ from typing import Dict, Tuple, List, Any, Optional
 
 import numpy as np
 import numpy.typing as npt
-from PySide6.QtCore import QMimeData, QPoint, Signal
+from PySide6.QtCore import QMimeData, QPoint, Signal, QSignalBlocker
 from PySide6.QtGui import QColor, Qt, QAction, QDrag, QPixmap, QMouseEvent
 from PySide6.QtWidgets import QTableWidgetItem, QHeaderView, QMenu, QLabel
 
@@ -62,14 +62,15 @@ class SignalsTable(MixinColsTable):
     def _update(self) -> None:
         self._data_items = {data_name: color for data_name, (color, _) in self._plots._data_items.items()}
 
-        self.setRowCount(0)  # clear the existing table, other resizing becomes really expensive
-        self.setRowCount(len(self._data_items))  # create new items
-        for row, (name, color) in enumerate(self._data_items.items()):
-            for col in range(self.columnCount()):
-                item = self._create_noneditable_table_item()
-                item.setForeground(color)
-                self.setItem(row, col, item)
-            not_none(self.item(row, self.COL_NAME)).setText(name)
+        with QSignalBlocker(self):
+            self.setRowCount(0)  # clear the existing table, other resizing becomes really expensive
+            self.setRowCount(len(self._data_items))  # create new items
+            for row, (name, color) in enumerate(self._data_items.items()):
+                for col in range(self.columnCount()):
+                    item = self._create_noneditable_table_item()
+                    item.setForeground(color)
+                    self.setItem(row, col, item)
+                not_none(self.item(row, self.COL_NAME)).setText(name)
 
 
 class HasRegionSignalsTable(SignalsTable):

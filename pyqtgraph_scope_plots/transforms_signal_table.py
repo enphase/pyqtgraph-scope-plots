@@ -232,7 +232,6 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
 
     def _update_transforms(self) -> None:
         assert isinstance(self._plots, TransformsPlotWidget)
-
         with QSignalBlocker(self):
             for row, (name, color) in enumerate(self._data_items.items()):
                 expr_str, _ = self._plots._transforms.get(name, ("", None))

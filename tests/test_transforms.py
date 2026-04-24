@@ -173,7 +173,7 @@ def test_transform_direct_cell_edit(qtbot: QtBot, transforms_plots: TransformsPl
     """Tests that transforms can be set by directly editing the cell"""
     transforms_table = TransformsSignalsTable(transforms_plots)
     transforms_table._update()
-    
+
     transform_item = not_none(transforms_table.item(0, transforms_table.COL_TRANSFORM))
     transform_item.setText("x * 2")
     qtbot.waitUntil(lambda: transforms_plots._apply_transform("0", DATA).tolist() == [0.02, 2, 2, 0])
@@ -191,22 +191,22 @@ def test_transform_direct_cell_edit_syntaxerror(qtbot: QtBot, transforms_plots: 
     """Tests that syntax errors in direct cell edit open the dialog with error message"""
     transforms_table = TransformsSignalsTable(transforms_plots)
     transforms_table._update()
-    
+
     transform_item = not_none(transforms_table.item(0, transforms_table.COL_TRANSFORM))
-    
+
     with mock.patch.object(CodeInputDialog, "getText") as mock_input:
         mock_value = ("is", True)
-        
+
         def mock_value_update(*args: Any, **kwargs: Any) -> Tuple[str, bool]:
             nonlocal mock_value
             prev_mock_value = mock_value
             mock_value = ("x + 1", True)
             return prev_mock_value
-        
+
         mock_input.side_effect = mock_value_update
         transform_item.setText("is")
         qtbot.waitUntil(lambda: transforms_plots._apply_transform("0", DATA).tolist() == [1.01, 2, 2, 1])
-        
+
         assert mock_input.call_count == 2
         first_call_args = mock_input.call_args_list[0]
         assert "is" in first_call_args[0][3]

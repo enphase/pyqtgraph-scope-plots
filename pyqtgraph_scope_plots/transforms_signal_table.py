@@ -269,7 +269,7 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
 
         text = initial_text
         err_msg = f"""\n\n<br/>`{initial_error.__class__.__name__}: {initial_error}`""" if initial_error else ""
-        
+
         while True:
             text, ok = CodeInputDialog.getText(
                 self,
@@ -296,7 +296,7 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
         for data_name in data_names:
             prev_str, _ = self._plots._transforms.get(data_name, (None, None))
             if prev_str is not None:
-                prior_transform  = prev_str
+                prior_transform = prev_str
                 break
 
-        self._show_transform_dialog(selected_data_names, prior_transform )
+        self._show_transform_dialog(selected_data_names, prior_transform)

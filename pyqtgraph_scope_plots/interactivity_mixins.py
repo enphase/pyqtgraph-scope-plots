@@ -738,3 +738,41 @@ class DraggableCursorPlot(SnappableHoverPlot, HasDataValueAt):
             self.set_drag_cursor(None)
         elif ev.key() == Qt.Key.Key_Delete:
             self.set_drag_cursor(None)
+
+
+class EmptyPlotIndicatorPlot(SnappableHoverPlot):
+    """Mixin that adds an empty plot indicator when no data is selected for plotting.
+
+    Although this could be directly a mixin on PlotItem, it is placed here to avoid signal/slot ordering warnings."""
+
+    _EMPTY_PLOT_HELP_TEXT = (
+        "No data items selected for plotting.\nDrag and drop rows from the signals table to plot them."
+    )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+        # The empty plot help text is shown by default for the default empty plot
+        self._empty_plot_text = pg.TextItem(text=self._EMPTY_PLOT_HELP_TEXT, anchor=(0.5, 0.5))
+        self.addItem(self._empty_plot_text, ignoreBounds=True)
+        self._on_range_changed_for_empty_indicator()
+        self.sigRangeChanged.connect(self._on_range_changed_for_empty_indicator)
+
+    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[Any]]]) -> None:
+        """Override to show/hide empty plot indicator based on data presence."""
+        super().set_data(data)
+
+        if not len(data):
+            self._on_range_changed_for_empty_indicator()
+            self._empty_plot_text.show()
+        else:
+            self._empty_plot_text.hide()
+
+    @Slot()
+    def _on_range_changed_for_empty_indicator(self) -> None:
+        """Updates the position of the empty plot indicator when the view range changes."""
+        if self._empty_plot_text.isVisible():
+            view_rect = self.viewRect()
+            center_x = view_rect.x() + view_rect.width() / 2
+            center_y = view_rect.y() + view_rect.height() / 2
+            self._empty_plot_text.setPos(center_x, center_y)

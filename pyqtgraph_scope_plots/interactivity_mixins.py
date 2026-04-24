@@ -40,7 +40,7 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
         super().__init__(*args, **kwargs)
         self._data_items: Dict[str, QColor] = {}
         self._data_graphics: Dict[str, List[pg.GraphicsObject]] = {}
-        self._data: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray]] = {}
+        self._data: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray[Any]]] = {}
 
     def set_data_items(self, data_items: Mapping[str, QColor]) -> None:
         """Generates plot items for the input data items."""
@@ -49,35 +49,32 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
                 self.removeItem(item)
 
         self._data_items = dict(data_items)
-        self._data_graphics = {name: self._generate_plot_items(name, color) for name, color in data_items.items()}
+        self._data_graphics = self._generate_plot_items(data_items)
         for graphics in self._data_graphics.values():
             for item in graphics:
                 self.addItem(item)
 
         self.set_data(self._data)  # don't clear existing data
 
-    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray]]) -> None:
+    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[Any]]]) -> None:
         """Updates data for plots defined in set_data_items."""
         self._data = dict(data)
         for data_name, (xs, ys) in data.items():
             graphics = self._data_graphics.get(data_name)
             if graphics is None:  # not pre-defined in set_data_items, ignore
                 continue
-            self._update_plot_data(data_name, graphics, xs, ys)
+            self._update_plot_data(data_name, xs, ys)
 
     @abstractmethod
-    def _generate_plot_items(self, name: str, color: QColor) -> List[pg.GraphicsObject]:
-        """Defines how to generate a pyqtgraph graphics item (eg, PlotCurveItem) from a data definition.
-        May return multiple items, but the first one should be the main one. Must be nonempty.
-        Only one should have a name, which is used for the legend.
-        No data is passed in at this point, set_data will be called later.
+    def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
+        """Defines how to generate pyqtgraph graphics items from data definitions.
+        Returns a mapping of data item names to their graphics objects.
+        This should store graphics objects to be updated later in instance variables.
         INTERNAL API - STABILITY NOT GUARANTEED"""
         raise NotImplementedError
 
     @abstractmethod
-    def _update_plot_data(
-        self, name: str, graphics: List[pg.GraphicsObject], xs: npt.NDArray[np.float64], ys: npt.NDArray
-    ) -> None:
+    def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray[Any]) -> None:
         """Called when the data is updated, but the data items (and graphical objects) remain the same.
         Not re-creating the graphical objects helps performance slightly.
         May apply transforms, such as for rendering efficiency.
@@ -88,18 +85,24 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
 class DataPlotCurveItem(DataPlotItem):
     """DataPlotItem that generates a PlotCurveItem"""
 
-    def _generate_plot_items(self, name: str, color: QColor) -> List[pg.GraphicsObject]:
-        curve = pg.PlotCurveItem(x=[], y=[], name=name)
-        curve.setPen(color=color, width=1)
-        return [curve]
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._curves: Dict[str, pg.PlotCurveItem] = {}
 
-    def _update_plot_data(
-        self, name: str, graphics: List[pg.GraphicsObject], xs: npt.NDArray[np.float64], ys: npt.NDArray
-    ) -> None:
-        assert len(graphics) == 1
-        curve = graphics[0]
-        assert isinstance(curve, pg.PlotCurveItem)
-        curve.setData(x=xs, y=ys)
+    def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
+        """Clear existing state and generate new plot items for all data items"""
+        self._curves.clear()
+        graphics_dict: Dict[str, List[pg.GraphicsObject]] = {}
+        for name, color in data_items.items():
+            curve = pg.PlotCurveItem(x=[], y=[], name=name)
+            curve.setPen(color=color, width=1)
+            self._curves[name] = curve
+            graphics_dict[name] = [curve]
+
+        return graphics_dict
+
+    def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray[Any]) -> None:
+        self._curves[name].setData(x=xs, y=ys)
 
 
 class DeltaAxisItem(pg.AxisItem):  # type: ignore[misc]
@@ -175,7 +178,7 @@ class SnappableHoverPlot(DataPlotCurveItem):
     def _snap_pos(self, target_pos: QPointF, x_lo: float, x_hi: float) -> Optional[QPointF]:
         """Returns the closest point in the snappable data set to the target_pos, with x-value between x_lo and x_hi."""
         # closest point for each curve: (data, index, distance)
-        data_index_dists: List[Tuple[Tuple[npt.NDArray[np.float64], npt.NDArray], int, float]] = []
+        data_index_dists: List[Tuple[Tuple[npt.NDArray[np.float64], npt.NDArray[Any]], int, float]] = []
         for name, (xs, ys) in self._data.items():
             data_graphics = self._data_graphics.get(name)
             if not data_graphics or not data_graphics[0].isVisible():

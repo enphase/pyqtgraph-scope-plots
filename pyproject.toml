@@ -6,11 +6,11 @@ build-backend = "setuptools.build_meta"
 name = "pyqtgraph-scope-plots"
 description = "Scope like plot utilities for pyqtgraph"
 readme = "README.md"
-version = "1.6.2"
+version = "1.6.3"
 authors = [
     { name = "Richard Lin", email = "richardlin@enphaseenergy.com" }
 ]
-requires-python = "~=3.8"
+requires-python = "~=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -36,15 +36,15 @@ Issues = "https://github.com/enphase/pyqtgraph-scope-plots/issues"
 
 [project.optional-dependencies]
 dev = [
-    "black~=23.3",
-    "isort~=5.9.2",
-    "flake8~=3.9.2",
+    "black~=26.0",
+    "isort~=8.0",
+    "flake8~=7.3",
     "types-PyYAML",
-    "pytest~=6.2.4",
-    "pytest-qt~=4.4",
-    "pytest-cov~=6.1.1",
-    "pytest-mypy~=0.10",
-    "mypy~=1.15.0",
+    "pytest~=9.0",
+    "pytest-qt~=4.5",
+    "pytest-cov~=7.0",
+    "pytest-mypy~=1.0",
+    "mypy~=1.19",
     "pandas-stubs",
     "PySide6-stubs",
     "flake8-mypy~=17.8.0",
@@ -59,7 +59,7 @@ profile = "black"
 plugins = [
     "pydantic.mypy"
 ]
-python_version = "3.9"  # pydantic uses 3.9 syntax internally
+python_version = "3.10"  # pytest uses 3.10 syntax internally
 check_untyped_defs = true
 disallow_incomplete_defs = true
 disallow_untyped_defs = true
@@ -75,8 +75,9 @@ disable_error_code = ["union-attr", "no-untyped-call"]
 
 [tool.pytest]
 qt_api = "pyside6"
-pythonpath = "pyqtgraph_scope_plots"
-norecursedirs = ".git"
+pythonpath = ["pyqtgraph_scope_plots"]
+norecursedirs = [".git"]
 
 [tool.black]
 line-length = 120
+target-version = ["py310", "py311", "py312", "py313"]

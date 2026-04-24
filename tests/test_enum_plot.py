@@ -24,13 +24,16 @@ from pytestqt.qtbot import QtBot
 from pyqtgraph_scope_plots.multi_plot_widget import EnumWaveformInteractivePlot
 from pyqtgraph_scope_plots.util.util import not_none
 
+ENUM_DATA_ITEMS = {"0": QColor("yellow")}
+ENUM_DATA = {"0": (np.array([0, 1, 1.5, 2, 6, 7, 7.4]), np.array(["A", "B", "B", "B", "C", "A", "A"]))}
+
 
 @pytest.fixture()
 def plot(qtbot: QtBot) -> pg.PlotWidget:
     """Creates a signals plot with multiple data items"""
     plot = EnumWaveformInteractivePlot()
-    plot.set_data_items({"0": QColor("yellow")})
-    plot.set_data({"0": (np.array([0, 1, 1.5, 2, 6, 7, 7.4]), np.array(["A", "B", "B", "B", "C", "A", "A"]))})
+    plot.set_data_items(ENUM_DATA_ITEMS)
+    plot.set_data(ENUM_DATA)
     widget = pg.PlotWidget(plotItem=plot)
     qtbot.addWidget(widget)
     widget.show()

@@ -99,15 +99,15 @@ def test_plot_restore(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     plot._plots._load_model(model)
     plot._plots.set_data(plot._plots._data)  # bulk update that happens at top level
     qtbot.waitUntil(lambda: plot._plots.count() == 1)
-    # +1 is for the empty hover scatterpoints
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 3 + 1
+    # +1 is for the empty hover scatterpoints, *2 for line + scatter items
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 3 * 2 + 1
 
     model.plot_widgets = [PlotWidgetModel(data_items=["0"]), PlotWidgetModel(data_items=["2"])]
     plot._plots._load_model(model)
     plot._plots.set_data(plot._plots._data)  # bulk update that happens at top level
     qtbot.waitUntil(lambda: plot._plots.count() == 2)
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 1 + 1
-    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(1)).getPlotItem()).listDataItems()) == 1 + 1
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem()).listDataItems()) == 1 * 2 + 1
+    assert len(cast(pg.PlotItem, cast(pg.PlotWidget, plot._plots.widget(1)).getPlotItem()).listDataItems()) == 1 * 2 + 1
 
     model.plot_widgets = []  # test empty case
     plot._plots._load_model(model)
@@ -165,18 +165,11 @@ def test_no_excessive_plots(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 def test_export_csv(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     out_io = StringIO()
     plot._write_csv(out_io)
-    assert (
-        out_io.getvalue().replace("\r", "").replace("\n", "")
-        == """# time,0,1,2
+    assert out_io.getvalue().replace("\r", "").replace("\n", "") == """# time,0,1,2
 0.0,0.01,0.5,0.7
 0.1,1.0,,
 1.0,1.0,0.25,0.6
-2.0,0.0,0.5,0.5""".replace(
-            "\r", ""
-        ).replace(
-            "\n", ""
-        )
-    )  # ignore newline format
+2.0,0.0,0.5,0.5""".replace("\r", "").replace("\n", "")  # ignore newline format
 
     plot._set_data(
         {  # more comprehensive missing data test
@@ -187,14 +180,7 @@ def test_export_csv(qtbot: QtBot, plot: PlotsTableWidget) -> None:
     )
     out_io = StringIO()
     plot._write_csv(out_io)
-    assert (
-        out_io.getvalue().replace("\r", "").replace("\n", "")
-        == """# time,0,1,2
-0,0.01,0.25,
-1,,0.5,0.7
-2,0.0,,0.6""".replace(
-            "\r", ""
-        ).replace(
-            "\n", ""
-        )
-    )  # ignore newline format
+    assert out_io.getvalue().replace("\r", "").replace("\n", "") == """# time,0,1,2
+0.0,0.01,0.25,
+1.0,,0.5,0.7
+2.0,0.0,,0.6""".replace("\r", "").replace("\n", "")  # ignore newline format

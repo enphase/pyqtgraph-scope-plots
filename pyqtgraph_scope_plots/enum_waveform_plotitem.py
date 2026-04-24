@@ -13,7 +13,7 @@
 #    limitations under the License.
 
 import bisect
-from typing import List, Tuple, Optional, Any, cast, Mapping
+from typing import List, Tuple, Optional, Any, cast, Mapping, Dict
 
 import numpy as np
 import numpy.typing as npt
@@ -35,6 +35,8 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         self._edges = np.array([])  # list of x positions of edges, sorted but not necessarily unique
         self._curves_labels = TextItemCollection(self, anchor=(0, 0.5))
         self._sample_label = pg.TextItem()  # for character width, assumed boundingRect in screen coordinates
+        self._curve_true = pg.PlotCurveItem(x=[], y=[])
+        self._curve_comp = pg.PlotCurveItem(x=[], y=[])
 
         self.sigXRangeChanged.connect(self._update_plot_labels)
 
@@ -77,16 +79,21 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         else:
             return []
 
-    def _generate_plot_items(self, name: str, color: QColor) -> List[pg.GraphicsObject]:
-        curve_true = pg.PlotCurveItem(x=[], y=[], name=name)
-        curve_true.setPen(color=color, width=1)
-        curve_comp = pg.PlotCurveItem(x=[], y=[])
-        curve_comp.setPen(color=color, width=1)
-        return [curve_true, curve_comp]
+    def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
+        if len(data_items) != 1:
+            raise ValueError("EnumWaveformPlot only supports exactly one data item")
 
-    def _update_plot_data(
-        self, name: str, graphics: List[pg.GraphicsObject], xs: npt.NDArray[np.float64], ys: npt.NDArray
-    ) -> None:
+        graphics_dict: Dict[str, List[pg.GraphicsObject]] = {}
+        for name, color in data_items.items():
+            self._curve_true = pg.PlotCurveItem(x=[], y=[], name=name)
+            self._curve_true.setPen(color=color, width=1)
+            self._curve_comp = pg.PlotCurveItem(x=[], y=[])
+            self._curve_comp.setPen(color=color, width=1)
+            graphics_dict[name] = [self._curve_true, self._curve_comp]
+
+        return graphics_dict
+
+    def _update_plot_data(self, name: str, xs: npt.NDArray[np.float64], ys: npt.NDArray[Any]) -> None:
         # generate the control points for half of the waveform using numpy operations for efficiency
         ys_values, ys_int = np.unique(ys, return_inverse=True)  # map to integer for efficiency
         # do change detection to find edges, element is true if it is different from the next element
@@ -119,18 +126,14 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
 
         self._edges = np.take(xs, changes_prechanges_indices)
 
-        assert len(graphics) == 2
-        curve_true, curve_comp = graphics
-        assert isinstance(curve_true, pg.PlotCurveItem)
-        curve_true.setData(x=self._edges, y=heights)
-        assert isinstance(curve_comp, pg.PlotCurveItem)
-        curve_comp.setData(x=self._edges, y=np.zeros(len(heights)) - heights)
+        self._curve_true.setData(x=self._edges, y=heights)
+        self._curve_comp.setData(x=self._edges, y=np.zeros(len(heights)) - heights)
 
     def resizeEvent(self, ev: Any) -> None:
         super().resizeEvent(ev)
         self._update_plot_labels()
 
-    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray]]) -> None:
+    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[Any]]]) -> None:
         super().set_data(data)
         self._update_plot_labels()
 
@@ -143,7 +146,7 @@ class EnumWaveformPlot(SnappableHoverPlot, HasDataValueAt, DataPlotItem):
         self._curves_labels.update(self._generate_plot_labels(xs, ys, color, self._edges))
 
     def _generate_plot_labels(
-        self, xs: npt.NDArray[np.float64], ys: npt.NDArray, color: QColor, edges: npt.NDArray[np.float64]
+        self, xs: npt.NDArray[np.float64], ys: npt.NDArray[Any], color: QColor, edges: npt.NDArray[np.float64]
     ) -> List[Tuple[float, float, str, QColor]]:
         # generate plot labels by testing character-width points in view space and using bisect to turn those
         # into data indices, which makes this mostly (outside the log-factor of bisect) runtime independent

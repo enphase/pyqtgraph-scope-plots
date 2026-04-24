@@ -225,9 +225,10 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
 
     def _update(self) -> None:
         super()._update()
-        for row in range(self.rowCount()):
-            transform_item = self.item(row, self.COL_TRANSFORM)
-            transform_item.setFlags(transform_item.flags() | Qt.ItemFlag.ItemIsEditable)
+        with QSignalBlocker(self):
+            for row in range(self.rowCount()):
+                transform_item = self.item(row, self.COL_TRANSFORM)
+                transform_item.setFlags(transform_item.flags() | Qt.ItemFlag.ItemIsEditable)
         self._update_transforms()
 
     def _update_transforms(self) -> None:
@@ -293,7 +294,7 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
         selected_data_names = [data_names[item.row()] for item in self.selectedItems()]
 
         prior_transform = ""
-        for data_name in data_names:
+        for data_name in selected_data_names:
             prev_str, _ = self._plots._transforms.get(data_name, (None, None))
             if prev_str is not None:
                 prior_transform = prev_str

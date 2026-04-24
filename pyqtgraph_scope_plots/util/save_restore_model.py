@@ -135,7 +135,7 @@ class HasSaveLoadDataConfig(HasSaveLoadConfig):
 
         data_model_cls = pydantic.create_model("DataModel", __base__=tuple(data_model_bases))
         top_model_cls = pydantic.create_model(
-            cls._TOP_MODEL_NAME, __base__=tuple(model_bases), data=(Dict[str, data_model_cls], ...)  # type: ignore
+            cls._TOP_MODEL_NAME, __base__=tuple(model_bases), data=(Dict[str, data_model_cls], ...)
         )
         return top_model_cls
 

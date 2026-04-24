@@ -741,11 +741,9 @@ class DraggableCursorPlot(SnappableHoverPlot, HasDataValueAt):
 
 
 class EmptyPlotIndicatorPlot(SnappableHoverPlot):
-    """Mixin that adds an empty plot indicator when no data is present.
-    The indicator is shown by default and hidden when data is added
+    """Mixin that adds an empty plot indicator when no data is selected for plotting.
 
-    Although this could be directly a mixin on PlotItem, it is placed here
-    to avoid signal/slot ordering warnings."""
+    Although this could be directly a mixin on PlotItem, it is placed here to avoid signal/slot ordering warnings."""
 
     _EMPTY_PLOT_HELP_TEXT = (
         "No data items selected for plotting.\nDrag and drop rows from the signals table to plot them."
@@ -770,6 +768,7 @@ class EmptyPlotIndicatorPlot(SnappableHoverPlot):
         else:
             self._empty_plot_text.hide()
 
+    @Slot()
     def _on_range_changed_for_empty_indicator(self) -> None:
         """Updates the position of the empty plot indicator when the view range changes."""
         if self._empty_plot_text.isVisible():

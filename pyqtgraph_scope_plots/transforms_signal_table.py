@@ -18,7 +18,8 @@ from typing import Dict, Tuple, List, Any, Mapping, Union, Optional, TypeVar
 import numpy as np
 import numpy.typing as npt
 import simpleeval
-from PySide6.QtGui import QAction
+from PySide6.QtCore import QSignalBlocker
+from PySide6.QtGui import QAction, Qt
 from PySide6.QtWidgets import QTableWidgetItem, QMenu
 from pydantic import BaseModel
 
@@ -211,6 +212,7 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
         self._set_transform_action = QAction("Set Function", self)
         self._set_transform_action.triggered.connect(self._on_set_transform)
         self.cellDoubleClicked.connect(self._on_transform_double_click)
+        self.cellChanged.connect(self._on_transform_cell_changed)
         self._plots.sigDataUpdated.connect(self._update_transforms)
 
     def _post_cols(self) -> int:
@@ -223,19 +225,23 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
 
     def _update(self) -> None:
         super()._update()
+        with QSignalBlocker(self):
+            for row in range(self.rowCount()):
+                transform_item = self.item(row, self.COL_TRANSFORM)
+                transform_item.setFlags(transform_item.flags() | Qt.ItemFlag.ItemIsEditable)
         self._update_transforms()
 
     def _update_transforms(self) -> None:
         assert isinstance(self._plots, TransformsPlotWidget)
+        with QSignalBlocker(self):
+            for row, (name, color) in enumerate(self._data_items.items()):
+                expr_str, _ = self._plots._transforms.get(name, ("", None))
+                exc_opt = self._plots._transforms_errs.get(name, None)
+                if exc_opt is not None:
+                    expr_str = f"{expr_str}: {exc_opt.__class__.__name__}: {exc_opt}"
 
-        for row, (name, color) in enumerate(self._data_items.items()):
-            expr_str, _ = self._plots._transforms.get(name, ("", None))
-            exc_opt = self._plots._transforms_errs.get(name, None)
-            if exc_opt is not None:
-                expr_str = f"{expr_str}: {exc_opt.__class__.__name__}: {exc_opt}"
-
-            not_none(self.item(row, self.COL_TRANSFORM)).setText(expr_str)
-            not_none(self.item(row, self.COL_TRANSFORM)).setToolTip(expr_str)
+                not_none(self.item(row, self.COL_TRANSFORM)).setText(expr_str)
+                not_none(self.item(row, self.COL_TRANSFORM)).setToolTip(expr_str)
 
     def _populate_context_menu(self, menu: QMenu) -> None:
         super()._populate_context_menu(menu)
@@ -245,21 +251,30 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
         if col == self.COL_TRANSFORM:
             self._on_set_transform()
 
-    def _on_set_transform(self) -> None:
-        assert isinstance(self._plots, TransformsPlotWidget)
-        data_names = list(self._plots._data_items.keys())
-        selected_data_names = [data_names[item.row()] for item in self.selectedItems()]
-        text = ""
-        for data_name in selected_data_names:  # collect the first previously-specified transform
-            prev_str, _ = self._plots._transforms.get(data_name, (None, None))
-            if prev_str is not None and not text:
-                text = prev_str
+    def _on_transform_cell_changed(self, row: int, col: int) -> None:
+        if col == self.COL_TRANSFORM:
+            assert isinstance(self._plots, TransformsPlotWidget)
+            data_names = list(self._plots._data_items.keys())
+            data_name = data_names[row]
+            text = not_none(self.item(row, col)).text()
+            try:
+                self._plots.set_transform([data_name], text)
+            except SyntaxError as exc:
+                self._update_transforms()  # reset the cell value - transform not applied
+                self._show_transform_dialog([data_name], text, exc)
 
-        err_msg = ""
+    def _show_transform_dialog(
+        self, data_names: List[str], initial_text: str, initial_error: Optional[SyntaxError] = None
+    ) -> None:
+        assert isinstance(self._plots, TransformsPlotWidget)
+
+        text = initial_text
+        err_msg = f"""\n\n<br/>`{initial_error.__class__.__name__}: {initial_error}`""" if initial_error else ""
+
         while True:
             text, ok = CodeInputDialog.getText(
                 self,
-                f"Function for {', '.join(selected_data_names)}",
+                f"Function for {', '.join(data_names)}",
                 "Function code, use `x` for current value, `t` for the timestamp, and  \n  "
                 "`data['...']` or `data.get('...')` to access other data at the same timestamp" + err_msg,
                 text,
@@ -268,7 +283,21 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
                 return
 
             try:
-                self._plots.set_transform(selected_data_names, text)
+                self._plots.set_transform(data_names, text)
                 return
             except SyntaxError as exc:
                 err_msg = f"""\n\n<br/>`{exc.__class__.__name__}: {exc}`"""
+
+    def _on_set_transform(self) -> None:
+        assert isinstance(self._plots, TransformsPlotWidget)
+        data_names = list(self._plots._data_items.keys())
+        selected_data_names = [data_names[item.row()] for item in self.selectedItems()]
+
+        prior_transform = ""
+        for data_name in selected_data_names:
+            prev_str, _ = self._plots._transforms.get(data_name, (None, None))
+            if prev_str is not None:
+                prior_transform = prev_str
+                break
+
+        self._show_transform_dialog(selected_data_names, prior_transform)

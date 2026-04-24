@@ -167,8 +167,8 @@ class TimeshiftSignalsTable(ContextMenuSignalsTable):
         self.setItemDelegateForColumn(self.COL_TIMESHIFT, FloatValidatorDelegate(self))
 
     def _update(self) -> None:
+        super()._update()
         with QSignalBlocker(self):  # prevent self update from triggering timeshift edited
-            super()._update()  # including when the table items are created
             for row in range(self.rowCount()):
                 item = self.item(row, self.COL_TIMESHIFT)
                 item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)

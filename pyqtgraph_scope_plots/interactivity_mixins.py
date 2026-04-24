@@ -36,21 +36,11 @@ from pyqtgraph_scope_plots.graphics_collections import ScatterItemCollection, Te
 class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
     """Abstract base class for a PlotItem that takes some data."""
 
-    _EMPTY_PLOT_HELP_TEXT = (
-        "No data items selected for plotting.\nDrag and drop rows from the signals table to plot them."
-    )
-
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._data_items: Dict[str, QColor] = {}
         self._data_graphics: Dict[str, List[pg.GraphicsObject]] = {}
         self._data: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray[Any]]] = {}
-
-        # This is shown by default for when an empty plot is constructed without calling set_data_items
-        self._empty_plot_text = pg.TextItem(text=self._EMPTY_PLOT_HELP_TEXT, anchor=(0.5, 0.5))
-        self.addItem(self._empty_plot_text, ignoreBounds=True)
-        self._on_range_changed_for_empty_indicator()  # update position
-        self.sigRangeChanged.connect(self._on_range_changed_for_empty_indicator)
 
     def set_data_items(self, data_items: Mapping[str, QColor]) -> None:
         """Generates plot items for the input data items."""
@@ -74,20 +64,6 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
             if graphics is None:  # not pre-defined in set_data_items, ignore
                 continue
             self._update_plot_data(data_name, xs, ys)
-
-        if not len(data):
-            self._on_range_changed_for_empty_indicator()
-            self._empty_plot_text.show()
-        else:
-            self._empty_plot_text.hide()
-
-    def _on_range_changed_for_empty_indicator(self) -> None:
-        """Updates the position of the empty plot indicator when the view range changes."""
-        if self._empty_plot_text.isVisible():
-            view_rect = self.viewRect()
-            center_x = view_rect.x() + view_rect.width() / 2
-            center_y = view_rect.y() + view_rect.height() / 2
-            self._empty_plot_text.setPos(center_x, center_y)
 
     @abstractmethod
     def _generate_plot_items(self, data_items: Mapping[str, QColor]) -> Dict[str, List[pg.GraphicsObject]]:
@@ -762,3 +738,44 @@ class DraggableCursorPlot(SnappableHoverPlot, HasDataValueAt):
             self.set_drag_cursor(None)
         elif ev.key() == Qt.Key.Key_Delete:
             self.set_drag_cursor(None)
+
+
+class EmptyPlotIndicatorPlot(SnappableHoverPlot):
+    """Mixin that adds an empty plot indicator when no data is present.
+    The indicator is shown by default and hidden when data is added
+
+    Although this could be directly a mixin on PlotItem, it is placed here
+    to avoid signal/slot ordering warnings."""
+
+    _EMPTY_PLOT_HELP_TEXT = (
+        "No data items selected for plotting.\nDrag and drop rows from the signals table to plot them."
+    )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+        # Create empty plot indicator (shown by default)
+        self._empty_plot_text = pg.TextItem(text=self._EMPTY_PLOT_HELP_TEXT, anchor=(0.5, 0.5))
+        self.addItem(self._empty_plot_text, ignoreBounds=True)
+        self._on_range_changed_for_empty_indicator()
+
+        # Connect to sigRangeChanged (inherited from pg.PlotItem)
+        self.sigRangeChanged.connect(self._on_range_changed_for_empty_indicator)
+
+    def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[Any]]]) -> None:
+        """Override to show/hide empty plot indicator based on data presence."""
+        super().set_data(data)
+
+        if not len(data):
+            self._on_range_changed_for_empty_indicator()
+            self._empty_plot_text.show()
+        else:
+            self._empty_plot_text.hide()
+
+    def _on_range_changed_for_empty_indicator(self) -> None:
+        """Updates the position of the empty plot indicator when the view range changes."""
+        if self._empty_plot_text.isVisible():
+            view_rect = self.viewRect()
+            center_x = view_rect.x() + view_rect.width() / 2
+            center_y = view_rect.y() + view_rect.height() / 2
+            self._empty_plot_text.setPos(center_x, center_y)

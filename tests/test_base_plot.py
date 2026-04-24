@@ -202,7 +202,7 @@ def test_export_csv(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 
 def test_empty_plot_indicator(qtbot: QtBot) -> None:
     """Test that empty plot indicator is shown when appropriate."""
-    from pyqtgraph_scope_plots.interactivity_mixins import DataPlotItem
+    from pyqtgraph_scope_plots.interactivity_mixins import EmptyPlotIndicatorPlot
 
     plot = PlotsTableWidget()
     qtbot.addWidget(plot)
@@ -211,7 +211,7 @@ def test_empty_plot_indicator(qtbot: QtBot) -> None:
 
     # Initially, plot should have the empty indicator visible (no data items set)
     qtbot.waitUntil(lambda: plot._plots.count() == 1)
-    plot_item = cast(DataPlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem())
+    plot_item = cast(EmptyPlotIndicatorPlot, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem())
     assert plot_item._empty_plot_text.isVisible()
 
     # Add data items and data - indicator should be hidden
@@ -219,11 +219,11 @@ def test_empty_plot_indicator(qtbot: QtBot) -> None:
     plot._set_data(DATA)
     qtbot.waitUntil(lambda: plot._plots.count() == 3)
     # update the plot item since they may be re-created on data update
-    plot_item = cast(DataPlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem())
+    plot_item = cast(EmptyPlotIndicatorPlot, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem())
     qtbot.waitUntil(lambda: not plot_item._empty_plot_text.isVisible())
 
     # Remove all data - indicator should be shown again
     plot._set_data_items([])
     qtbot.waitUntil(lambda: plot._plots.count() == 1)
-    plot_item = cast(DataPlotItem, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem())
+    plot_item = cast(EmptyPlotIndicatorPlot, cast(pg.PlotWidget, plot._plots.widget(0)).getPlotItem())
     qtbot.waitUntil(lambda: plot_item._empty_plot_text.isVisible())

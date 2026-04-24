@@ -754,12 +754,10 @@ class EmptyPlotIndicatorPlot(SnappableHoverPlot):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-        # Create empty plot indicator (shown by default)
+        # The empty plot help text is shown by default for the default empty plot
         self._empty_plot_text = pg.TextItem(text=self._EMPTY_PLOT_HELP_TEXT, anchor=(0.5, 0.5))
         self.addItem(self._empty_plot_text, ignoreBounds=True)
         self._on_range_changed_for_empty_indicator()
-
-        # Connect to sigRangeChanged (inherited from pg.PlotItem)
         self.sigRangeChanged.connect(self._on_range_changed_for_empty_indicator)
 
     def set_data(self, data: Mapping[str, Tuple[npt.NDArray[np.float64], npt.NDArray[Any]]]) -> None:

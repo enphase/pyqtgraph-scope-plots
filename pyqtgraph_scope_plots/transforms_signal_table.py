@@ -254,28 +254,19 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
         if col == self.COL_TRANSFORM:
             assert isinstance(self._plots, TransformsPlotWidget)
             data_names = list(self._plots._data_items.keys())
-            if row < len(data_names):
-                data_name = data_names[row]
-                item = self.item(row, col)
-                if item is not None:
-                    text = item.text()
-                    try:
-                        self._plots.set_transform([data_name], text)
-                    except SyntaxError as exc:
-                        self._update_transforms()
-                        self._show_transform_dialog([data_name], text, exc)
+            data_name = data_names[row]
+            text = not_none(self.item(row, col)).text()
+            try:
+                self._plots.set_transform([data_name], text)
+            except SyntaxError as exc:
+                self._update_transforms()  # reset the cell value - transform not applied
+                self._show_transform_dialog([data_name], text, exc)
 
     def _show_transform_dialog(
-        self, data_names: List[str], initial_text: str = "", initial_error: Optional[SyntaxError] = None
+        self, data_names: List[str], initial_text: str, initial_error: Optional[SyntaxError] = None
     ) -> None:
         assert isinstance(self._plots, TransformsPlotWidget)
-        
-        if not initial_text:
-            for data_name in data_names:
-                prev_str, _ = self._plots._transforms.get(data_name, (None, None))
-                if prev_str is not None and not initial_text:
-                    initial_text = prev_str
-        
+
         text = initial_text
         err_msg = f"""\n\n<br/>`{initial_error.__class__.__name__}: {initial_error}`""" if initial_error else ""
         
@@ -300,4 +291,12 @@ class TransformsSignalsTable(ContextMenuSignalsTable):
         assert isinstance(self._plots, TransformsPlotWidget)
         data_names = list(self._plots._data_items.keys())
         selected_data_names = [data_names[item.row()] for item in self.selectedItems()]
-        self._show_transform_dialog(selected_data_names)
+
+        prior_transform = ""
+        for data_name in data_names:
+            prev_str, _ = self._plots._transforms.get(data_name, (None, None))
+            if prev_str is not None:
+                prior_transform  = prev_str
+                break
+
+        self._show_transform_dialog(selected_data_names, prior_transform )

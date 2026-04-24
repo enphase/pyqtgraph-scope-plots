@@ -37,7 +37,7 @@ class DataPlotItem(pg.PlotItem):  # type: ignore[misc]
     """Abstract base class for a PlotItem that takes some data."""
 
     _EMPTY_PLOT_HELP_TEXT = (
-        "No data items selected for plotting.\nDrag and drop rows from the signals table to plot them.",
+        "No data items selected for plotting.\nDrag and drop rows from the signals table to plot them."
     )
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

@@ -290,6 +290,76 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
 
             is_first = False
 
+    def _merge_data_into_item(self, source_data_names: List[str], target_plot_index: int, insert: bool = False) -> None:
+        """Merges a data (by name) into a target PlotItem, overlaying both on the same plot"""
+        if len(source_data_names) == 0:  # nothing to be done
+            return
+
+        created_data_names = []  # list of data names that were successfully created / moved
+        if not insert:  # merge mode
+            target_plot_widget = self.widget(target_plot_index)
+            if not isinstance(target_plot_widget, pg.PlotWidget):
+                return
+            target_plot_item = target_plot_widget.getPlotItem()
+            if isinstance(target_plot_item, EnumWaveformPlot):  # can't merge into enum plots
+                return
+            for source_data_name in source_data_names:
+                if len(self._plot_item_data[target_plot_item]) > 0:  # check for merge-ability, for nonempty plots
+                    if (
+                            self._data_items[self._plot_item_data[target_plot_item][0] or ""][1]
+                            != self._data_items[source_data_name][1]
+                    ):
+                        continue
+                self._plot_item_data[target_plot_item].append(source_data_name)
+                created_data_names.append(source_data_name)
+        else:  # create-new-graph-and-insert mode
+            plot_item = self._init_plot_item(self._create_plot_item(self._data_items[source_data_names[0]][1]))
+            if self._anchor_x_plot_item is not None:
+                plot_item.setXLink(self._anchor_x_plot_item)
+            else:
+                self._anchor_x_plot_item = plot_item
+            plot_widget = pg.PlotWidget(plotItem=plot_item)
+            self.insertWidget(target_plot_index, plot_widget)
+
+            self._plot_item_data[plot_item] = [source_data_names[0]]
+            created_data_names.append(source_data_names[0])
+
+            if isinstance(plot_item, EnumWaveformPlot):  # only one data item
+                pass
+            else:  # append all compatible
+                for source_data_name in source_data_names[1:]:
+                    if self._data_items[source_data_names[0]][1] != self._data_items[source_data_name][1]:
+                        continue
+                    self._plot_item_data[plot_item].append(source_data_name)
+                    created_data_names.append(source_data_name)
+
+            self._update_plots_x_axis()
+
+        for created_data_name in created_data_names:
+            created_item = self._data_name_to_plot_item.get(created_data_name)
+            if created_item is not None:  # delete source
+                self._plot_item_data[created_item].remove(created_data_name)
+                if not len(self._plot_item_data[created_item]):
+                    self._clean_plot_widgets()
+                    self._update_plots_x_axis()
+
+        self._update_plot_item_data_items()
+        self._update_plots()
+
+    def merge_data_items(self, source: str, target: str) -> None:
+        """Overlay *source* onto the same panel as *target*, by data name.
+        Source and target must exist and be visible, otherwise this asserts out.
+        """
+        source_plot_item = self._data_name_to_plot_item.get(source)
+        target_plot_item = self._data_name_to_plot_item.get(target)
+        assert source_plot_item is not None and target_plot_item is not None
+
+        for i in range(self.count()):
+            widget = self.widget(i)
+            if isinstance(widget, pg.PlotWidget) and widget.getPlotItem() is target_plot_item:
+                self._merge_data_into_item([source], i, insert=False)
+                return
+
     def remove_plot_items(self, remove_data_names: List[str]) -> None:
         for plot_item, data_names in self._plot_item_data.items():
             self._plot_item_data[plot_item] = list(filter(lambda x: x not in remove_data_names, data_names))
@@ -526,62 +596,6 @@ class DroppableMultiPlotWidget(MultiPlotWidget):
         self._drag_target: Optional[Tuple[int, bool]] = None  # insertion index, insertion (True) or overlay (False)
         self._drag_overlays: List[DragTargetOverlay] = []
         self.setAcceptDrops(True)
-
-    def _merge_data_into_item(self, source_data_names: List[str], target_plot_index: int, insert: bool = False) -> None:
-        """Merges a data (by name) into a target PlotItem, overlaying both on the same plot"""
-        if len(source_data_names) == 0:  # notihng to be done
-            return
-
-        created_data_names = []  # list of data names that were successfully created / moved
-        if not insert:  # merge mode
-            target_plot_widget = self.widget(target_plot_index)
-            if not isinstance(target_plot_widget, pg.PlotWidget):
-                return
-            target_plot_item = target_plot_widget.getPlotItem()
-            if isinstance(target_plot_item, EnumWaveformPlot):  # can't merge into enum plots
-                return
-            for source_data_name in source_data_names:
-                if len(self._plot_item_data[target_plot_item]) > 0:  # check for merge-ability, for nonempty plots
-                    if (
-                        self._data_items[self._plot_item_data[target_plot_item][0] or ""][1]
-                        != self._data_items[source_data_name][1]
-                    ):
-                        continue
-                self._plot_item_data[target_plot_item].append(source_data_name)
-                created_data_names.append(source_data_name)
-        else:  # create-new-graph-and-insert mode
-            plot_item = self._init_plot_item(self._create_plot_item(self._data_items[source_data_names[0]][1]))
-            if self._anchor_x_plot_item is not None:
-                plot_item.setXLink(self._anchor_x_plot_item)
-            else:
-                self._anchor_x_plot_item = plot_item
-            plot_widget = pg.PlotWidget(plotItem=plot_item)
-            self.insertWidget(target_plot_index, plot_widget)
-
-            self._plot_item_data[plot_item] = [source_data_names[0]]
-            created_data_names.append(source_data_names[0])
-
-            if isinstance(plot_item, EnumWaveformPlot):  # only one data item
-                pass
-            else:  # append all compatible
-                for source_data_name in source_data_names[1:]:
-                    if self._data_items[source_data_names[0]][1] != self._data_items[source_data_name][1]:
-                        continue
-                    self._plot_item_data[plot_item].append(source_data_name)
-                    created_data_names.append(source_data_name)
-
-            self._update_plots_x_axis()
-
-        for created_data_name in created_data_names:
-            created_item = self._data_name_to_plot_item.get(created_data_name)
-            if created_item is not None:  # delete source
-                self._plot_item_data[created_item].remove(created_data_name)
-                if not len(self._plot_item_data[created_item]):
-                    self._clean_plot_widgets()
-                    self._update_plots_x_axis()
-
-        self._update_plot_item_data_items()
-        self._update_plots()
 
     def dragEnterEvent(self, event: QDragMoveEvent) -> None:
         from .signals_table import DraggableSignalsTable

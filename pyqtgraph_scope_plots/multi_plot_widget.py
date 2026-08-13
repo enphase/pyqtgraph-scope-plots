@@ -306,8 +306,8 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
             for source_data_name in source_data_names:
                 if len(self._plot_item_data[target_plot_item]) > 0:  # check for merge-ability, for nonempty plots
                     if (
-                            self._data_items[self._plot_item_data[target_plot_item][0] or ""][1]
-                            != self._data_items[source_data_name][1]
+                        self._data_items[self._plot_item_data[target_plot_item][0] or ""][1]
+                        != self._data_items[source_data_name][1]
                     ):
                         continue
                 self._plot_item_data[target_plot_item].append(source_data_name)

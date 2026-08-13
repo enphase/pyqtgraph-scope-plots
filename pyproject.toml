@@ -70,6 +70,10 @@ module = ["pyqtgraph.*", "simpleeval.*", "pytestqt.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+module = ["numpy.*"]
+follow_imports = "silent"
+
+[[tool.mypy.overrides]]
 module = ["tests.*"]
 disable_error_code = ["union-attr", "no-untyped-call"]
 

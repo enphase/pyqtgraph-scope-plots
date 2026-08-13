@@ -291,7 +291,7 @@ class MultiPlotWidget(HasSaveLoadDataConfig, QSplitter):
             is_first = False
 
     def _merge_data_into_item(self, source_data_names: List[str], target_plot_index: int, insert: bool = False) -> None:
-        """Merges a data (by name) into a target PlotItem, overlaying both on the same plot"""
+        """Merges data (by name) into a target PlotItem, overlaying both on the same plot"""
         if len(source_data_names) == 0:  # nothing to be done
             return
 

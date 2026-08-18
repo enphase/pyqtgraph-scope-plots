@@ -112,12 +112,18 @@ class PlotsTableWidget(QSplitter, HasSaveLoadDataConfig):
     ) -> None:
         self._plots.set_data(data)
 
-    def _write_csv(self, fileio: Union[TextIO, StringIO]) -> None:
-        writer = csv.writer(fileio)
-        writer.writerow(["# time"] + [name for name, _ in self._plots._data.items()])
+    def _write_csv(self, fileio: Union[TextIO, StringIO], raw_data: bool = False) -> None:
+        if raw_data:
+            data_source = self._plots._raw_data
+        else:  # by default, export post-transformed (displayed) data
+            data_source = self._plots._data
 
-        indices = [0] * len(self._plots._data.items())  # indices to examine on current iteration, in self._data order
-        ordered_data_items = list(self._plots._data.values())
+        writer = csv.writer(fileio)
+        writer.writerow(["# time"] + [name for name, _ in data_source.items()])
+
+        indices = [0] * len(data_source.items())  # indices to examine on current iteration, in self._data order
+        ordered_data_items = list(data_source.values())
+
         while True:  # iterate each row
             xs_at_index = [
                 ordered_data_items[data_index][0][point_index]

@@ -22,6 +22,7 @@ from pytestqt.qtbot import QtBot
 
 from pyqtgraph_scope_plots.multi_plot_widget import MultiPlotStateModel, PlotWidgetModel
 from pyqtgraph_scope_plots import MultiPlotWidget, PlotsTableWidget
+from pyqtgraph_scope_plots.transforms_signal_table import TransformsPlotWidget
 from .common_testdata import DATA_ITEMS, DATA
 from .util import assert_cast
 
@@ -32,6 +33,27 @@ def plot(qtbot: QtBot) -> PlotsTableWidget:
     plot = PlotsTableWidget()
     plot._set_data_items(DATA_ITEMS)
     plot._set_data(DATA)
+    qtbot.addWidget(plot)
+    plot.show()
+    qtbot.waitExposed(plot)
+    return plot
+
+
+class TransformsPlotsTableWidget(PlotsTableWidget):
+    class Plots(TransformsPlotWidget, PlotsTableWidget.Plots):
+        pass
+
+    _PLOT_TYPE = Plots
+
+
+@pytest.fixture()
+def transforms_plot(qtbot: QtBot) -> TransformsPlotsTableWidget:
+    """Creates a PlotsTableWidget backed by TransformsPlotWidget with a transform on signal '1'"""
+    plot = TransformsPlotsTableWidget()
+    plot._set_data_items(DATA_ITEMS)
+    plot._set_data(DATA)
+    assert isinstance(plot._plots, TransformsPlotWidget)
+    plot._plots.set_transform(["1"], "x * 2")
     qtbot.addWidget(plot)
     plot.show()
     qtbot.waitExposed(plot)
@@ -184,6 +206,24 @@ def test_export_csv(qtbot: QtBot, plot: PlotsTableWidget) -> None:
 0.0,0.01,0.25,
 1.0,,0.5,0.7
 2.0,0.0,,0.6""".replace("\r", "").replace("\n", "")  # ignore newline format
+
+
+def test_export_csv_transforms(qtbot: QtBot, transforms_plot: TransformsPlotsTableWidget) -> None:
+    out_io = StringIO()
+    transforms_plot._write_csv(out_io, raw_data=True)
+    assert out_io.getvalue().replace("\r", "").replace("\n", "") == """# time,0,1,2
+0.0,0.01,0.5,0.7
+0.1,1.0,,
+1.0,1.0,0.25,0.6
+2.0,0.0,0.5,0.5""".replace("\r", "").replace("\n", "")  # ignore newline format
+
+    out_io = StringIO()
+    transforms_plot._write_csv(out_io, raw_data=False)
+    assert out_io.getvalue().replace("\r", "").replace("\n", "") == """# time,0,1,2
+0.0,0.01,1.0,0.7
+0.1,1.0,,
+1.0,1.0,0.5,0.6
+2.0,0.0,1.0,0.5""".replace("\r", "").replace("\n", "")  # ignore newline format
 
 
 def test_empty_plot_indicator(qtbot: QtBot) -> None:

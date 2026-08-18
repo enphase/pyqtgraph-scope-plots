@@ -143,11 +143,11 @@ class PlotsTableWidget(QSplitter, HasSaveLoadDataConfig):
 
             writer.writerow(this_row)
 
-    def _save_csv_dialog(self) -> None:
+    def _save_csv_dialog(self, raw_data: bool = False) -> None:
         """Utility function to open a dialog to export the current data to a CSV with a shared x-axis column."""
         filename, filter = QFileDialog.getSaveFileName(self, f"Save Data", "", "CSV (*.csv)")
         if not filename:
             return
 
         with open(filename, "w", newline="") as f:
-            self._write_csv(f)
+            self._write_csv(f, raw_data)
